@@ -324,7 +324,6 @@ class Car:
                     offset = potential_offset
                     index = np.where((offsets == offset).all(axis=1))[0]
                     direction = directions[index]
-            
         return results
     
     def calculateScore(self):

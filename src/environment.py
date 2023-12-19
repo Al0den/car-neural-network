@@ -12,6 +12,7 @@ class Environment:
         self.track = track
         self.alive = self.options['num_agents']
         self.generation = self.options['generation_to_load']
+        self.player = player
         
         self.start_pos = start_pos
         self.start_dir = start_dir
@@ -129,8 +130,8 @@ class Environment:
 
     def save_agents(self, path="./data/train/agents"):
         for agent in self.agents:
-            self.agents.car.track = []
-            self.agents.car.previous_points = []
+            agent.car.track = []
+            agent.car.previous_points = []
         data = {
             'agents': self.agents,
             'previous_agents': self.previous_agents,
@@ -145,7 +146,7 @@ class Environment:
     def load_agents(self):
         data = np.load("./data/train/agents.npy", allow_pickle=True).item()
         self.agents = data['agents']
-        #self.previous_agents = data['previous_agents']
+        self.previous_agents = data['previous_agents']
         self.options['state_space_size'] = data['input_size']
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
@@ -162,8 +163,8 @@ class Environment:
             agent.car.checkpoints_seen = []
             agent.last_update = 0
 
-        #if (self.player != 2 and self.player != 1):
-        #    self.previous_agents = self.previous_agents[:10]
+        if (self.player != 2 and self.player != 1):
+            self.previous_agents = self.previous_agents[:10]
 
         print(f" * Loaded all agents from file, generation: {str(self.generation)}")
 

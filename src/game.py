@@ -175,7 +175,7 @@ class Game:
                 with laps.get_lock():
                     laps[agent_index] += 1
                 local_lap_times[agent_index * self.map_tries + try_number] = int(agent.car.lap_time)
-                local_scores[agent_index] = 1 * score_multiplier
+                local_scores[agent_index] += 1 * score_multiplier
             else:
                 local_lap_times[agent_index * self.map_tries + try_number] = 0
                 local_scores[agent_index] += int((agent.car.calculateScore() * score_multiplier))
