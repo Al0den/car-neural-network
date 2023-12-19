@@ -11,7 +11,7 @@ from skimage.morphology import skeletonize
 
 from environment import Environment
 from car import Car
-from utils import is_color_within_margin, calculate_distance, get_new_starts, update_progress
+from utils import is_color_within_margin, calculate_distance, get_new_starts, update_progress, get_nearest_centerline
 from agent import Agent
 from settings import *
 from precomputed import start_dir, offsets, directions
@@ -57,11 +57,21 @@ class Game:
             self.player = 1
         elif self.player == 3:
             self.environment.load_specific_agents(self)
+            
         elif self.player == 4:
             best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained")
             self.extract_csv(f"./data/per_track/{self.track_name}/log.csv")
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
+            start_x = self.real_starts[self.track_name][0][0]
+            start_y = self.real_starts[self.track_name][0][1]
+            real_start_x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
+            real_start_y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
+            self.environment.agents[0].car.x = real_start_x
+            self.environment.agents[0].car.y = real_start_y
+            assert(self.tracks[self.track_name][real_start_y, real_start_x] == 10)
+            self.environment.agents[0].car.direction = self.real_starts[self.track_name][1]
+
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")
@@ -169,7 +179,7 @@ class Game:
             agent.car.start_y = starts[try_number][0][0]
             ticks = 0
             while not agent.car.died:
-                agent.tick(ticks, self)
+                agent.tick(ticks, self, self.player)
                 ticks += 1
             if agent.car.lap_time != 0:
                 with laps.get_lock():
@@ -206,6 +216,7 @@ class Game:
         for track in start_tracks:
             new_start = random.choice(self.start_positions[track])
             starts.append(new_start)
+
         if self.player != 3:
             chosen_tracks = []
             count = 0
@@ -222,7 +233,11 @@ class Game:
                 starts.append(self.real_starts[track])
         else:
             start_tracks = [self.track_name]
-            starts = [self.real_starts[self.track_name]]
+            start_x = self.real_starts[self.track_name][0][0]
+            start_y = self.real_starts[self.track_name][0][1]
+            real_start_x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
+            real_start_y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
+            starts = [[[real_start_x, real_start_y], self.real_starts[self.track_name][1]]]
         progress_width = 30
 
         for i in range(len(start_tracks)):
@@ -252,7 +267,7 @@ class Game:
 
         self.environment.next_generation(self)
 
-        print(f"Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * map_tries) * 100):0.2f}%, max laps finished: {max(laps)}    ")
+        print(f"Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, max laps finished: {max(laps)}    ")
     def load_single_track(self):
         self.tracks = {}
         self.start_positions = {}
@@ -360,7 +375,6 @@ class Game:
                     elif is_color_within_margin(pixel_value, (255, 0, 0), 50):
                         self.board[y][x] = 3
                     elif is_color_within_margin(pixel_value, (34, 255, 6), 5):
-                        self.board[y][x] = 4
                         exists = False
                         self.board[y][x] = 1
                         for pos in start_positions:        
@@ -372,6 +386,7 @@ class Game:
                             if len(start_positions) == 1:
                                 real_start = ((x, y), start_dir[track_name])
             self.track=np.array(self.board)
+
             print(" - Finding center line")
             self.find_center_line()
             print(" - Generating new starts")

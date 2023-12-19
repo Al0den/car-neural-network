@@ -38,7 +38,7 @@ class Car:
         self.updateCar()
         return self.checkCollisions(game.ticks)
 
-    def checkCollisions(self, ticks):
+    def checkCollisions(self, ticks, player=0):
         toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
         count = 0
         # Check that atleast 1 wheel is on track
@@ -53,6 +53,11 @@ class Car:
         # Checkpoints and end of lap
         if self.track[int(self.y), int(self.x)] == 3:
             self.lap_time = ticks
+            if len(self.checkpoints_seen) < 1 and (player == 3 or player == 4):
+                self.kill()
+                self.laps = 0
+                self.lap_time = 9999999999
+                return False
             self.kill()
             return False
         elif self.track[int(self.y), int(self.x)] == 2:

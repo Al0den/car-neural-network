@@ -42,6 +42,7 @@ def load_options():
     elif game_options['player'] == 4:
         game_options['environment']['generation_to_load'] = int(input("Generation to load - Only number: "))
         game_options['generation_to_load'] = game_options['environment']['generation_to_load']
+        game_options['display'] = True
     elif game_options['player'] == 5:
         game_options['display'] = True
         game_options['cores'] = 1

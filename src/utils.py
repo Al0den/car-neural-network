@@ -204,3 +204,16 @@ def InitialiseDisplay(game, game_options, pygame):
     pygame.display.set_caption("Car Game")
     last_render = time.time()
     return clock, last_render
+
+def get_nearest_centerline(track, x, y):
+    # Get nearest block track==10 to track[y, x]
+    distance = 1
+    for i in range(100):
+        for i in range(-distance, distance):
+            for j in range(-distance, distance + 1):
+                if track[y + i, x + j] == 10:
+                    return x+j, y+i
+        distance += 1
+    print("Could find the nearest track, aborting")
+    import sys
+    sys.exit()

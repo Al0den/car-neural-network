@@ -236,6 +236,7 @@ class Environment:
             agent.car.died = False
             agent.car.checkpoints_seen = []
             agent.last_update = 0
+
     
         print(f" - Loaded all agents from {method} training, generation: {str(self.generation)}")
 

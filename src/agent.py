@@ -17,7 +17,7 @@ class Agent:
         self.mutation_strengh = mutation_strenght
         self.last_update = 0
     
-    def tick(self, ticks, game):
+    def tick(self, ticks, game, player=0):
         if self.car.died == True: return
         self.mutation_strengh = game.mutation_strength
 
@@ -41,7 +41,7 @@ class Agent:
         power, steer = self.get_action(state)
         self.car.applyAgentInputs([power, steer])
         self.car.updateCar()
-        self.car.checkCollisions(ticks)
+        self.car.checkCollisions(ticks, player)
 
         self.state = state
         self.action = [power, steer]
