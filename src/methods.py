@@ -46,12 +46,12 @@ def ContinuousMethod(game, game_options, pygame):
     update_speed(game, pygame)
     continuous_commands(game, pygame)
     if not game.environment.agents[0].car.died: return
-
+    
+    print(f" - Completed: {game.environment.agents[0].car.calculateScore() * 100:0.2f}%")
     new_track = random.choice(list(game.tracks.values()))
     game.track = new_track
     game.track_name = [name for name, track in game.tracks.items() if track is game.track][0]
     start_pos, start_dir = random.choice(game.start_positions[game.track_name])
-
     
     best_agent, agent = extract_best_agent("./data/train/trained", game_options['environment'], game, start_pos, start_dir)
     load_csv_data("./data/train/log.csv", game)

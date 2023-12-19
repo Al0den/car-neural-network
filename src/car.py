@@ -343,7 +343,7 @@ class Car:
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
-        if seen > 10000 and len(self.checkpoints_seen) < 1 or seen == 50000:
+        if (seen > 10000 and len(self.checkpoints_seen) < 1) or seen == 50000:
             return 0
         return min(1, seen / self.calculateMaxPotential())
     
