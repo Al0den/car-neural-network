@@ -4,8 +4,8 @@ from precomputed import points_offset
 # - Neural network settings
 center_line_input = True
 state_space_size = len(points_offset) + 4
-first_layer_size_coeff = 1.2
-num_hidden_layers = 3
+first_layer_size_coeff = 1.3
+num_hidden_layers = 4
 action_space_size = 2
 activation_function = np.tanh
 map_tries = 10
