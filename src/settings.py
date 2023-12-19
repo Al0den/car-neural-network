@@ -25,7 +25,7 @@ point_search_jump = 10.0
 
 # - Game settings
 god = False
-debug = True
+debug = False
 random_start_position = True
 delta_t = 1/60
 pre_load = True
