@@ -361,8 +361,6 @@ class Car:
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
-        if seen > 6000 and len(self.checkpoints_seen) < 1:
-            return 0
         return max(1, seen)
     
     def validIndex(self, x, y):
