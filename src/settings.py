@@ -50,8 +50,8 @@ steer_increment = 1/10
 # - Evolution settings
 mutation_rates = [0.01, 0.015, 0.02, 0.05, 0.1, 0.2, 0.3]
 
-only_mutate_rate = 0.3
-cross_over_rate = 0.65
+only_mutate_rate = 0.45
+cross_over_rate = 0.5
 mutate_cross_over_rate = 0.7
 simple_cross_over_rate = 0.3
 random_agent_rate = 0.05
