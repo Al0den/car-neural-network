@@ -1,7 +1,7 @@
 import numpy as np
 
 # Offsets that will be used to get data points
-points_offset = np.array([0, 2, -2, 8, -8,  15, -15,  40, -40,  87, -87])
+
 
 start_dir = {
     "pre-train": 320,

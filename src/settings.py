@@ -1,5 +1,6 @@
 import numpy as np
-from precomputed import points_offset
+
+points_offset = np.array([0, -40, 40, 89, -89])
 
 # - Neural network settings
 center_line_input = True

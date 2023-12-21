@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, potential_offsets_for_angle, points_offset, pixel_per_meter, offsets, directions
+from precomputed import sin, cos, potential_offsets_for_angle, pixel_per_meter, offsets, directions
 from settings import *
 
 class Car:
