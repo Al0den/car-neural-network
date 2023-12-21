@@ -117,6 +117,7 @@ class Game:
             self.totalScore = 0
             self.runs = 0
             self.prev_update = time.time()
+            self.start_time = time.time()
     def tick(self):
         if self.player == 0:
             self.ticks += 1
@@ -152,8 +153,9 @@ class Game:
             # If more than 2s has passed since last update, update the screen
             if time.time() - self.prev_update > 2:
                 self.prev_update = time.time()
-                print(f"Average time/tick: {self.totalScore / self.runs:.5f}ms, ran {self.runs * len(self.track_names) * self.options['environment']['num_agents']} agents")
-            
+                print(f"Average time/tick: {self.totalScore / self.runs:.5f}ms, ran {self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks} ticks")
+            if time.time() - self.start_time > 20:
+                self.running = False
     def train_agents_process(self, agents, remaining, laps, lap_times, scores, starts, index_lock, current_index, start_tracks):
         local_scores = [0] * len(agents)
         local_lap_times = [0] * len(agents) * self.map_tries
@@ -491,13 +493,10 @@ class Game:
                 agent.car.direction = direction
             start_time = time.time()
             for agent in self.environment.agents:
-                agent.tick(0, self)
-                agent.tick(1, self)
-                agent.tick(2, self)
-                agent.tick(3, self)
-                agent.tick(4, self)
+                for i in range(perft_ticks):
+                    agent.tick(i, self)
             tick_time += time.time() - start_time
-        score = tick_time / len(self.track_names) / len(self.environment.agents) / 5 * 1000
+        score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score
         self.runs += 1
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)

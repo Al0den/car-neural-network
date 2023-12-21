@@ -14,3 +14,4 @@ data/tracks/*.npy
 graph.py
 test.py
 main.py.prof
+profile.txt
