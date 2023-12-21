@@ -61,7 +61,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.1
+mutation_strenght = 0.2
 
 max_ticks_before_kill = 30000
 min_speed = 10
