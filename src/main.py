@@ -48,7 +48,7 @@ def main():
         if game.player == 0:
             clock.tick(game.speed)
             game.agent = False
-            game.render.draw_car_vision(game)
+            game.render.RenderFrame(game)
             HumanMethod(game, game_options, pygame)
 
         elif game.player == 4:
@@ -66,14 +66,12 @@ def main():
                 ContinuousMethod(game, game_options, pygame)
                 if time.time() - last_render < 0.015: continue
                 last_render = time.time()
-                game.render.draw_race(game)
-                pygame.display.update()
+                game.render.RenderFrame(game)
         elif game.player == 6:
             keys = pygame.key.get_pressed()
             HumanVSaiMethod(game, game_options, pygame)
-            game.render.render_race(game)
+            game.render.RenderFrame(game)
             clock.tick(game.speed)
-            pygame.display.update()
         elif game.player == 7:
             x, y = game.environment.agents[0].car.x, game.environment.agents[0].car.y
             generated[int(y), int(x)] = 10 + game.environment.agents[0].car.speed
@@ -89,10 +87,8 @@ def main():
                 game.running = False
         elif game.player == 8:
             AgentsRaceMethod(game, game_options, pygame)
-            game.render.render_race(game)
+            game.render.RenderFrame(game)
             clock.tick(game.speed)
-            pygame.display.update()
-
     if game_options['display']:
         pygame.quit()
     sys.exit()

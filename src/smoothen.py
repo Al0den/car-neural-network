@@ -32,7 +32,7 @@ def main(track):
     new_mat = create_new_matrix(center_mat)
     final_mat = np.zeros((track_matrix.shape[1], track_matrix.shape[0]), dtype=np.uint8)
     track_surface = pygame.Surface((track_matrix.shape[1], track_matrix.shape[0]), pygame.SRCALPHA)
-    track_surface.fill((255, 255, 255))
+    track_surface.fill((0, 100, 0))
     track_surface.set_alpha(None)
     red = (255, 0, 0)
     gray = (100, 100, 100)
@@ -50,13 +50,33 @@ def main(track):
         i, j = coord[0], coord[1]
         value = final_mat[i][j]
         if value == 1:
-            track_surface.set_at((j, i), gray)
+            neighbors = []
+            for offset in [(0, 1), (0, -1), (1, 0), (-1, 0), (1,1 ), (1, -1), (-1, 1), (-1, -1)]:
+                if 0 <= i + offset[0] < track_matrix.shape[0] and 0 <= j + offset[1] < track_matrix.shape[1]:
+                    if final_mat[i + offset[0], j + offset[1]] != 10:
+                        neighbors.append(final_mat[i + offset[0], j + offset[1]])
+            if 0 in neighbors:
+                track_surface.set_at((j, i), (0, 0, 0))
+            else:
+                track_surface.set_at((j, i), gray)
         elif value == 2:
             track_surface.set_at((j, i), orange)
         elif value == 3:
             track_surface.set_at((j, i), red)
         elif value == 10:
-            track_surface.set_at((j, i), (0, 255, 0))
+            # Get the most present neighbor value in matrix
+            neighbors = []
+            for offset in [(0, 1), (0, -1), (1, 0), (-1, 0), (1,1 ), (1, -1), (-1, 1), (-1, -1)]:
+                if 0 <= i + offset[0] < track_matrix.shape[0] and 0 <= j + offset[1] < track_matrix.shape[1]:
+                    if final_mat[i + offset[0], j + offset[1]] != 10:
+                        neighbors.append(final_mat[i + offset[0], j + offset[1]])
+            mode = max(set(neighbors), key=neighbors.count)
+            if mode == 2:
+                track_surface.set_at((j, i), orange)
+            elif mode == 3:
+                track_surface.set_at((j, i), red)
+            else:
+                track_surface.set_at((j, i), gray)
         elif track_matrix[i][j] > 99:
             track_surface.set_at((j, i), gray)
 

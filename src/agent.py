@@ -38,6 +38,10 @@ class Agent:
         for point in self.car.previous_points:
             state.append(min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2))
 
+        if debug: 
+            for inp in state:
+                if abs(inp) > 1: print("One of the inputs is iout of bounds")
+
         power, steer = self.get_action(state)
         self.car.applyAgentInputs([power, steer])
         self.car.updateCar()
