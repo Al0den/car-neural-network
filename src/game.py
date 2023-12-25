@@ -126,6 +126,8 @@ class Game:
             self.car.tick(self)
             if self.car.died == True:
                 self.restart = True
+                self.car.died = False
+                if debug: print("Car died, restarting")
         elif self.player == 1 or self.player == 3:
             self.train_agents()
         elif self.player == 4:
@@ -154,7 +156,8 @@ class Game:
             if time.time() - self.prev_update > 2:
                 self.prev_update = time.time()
                 print(f"Average time/tick: {self.totalScore / self.runs:.5f}ms, ran {self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks} ticks")
-            if time.time() - self.start_time > 20:
+            if time.time() - self.start_time > perft_duration:
+                print(f"Average tps: {(self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks / perft_duration):.2f}, real speed x{(self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks / (perft_duration * 1/delta_t)):.2f}")
                 self.running = False
     def train_agents_process(self, agents, remaining, laps, lap_times, scores, starts, index_lock, current_index, start_tracks):
         local_scores = [0] * len(agents)
@@ -226,7 +229,11 @@ class Game:
                 track = random.choice(list(self.tracks.keys()))
                 if track not in chosen_tracks:
                     start_tracks.append(track)
-                    starts.append(self.real_starts[track])
+                    start_x = self.real_starts[track][0][0]
+                    start_y = self.real_starts[track][0][1]
+                    real_start_x = get_nearest_centerline(self.tracks[track], start_x, start_y)[0]
+                    real_start_y = get_nearest_centerline(self.tracks[track], start_x, start_y)[1]
+                    starts.append([[real_start_y, real_start_x], self.real_starts[track][1]])
                     chosen_tracks.append(track)
                 count += 1
             for i in range(real_starts_num - len(chosen_tracks)):
@@ -239,7 +246,7 @@ class Game:
             start_y = self.real_starts[self.track_name][0][1]
             real_start_x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
             real_start_y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
-            starts = [[[real_start_x, real_start_y], self.real_starts[self.track_name][1]]]
+            starts = [[[real_start_y, real_start_x], self.real_starts[self.track_name][1]]]
         progress_width = 30
 
         for i in range(len(start_tracks)):

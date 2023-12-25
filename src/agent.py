@@ -30,7 +30,7 @@ class Agent:
         prev_angle = self.car.direction
         for i in range(len(points)):
             if i == 0: continue
-            angle = angle_range_180(np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0])))
+            angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
             angle_diff = angle_range_180(angle - prev_angle)
             prev_angle = angle
             state.append(min(1, angle_diff / 70))

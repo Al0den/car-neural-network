@@ -74,6 +74,7 @@ class Car:
         return True
     
     def kill(self):
+
         self.died = True
         self.x = self.start_x
         self.y = self.start_y
@@ -165,10 +166,7 @@ class Car:
             turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
         else:
             turning_radius = float('inf')  # Ligne droite
-        inner_steer_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
-        outer_steer_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
-
-        wheel_angle = (inner_steer_angle + outer_steer_angle) / 2.0
+        wheel_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
 
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
@@ -177,7 +175,7 @@ class Car:
         if self.brake > 0:
             self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
 
-        drag_force = 0.5 * drag_coeff * reference_area * self.speed ** 2
+        drag_force = 0.5 * drag_coeff * reference_area * pow(self.speed, 2)
         drag_acceleration = drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
 
@@ -219,8 +217,8 @@ class Car:
 
         distance_from_track = 0
         while int(eval_x) < len(self.track[0]) and int(eval_y) < len(self.track) and self.track[int(eval_y), int(eval_x)] == 0 and distance_from_track < 50:
-            distance_from_track += 1
-            dx += 1.0
+            distance_from_track += 5
+            dx += 5.0
             eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
         
         if int(eval_x) >= len(self.track[0]) or int(eval_y) >= len(self.track):
@@ -234,10 +232,15 @@ class Car:
             eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
             i += point_search_jump
 
-        while self.track[int(eval_y), int(eval_x)] == 0:
-            dx -= 1.0
+        jump = point_search_jump / 2.0
+        while jump > 1.0:
+            if self.track[int(eval_y), int(eval_x)] == 0:
+                dx -= jump
+            else:
+                dx += jump
             eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-        dx += 1.0
+            jump /= 2.0
+
         eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
 
         return (eval_x, eval_y)

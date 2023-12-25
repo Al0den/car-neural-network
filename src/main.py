@@ -35,7 +35,7 @@ def main():
         throttle = []
         brake = []
         steer = []
-
+    game.restart = False
     while game.running:
         if game_options['display']:
             for event in pygame.event.get(): 
@@ -44,13 +44,13 @@ def main():
         
         if not no_tick: game.tick()
         no_tick = False
-        game.restart = False
 
         if game.player == 0:
             clock.tick(game.speed)
             game.agent = False
             game.render.draw_car_vision(game)
             HumanMethod(game, game_options, pygame)
+
         elif game.player == 4:
             game.speed = max(0, game.speed)
             clock.tick(game.speed)

@@ -8,7 +8,7 @@ from precomputed import next_brake_speed_after_t, two_wide_offsets
 from settings import * 
 
 def calculate_distance(coords1, coords2):
-    return np.sqrt((coords1[0] - coords2[0])**2 + (coords1[1] - coords2[1])**2)
+    return np.sqrt(pow(coords1[0] - coords2[0], 2) +pow(coords1[1] - coords2[1], 2))
 
 def is_color_within_margin(color, target_color, margin):
     return all(abs(a - b) <= margin for a, b in zip(color, target_color))
@@ -208,7 +208,7 @@ def InitialiseDisplay(game, game_options, pygame):
 def get_nearest_centerline(track, x, y):
     # Get nearest block track==10 to track[y, x]
     distance = 1
-    for i in range(100):
+    for _ in range(100):
         for i in range(-distance, distance):
             for j in range(-distance, distance + 1):
                 if track[y + i, x + j] == 10:

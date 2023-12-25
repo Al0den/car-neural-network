@@ -10,7 +10,7 @@ num_hidden_layers = 4
 action_space_size = 2
 activation_function = np.tanh
 map_tries = 10
-real_starts_num = 0
+real_starts_num = 3
 
 travel_distances_centerlines = [1, 10, 20, 30, 40, 50, 60, 80, 100, 133, 166, 200, 233, 266, 300, 333, 366, 400, 433, 466, 500, 533, 566, 600]
 
@@ -22,8 +22,9 @@ if center_line_input:
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters
-point_search_jump = 10.0
+point_search_jump = 25.0
 perft_ticks = 5
+perft_duration = 20
 
 # - Game settings
 god = False
