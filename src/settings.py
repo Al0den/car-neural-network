@@ -19,6 +19,7 @@ max_center_line_distance = 70
 
 if center_line_input:
     state_space_size += len(travel_distances_centerlines)
+    
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters

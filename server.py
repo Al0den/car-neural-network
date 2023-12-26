@@ -53,7 +53,6 @@ try:
     git_pull = input("Do you want to pull from git? (y/n): ")
     if git_pull.lower() == 'y':
         # Execute in folder home/ubuntu/car-neural-network
-
         git_pull_command = 'cd /home/ubuntu/car-neural-network && git pull\n'
         ssh_client.exec_command(git_pull_command)
 
