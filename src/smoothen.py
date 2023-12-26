@@ -56,7 +56,7 @@ def main(track):
                     if final_mat[i + offset[0], j + offset[1]] != 10:
                         neighbors.append(final_mat[i + offset[0], j + offset[1]])
             if 0 in neighbors:
-                track_surface.set_at((j, i), (0, 0, 0))
+                track_surface.set_at((j, i), (255, 255, 255))
             else:
                 track_surface.set_at((j, i), gray)
         elif value == 2:

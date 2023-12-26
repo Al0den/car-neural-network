@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, potential_offsets_for_angle, pixel_per_meter, offsets, directions
+from precomputed import sin, cos, potential_offsets_for_angle, pixel_per_meter, offsets, directions, start_dir
 from settings import *
 
 class Car:
@@ -25,7 +25,7 @@ class Car:
 
         self.front_left, self.front_right, self.back_left, self.back_right = [0, 0], [0, 0], [0, 0], [0, 0]
         self.acceleration, self.brake, self.speed, self.steer = 0, 0, 0, 0
-        self.lap_times, self.lap_time, self.laps = [], 0, 0
+        self.lap_times, self.lap_time = [], 0
         self.checkpoints_seen, self.checkpoints = [], []
         self.previous_points = [None] * len(points_offset)
 
@@ -53,10 +53,9 @@ class Car:
         # Checkpoints and end of lap
         if self.track[int(self.y), int(self.x)] == 3:
             self.lap_time = ticks
-            if len(self.checkpoints_seen) < 1 and (player == 3 or player == 4):
+            if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
+                self.lap_time = 0
                 self.kill()
-                self.laps = 0
-                self.lap_time = 9999999999
                 return False
             self.kill()
             return False
@@ -339,6 +338,8 @@ class Car:
         final_y = self.previous_center_line[1]
         seen = 0
         assert(self.track[current_y, current_x] == 10)
+        if self.lap_time != 0:
+            return 1
         while (current_x, current_y) != (final_x, final_y) and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break

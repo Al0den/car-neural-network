@@ -27,6 +27,14 @@ class Render:
         for track_name in self.tracks:
             self.surfaces[track_name] = self.load_track_surface(track_name)
 
+        self.slider_value = 0.0  # Initial value of the slider
+        self.slider_width = 200
+        self.slider_height = 20
+        self.slider_padding = 10  # Padding from the right and bottom edges
+        self.slider_x = self.screen.get_width() - self.slider_width - self.slider_padding  # X position of the slider
+        self.slider_y = self.screen.get_height() - self.slider_height - self.slider_padding  # Y position of the slider
+        self.slider_dragging = False  # Flag to track if the slider is being dragged
+
     def load_track_surface(self, track_name):
         if os.path.isfile("data/tracks/" + track_name + "_surface.png"):
             return pygame.image.load("data/tracks/" + track_name + "_surface.png")
@@ -228,7 +236,28 @@ class Render:
             text_surface = font.render(line, True, (0, 0, 0))
             self.screen.blit(text_surface, (w * 0.75, y_offset))
             y_offset += text_surface.get_height() + 5
+    def handle_slider(self, game):
+        pygame.draw.rect(self.screen, (200, 200, 200), (self.slider_x, self.slider_y, self.slider_width, self.slider_height))
+        slider_pos = self.slider_x + self.slider_value * self.slider_width
+        pygame.draw.rect(self.screen, (0, 0, 0), (slider_pos - 5, self.slider_y - 5, 10, self.slider_height + 10))
 
+        # Handle mouse events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game.running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if self.slider_x <= mouse_x <= self.slider_x + self.slider_width and self.slider_y <= mouse_y <= self.slider_y + self.slider_height:
+                    self.slider_dragging = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self.slider_dragging = False
+            elif event.type == pygame.MOUSEMOTION and self.slider_dragging:
+                mouse_x, _ = pygame.mouse.get_pos()
+                self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / self.slider_width))  # Convert to range -1 to 1
+                if game.player in [0, 4, 5]:
+                    game.car.direction = self.slider_value * 360
+            elif game.player in [0, 4, 5]:
+                self.slider_value = game.car.direction / 360
     def RenderFrame(self, game):
         centered_car = None
         if game.player == 0: centered_car = game.car 
@@ -256,6 +285,7 @@ class Render:
             self.draw_points(centered_car, camera_x, camera_y)
             self.draw_lines(game, camera_x, camera_y, centered_car)
 
+        self.handle_slider(game)
         pygame.display.update()
 
         

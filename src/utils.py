@@ -118,7 +118,6 @@ def copy_car(car, new_car):
     new_car.brake = car.brake
     new_car.steer = car.steer
     new_car.lap_times = car.lap_times
-    new_car.laps = car.laps
     new_car.lap_time = car.lap_time
     new_car.score = car.score
     new_car.died = car.died
