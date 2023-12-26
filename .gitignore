@@ -13,8 +13,7 @@ data/tracks/*_sur*
 *.pyc
 *surface.png
 graph.py
+server.py
 test.py
 main.py.prof
 profile.txt
-server.py
-server.py
