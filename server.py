@@ -20,6 +20,15 @@ ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 # Load the private key for authentication
 private_key = paramiko.Ed25519Key(filename=PRIVATE_KEY_PATH)
 
+def copy_dir(sftp, local_path, remote_path):
+    for root, dirs, files in os.walk(local_path):
+        for file in files:
+            if not file.startswith('best_agent_'):
+                local_file_path = os.path.join(root, file)
+                remote_file_path = os.path.join(remote_path, local_file_path.replace(local_path, '').lstrip(os.path.sep))
+                sftp.put(local_file_path, remote_file_path)
+                print("Copied file to: " + remote_file_path)
+
 try:
     # Connect to the SSH server
     ssh_client.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME, pkey=private_key)
@@ -27,18 +36,26 @@ try:
     # Create an SFTP client
     sftp = ssh_client.open_sftp()
 
-    # Recursive function to copy a local directory to a remote server
-    def copy_dir(local_path, remote_path):
-        for root, dirs, files in os.walk(local_path):
-            for file in files:
-                if not file.startswith('best_agent_'):
-                    local_file_path = os.path.join(root, file)
-                    remote_file_path = os.path.join(remote_path, local_file_path.replace(local_path, '').lstrip(os.path.sep))
-                    sftp.put(local_file_path, remote_file_path)
-                    print("Copied file to: " + remote_file_path)
+    sftp = ssh_client.open_sftp()
 
-    # Call the function to copy the local directory to the server
-    copy_dir(LOCAL_DIR_TO_COPY, REMOTE_DIR)
+    # Copy files from the first directory
+    LOCAL_DIR_TO_COPY_1 = './data/train/'  # First directory to copy
+    REMOTE_DIR_1 = '/home/ubuntu/car-neural-network/data/train/'  # Destination directory on the server for the first directory
+    copy_dir(sftp, LOCAL_DIR_TO_COPY_1, REMOTE_DIR_1)
+
+    confirm_copy = input("Do you want to copy the tracks directory? (y/n): ")
+    if confirm_copy.lower() == 'y':
+        LOCAL_DIR_TO_COPY_2 = './data/tracks/'  # Second directory to copy
+        REMOTE_DIR_2 = '/home/ubuntu/car-neural-network/data/tracks/'  # Destination directory on the server for the second directory
+        copy_dir(sftp, LOCAL_DIR_TO_COPY_2, REMOTE_DIR_2)
+    else:
+        print("Files from the track directory were not copied.")
+    git_pull = input("Do you want to pull from git? (y/n): ")
+    if git_pull.lower() == 'y':
+        # Execute in folder home/ubuntu/car-neural-network
+
+        git_pull_command = 'cd /home/ubuntu/car-neural-network && git pull\n'
+        ssh_client.exec_command(git_pull_command)
 
     # Check if 'car' screen exists
     ssh_client.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME, pkey=private_key)
