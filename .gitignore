@@ -7,6 +7,7 @@ data/per_track/*
 data/train/*
 main.build/*
 data/tracks/*.npy
+data/tracks/*_sur*
 *.DS_Store
 *.cpython
 *.pyc
@@ -15,4 +16,5 @@ graph.py
 test.py
 main.py.prof
 profile.txt
+server.py
 server.py
