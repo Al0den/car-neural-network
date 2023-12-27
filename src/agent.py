@@ -41,7 +41,7 @@ class Agent:
         if debug: 
             for inp in state:
                 if abs(inp) > 1: print("One of the inputs is iout of bounds")
-
+        
         power, steer = self.get_action(state)
         self.car.applyAgentInputs([power, steer])
         self.car.updateCar()

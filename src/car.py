@@ -308,6 +308,7 @@ class Car:
         else:
             direction = dir
             offset = offsets[directions.tolist().index(direction)]
+            
         if len(offset) == 0:
             return [(self.x, self.y)] * len(distances)
         results = []

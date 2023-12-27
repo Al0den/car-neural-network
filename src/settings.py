@@ -17,9 +17,8 @@ travel_distances_centerlines = [1, 10, 20, 30, 40, 50, 60, 80, 100, 133, 166, 20
 max_points_distance = 200
 max_center_line_distance = 70
 
-if center_line_input:
-    state_space_size += len(travel_distances_centerlines)
-    
+state_space_size += len(travel_distances_centerlines)
+
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters

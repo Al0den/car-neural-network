@@ -240,8 +240,12 @@ class Render:
         pygame.draw.rect(self.screen, (200, 200, 200), (self.slider_x, self.slider_y, self.slider_width, self.slider_height))
         slider_pos = self.slider_x + self.slider_value * self.slider_width
         pygame.draw.rect(self.screen, (0, 0, 0), (slider_pos - 5, self.slider_y - 5, 10, self.slider_height + 10))
-
+        if game.player == 0:
+            car = game.car
+        else:
+            car = game.environment.agents[0].car
         # Handle mouse events
+        self.slider_value = car.direction / 360
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game.running = False
@@ -255,9 +259,8 @@ class Render:
                 mouse_x, _ = pygame.mouse.get_pos()
                 self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / self.slider_width))  # Convert to range -1 to 1
                 if game.player in [0, 4, 5]:
-                    game.car.direction = self.slider_value * 360
-            elif game.player in [0, 4, 5]:
-                self.slider_value = game.car.direction / 360
+                    car.direction = self.slider_value * 360
+                
     def RenderFrame(self, game):
         centered_car = None
         if game.player == 0: centered_car = game.car 

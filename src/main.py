@@ -55,7 +55,7 @@ def main():
             game.speed = max(0, game.speed)
             clock.tick(game.speed)
             SpecificMapMethod(game, pygame, game_options)
-            game.render.draw_race(game)
+            game.render.RenderFrame(game)
             pygame.display.update()
         elif game.player == 5:
             keys = pygame.key.get_pressed()

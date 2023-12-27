@@ -91,8 +91,15 @@ class Game:
                 agent = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                 agent.network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(best_agent) + ".npy", allow_pickle=True).item()['network']
             agent.car.speed = 0
+            start_x = self.real_starts[self.track_name][0][0]
+            start_y = self.real_starts[self.track_name][0][1]
+            agent.car.x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
+            agent.car.y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
+            agent.car.direction = self.real_starts[self.track_name][1]
+
             self.best_agent = best_agent
             self.environment.agents[0] = agent
+            
         elif self.player == 8:
             self.environment.agents = []
             # - Go from max to lowest, and add num_agents of the best agents with a different score
@@ -396,6 +403,10 @@ class Game:
                                 real_start = ((x, y), start_dir[track_name])
             self.track=np.array(self.board)
 
+            real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
+            real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
+            real_start = [[real_start_y, real_start_x], real_start[1]]
+            
             print(" - Finding center line")
             self.find_center_line()
             print(" - Generating new starts")
