@@ -11,7 +11,7 @@ class Agent:
         self.evolution = ["r"]
         self.mutation_rates = ["-"]
         self.state = []
-        self.action = []
+        self.action = [0, 0]
 
         self.attempted = True
         self.mutation_strengh = mutation_strenght
