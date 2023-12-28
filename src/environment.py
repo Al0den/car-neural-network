@@ -51,7 +51,7 @@ class Environment:
             self.previous_best_lap = 0
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
     
-        best_agents = ranked_agents[:int(len(ranked_agents) * 0.01)]
+        best_agents = ranked_agents[:int(len(ranked_agents) * 0.01) + 1]
         new_agents = []
         for father in best_agents:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
@@ -74,15 +74,14 @@ class Environment:
         while len(new_agents) < len(self.agents):
             randint = np.random.uniform(0,1)
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
-            if randint > 1 - only_mutate_rate: # 20% just mutations
+            if randint > 1 - only_mutate_rate:
                 father = self.linear_weighted_selection(ranked_agents)
                 child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
                 child.network = copy_network(father.network)
                 rate = self.mutate(child)
                 child.evolution = father.evolution + ["m"]
                 child.mutation_rates = father.mutation_rates + [rate]
-        
-            elif randint > 1 - (cross_over_rate): # 70% crossover
+            elif randint > 1 - (cross_over_rate + only_mutate_rate):
                 father = self.linear_weighted_selection(ranked_agents)
                 mother = self.linear_weighted_selection(ranked_agents)
                 child = self.crossover(father, mother, game)
@@ -97,7 +96,7 @@ class Environment:
             else:
                 child.evolution = child.evolution + ["-"] * self.generation + ["r"]
                 child.mutation_rates = child.mutation_rates + ["-"]
-            new_agents.append(child) # 10% random agents
+            new_agents.append(child)
 
         if game.player != 3:
             self.log_data(ranked_agents)

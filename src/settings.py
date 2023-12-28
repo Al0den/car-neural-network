@@ -4,13 +4,13 @@ points_offset = [0, -20, 20, 55, -55, 89, -89]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 6
+state_space_size = len(points_offset) + 4
 first_layer_size_coeff = 1.3
 num_hidden_layers = 3
 action_space_size = 2
 activation_function = np.tanh
 map_tries = 20
-real_starts_num = 6
+real_starts_num = 5
 
 travel_distances_centerlines = [1, 10, 20, 30, 40, 50, 60, 80, 100, 133, 166, 200, 233, 266, 300, 333, 366, 400, 433, 466, 500, 533, 566, 600]
 
@@ -53,8 +53,8 @@ steer_increment = 1/10
 # - Evolution settings
 mutation_rates = [0.01, 0.015, 0.02, 0.05, 0.1, 0.2, 0.3]
 
-only_mutate_rate = 0.7
-cross_over_rate = 0.25
+only_mutate_rate = 0.6
+cross_over_rate = 0.35
 mutate_cross_over_rate = 0.7
 simple_cross_over_rate = 0.3
 random_agent_rate = 0.05

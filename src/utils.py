@@ -4,7 +4,7 @@ import time
 
 from PIL import Image
 
-from precomputed import next_brake_speed_after_t, two_wide_offsets
+from precomputed import next_brake_speed_after_t, two_wide_offsets, four_wide_offsets
 from settings import * 
 
 def calculate_distance(coords1, coords2):
@@ -50,11 +50,12 @@ def get_new_starts(track, n):
         while chosen_pos == None:
             pos = random.choice(positions)
             potential_directions = []
-            for offset in two_wide_offsets:
+            for offset in four_wide_offsets:
                 new_pos = (pos[1] + offset[0], pos[0] + offset[1])
                 if track[new_pos[1], new_pos[0]] == 10:
                     potential_directions.append(offset)
             if not potential_directions: continue
+            if len(potential_directions) != 2: continue
             chosen_pos = pos
             chosen_dir = random.choice(potential_directions)
         start_positions.append((chosen_pos, np.degrees(np.arctan2(-chosen_dir[1], chosen_dir[0]))))

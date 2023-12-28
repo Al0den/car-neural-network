@@ -71,16 +71,7 @@ class Render:
         if game.player == 0: self.generate_agent_debug(game)
         else: self.use_agent_debug(game)
     def draw_car(self, car, camera_x, camera_y, color, track, displayCar=False):
-        if displayCar:
-            front_x = car.x + self.car_length * np.cos(np.radians(car.direction % 360)) - camera_x
-            front_y = car.y - self.car_length * np.sin(np.radians(car.direction % 360)) - camera_y
-
-            dot_radius = self.car_width / 3 
-            dot_x = front_x + dot_radius * np.cos(np.radians(car.direction))
-            dot_y = front_y - dot_radius * np.sin(np.radians(car.direction))
-        
-            pygame.draw.circle(self.screen, color, (int(dot_x), int(dot_y)), int(dot_radius))
-        
+        if displayCar:        
             front_left_in_track = track[int(car.front_left[1])][int(car.front_left[0])] != 0
             front_right_in_track = track[int(car.front_right[1])][int(car.front_right[0])] != 0
             back_left_in_track = track[int(car.back_left[1])][int(car.back_left[0])] != 0
@@ -99,8 +90,8 @@ class Render:
             pygame.draw.circle(self.screen, back_right_color, (car.back_right[0] - camera_x, car.back_right[1]- camera_y), 2)
         else:
             car_image = pygame.transform.rotate(self.car_image, car.direction)
-            car_center_x = car.x - camera_x 
-            car_center_y = car.y - camera_y  
+            car_center_x = car.x - camera_x
+            car_center_y = car.y - camera_y
 
             scaling_factor = pixel_per_meter[car.track_name] /  (2.3 * 30)
 
@@ -171,7 +162,7 @@ class Render:
         first = True
         for point in points:
             if first:
-                pygame.draw.circle(self.screen, (255, 0, 0), (int(point[0]) - camera_x, int(point[1]) - camera_y), 3)
+                pygame.draw.circle(self.screen, (255, 0, 0), (int(point[0]) - camera_x, int(point[1]) - camera_y ), 3)
                 first = False
             else:
                 pygame.draw.circle(self.screen, (255, 128, 0), (int(point[0]) - camera_x, int(point[1]) - camera_y), 3)
@@ -260,33 +251,55 @@ class Render:
                 self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / self.slider_width))  # Convert to range -1 to 1
                 if game.player in [0, 4, 5]:
                     car.direction = self.slider_value * 360
-                
+    def GetCameraOffset(self, track, camera_x, camera_y):
+        screen_width, screen_height = self.screen.get_size()
+        left_border = camera_x
+        right_border = camera_x + screen_width
+        top_border = camera_y
+        bottom_border = camera_y + screen_height
+
+        offset_x = 0
+        offset_y = 0
+
+        if left_border <= 0:
+            offset_x = abs(left_border)
+        elif right_border >= track.shape[1]:
+            offset_x = track.shape[1] - right_border
+
+        if top_border <= 0:
+            offset_y = abs(top_border)
+        elif bottom_border >= track.shape[0]:
+            offset_y = track.shape[0] - bottom_border
+
+        return offset_x, offset_y
+    
     def RenderFrame(self, game):
         centered_car = None
         if game.player == 0: centered_car = game.car 
         else: centered_car = game.environment.agents[0].car
         camera_x = centered_car.x - game.screen.get_width() // 2
         camera_y = centered_car.y - game.screen.get_height() // 2
+        offset_x, offset_y = self.GetCameraOffset(game.track, camera_x, camera_y)
 
         if game.visual:
             self.draw_track(game.track, (centered_car.x, centered_car.y), self.screen, game)
-            if not game.debug: self.draw_car(centered_car, camera_x, camera_y, (0,255,255), game.track, False)
-            else: self.draw_car(centered_car, camera_x, camera_y, (0,255,255), game.track, True)
+            if not game.debug: self.draw_car(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, False)
+            else: self.draw_car(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True)
         else:
             self.screen.fill((255, 255, 255))
-            self.draw_car(centered_car, camera_x, camera_y, (0,255,255), game.track, True)
+            self.draw_car(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True)
         self.draw_acceleration(centered_car.acceleration, centered_car.brake, 10,300, 20, 100)
         self.draw_steering(centered_car.steer, 40, 300, 100, 20)
         if game.player != 0:
             for agent in game.environment.agents:
                 if agent.car == centered_car: continue
-                self.draw_car(agent.car, camera_x, camera_y, (0, 255, 0), game.track)
+                self.draw_car(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track)
         self.info(centered_car, game)
 
         if game.debug or not game.visual:
             self.debug(game)
-            self.draw_points(centered_car, camera_x, camera_y)
-            self.draw_lines(game, camera_x, camera_y, centered_car)
+            self.draw_points(centered_car, camera_x + offset_x, camera_y + offset_y)
+            self.draw_lines(game, camera_x + offset_x, camera_y + offset_y, centered_car)
 
         self.handle_slider(game)
         pygame.display.update()
