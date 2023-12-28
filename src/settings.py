@@ -70,6 +70,6 @@ min_speed = 10
 base_score_per_checkpoint = 50
 
 # - Render Options
-default_width = 960
-default_height = 510
+default_width = 1220
+default_height = 780
 
