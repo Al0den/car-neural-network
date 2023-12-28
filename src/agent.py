@@ -25,7 +25,7 @@ class Agent:
         points = get_centerline_points(game, self.car)
         self.car.getPoints()
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
-        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line]
+        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line, self.action[0], self.action[1]]
         
         prev_angle = self.car.direction
         for i in range(len(points)):
