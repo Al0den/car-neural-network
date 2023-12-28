@@ -10,7 +10,7 @@ num_hidden_layers = 3
 action_space_size = 2
 activation_function = np.tanh
 map_tries = 20
-real_starts_num = 4
+real_starts_num = 6
 
 travel_distances_centerlines = [1, 10, 20, 30, 40, 50, 60, 80, 100, 133, 166, 200, 233, 266, 300, 333, 366, 400, 433, 466, 500, 533, 566, 600]
 
