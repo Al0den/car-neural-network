@@ -72,4 +72,7 @@ base_score_per_checkpoint = 50
 # - Render Options
 default_width = 1220
 default_height = 780
+slider_width = 200
+slider_height = 20
+slider_padding = 10  # Padding from the right and bottom edges
 

@@ -63,13 +63,8 @@ class Game:
             self.extract_csv(f"./data/per_track/{self.track_name}/log.csv")
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
-            start_x = self.real_starts[self.track_name][0][0]
-            start_y = self.real_starts[self.track_name][0][1]
-            real_start_x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
-            real_start_y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
-            self.environment.agents[0].car.x = real_start_x
-            self.environment.agents[0].car.y = real_start_y
-            assert(self.tracks[self.track_name][real_start_y, real_start_x] == 10)
+            self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
+            self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
             self.environment.agents[0].car.direction = self.real_starts[self.track_name][1]
 
         elif self.player == 5:
@@ -93,8 +88,8 @@ class Game:
             agent.car.speed = 0
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
-            agent.car.x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
-            agent.car.y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
+            agent.car.x = start_x
+            agent.car.y = start_y
             agent.car.direction = self.real_starts[self.track_name][1]
 
             self.best_agent = best_agent
@@ -238,9 +233,7 @@ class Game:
                     start_tracks.append(track)
                     start_x = self.real_starts[track][0][0]
                     start_y = self.real_starts[track][0][1]
-                    real_start_x = get_nearest_centerline(self.tracks[track], start_x, start_y)[0]
-                    real_start_y = get_nearest_centerline(self.tracks[track], start_x, start_y)[1]
-                    starts.append([[real_start_y, real_start_x], self.real_starts[track][1]])
+                    starts.append([[start_x, start_y], self.real_starts[track][1]])
                     chosen_tracks.append(track)
                 count += 1
             for i in range(real_starts_num - len(chosen_tracks)):
@@ -251,9 +244,7 @@ class Game:
             start_tracks = [self.track_name]
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
-            real_start_x = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[0]
-            real_start_y = get_nearest_centerline(self.tracks[self.track_name], start_x, start_y)[1]
-            starts = [[[real_start_y, real_start_x], self.real_starts[self.track_name][1]]]
+            starts = [[[start_x, start_y], self.real_starts[self.track_name][1]]]
         progress_width = 30
 
         for i in range(len(start_tracks)):
@@ -400,17 +391,18 @@ class Game:
                             start_positions.append((x, y))
                             self.board[y][x] = 100 + len(start_positions)
                             if len(start_positions) == 1:
-                                real_start = ((x, y), start_dir[track_name])
+                                real_start = [[x, y], start_dir[track_name]]
             self.track=np.array(self.board)
 
-            real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
-            real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
-            real_start = [[real_start_y, real_start_x], real_start[1]]
+            
             
             print(" - Finding center line")
             self.find_center_line()
             print(" - Generating new starts")
             starts = get_new_starts(self.track, 1000)
+            real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
+            real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
+            real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
             center_line = self.init_center_line()
             assert(real_start != None)
@@ -475,7 +467,6 @@ class Game:
                     except Exception as e:
                         if debug: print("Error calculating center line input" + str(e))
                         pass
-        print()
         return obtained_center_line
     
     def load_best_agent(self, path):

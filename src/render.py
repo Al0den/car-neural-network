@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 from utils import calculate_distance, get_centerline_points, copy_car
-from settings import debug
+from settings import *
 from agent import Agent
 from car import Car
 from precomputed import pixel_per_meter
@@ -27,11 +27,8 @@ class Render:
             self.surfaces[track_name] = self.load_track_surface(track_name)
 
         self.slider_value = 0.0  # Initial value of the slider
-        self.slider_width = 200
-        self.slider_height = 20
-        self.slider_padding = 10  # Padding from the right and bottom edges
-        self.slider_x = self.screen.get_width() - self.slider_width - self.slider_padding  # X position of the slider
-        self.slider_y = self.screen.get_height() - self.slider_height - self.slider_padding  # Y position of the slider
+        self.slider_x = self.screen.get_width() - slider_width - slider_padding  # X position of the slider
+        self.slider_y = self.screen.get_height() - slider_height - slider_padding  # Y position of the slider
         self.slider_dragging = False  # Flag to track if the slider is being dragged
         self.zoom_factor = 8 / pixel_per_meter[game.track_name]
         self.zoomed_width = int(screen.get_width() / self.zoom_factor)
@@ -48,36 +45,28 @@ class Render:
         else:
             print(f" - Error loading track surface for track {track_name}")
     
-    def draw_track(self, track_matrix, position, screen, game):
+    def draw_track(self, position, screen, game):
         zoom_factor = self.zoom_factor  # Get the zoom factor
 
-        # Calculate the center position based on the current position and screen dimensions
         center_x = position[0]
         center_y = position[1]
 
-        # Calculate the dimensions of the zoomed region
         zoomed_width = int(screen.get_width() / zoom_factor)
         zoomed_height = int(screen.get_height() / zoom_factor)
 
-        # Calculate the new offsets to ensure the center of the track is in focus
         x_offset = center_x - zoomed_width // 2
         y_offset = center_y - zoomed_height // 2
 
-        # Create a surface for the zoomed track portion
         zoomed_track_surface = pygame.Surface((zoomed_width, zoomed_height), pygame.SRCALPHA)
         zoomed_track_surface.set_alpha(None)
         zoomed_track_surface.fill((0, 100, 0))
-        # Calculate the region to blit based on zoomed dimensions
+
         source_rect = pygame.Rect(x_offset, y_offset, zoomed_width, zoomed_height)
         destination_rect = pygame.Rect(0, 0, zoomed_width, zoomed_height)
 
-        # Redraw the track portion at the desired zoom level onto the zoomed_track_surface
         zoomed_track_surface.blit(self.surfaces[game.track_name], destination_rect, source_rect)
-
-        # Scale up the zoomed track surface to match the screen size before blitting
         zoomed_visible_track = pygame.transform.scale(zoomed_track_surface, (screen.get_width(), screen.get_height()))
 
-        # Blit the zoomed visible_track onto the screen
         screen.blit(zoomed_visible_track, (0, 0))
 
     def info(self, car, game):
@@ -99,25 +88,22 @@ class Render:
         if game.player == 0: self.generate_agent_debug(game)
         else: self.use_agent_debug(game)
     def draw_car(self, car, camera_x, camera_y, color, track, displayCar=False):
-        if displayCar:        
+        if displayCar:
             corners = [car.front_left, car.front_right, car.back_right, car.back_left]
             for i in range(len(corners)):
                 car_distance = calculate_distance((car.x, car.y), (corners[i][0], corners[i][1]))
                 new_dist = car_distance * self.zoom_factor
-
-                # Calculate the angle between the car and the point
                 angle = np.arctan2(corners[i][1] - car.y, corners[i][0] - car.x)
 
-                # Calculate the new position based on the doubled distance and angle
                 new_x = car.x + new_dist * np.cos(angle)
                 new_y = car.y + new_dist * np.sin(angle)
-
-                # Adjust the target position based on the camera and apply zoom factor
                 adjusted_x = int(new_x - camera_x)
                 adjusted_y = int(new_y - camera_y)
 
-                # Draw circles for the transformed points
-                pygame.draw.circle(self.screen, color, (adjusted_x, adjusted_y), int(2 * self.zoom_factor))
+                if track[int(corners[i][1]), int(corners[i][0])] == 0:
+                    pygame.draw.circle(self.screen, (255, 0, 0), (adjusted_x, adjusted_y), 4)
+                else:
+                    pygame.draw.circle(self.screen, color, (adjusted_x, adjusted_y), 4)
 
         else:
             car_image = pygame.transform.rotate(self.car_image, car.direction)
@@ -187,14 +173,12 @@ class Render:
             distance = calculate_distance((car.x, car.y), (target_x, target_y))
             new_dist = distance * self.zoom_factor
 
-            # Calculate the angle between the car and the point
             angle = np.arctan2(target_y - car.y, target_x - car.x)
 
-            # Calculate the new position based on the doubled distance and angle
             new_x = car.x + new_dist * np.cos(angle)
             new_y = car.y + new_dist * np.sin(angle)
             if distance > 10:
-                pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), int(2 * self.zoom_factor))
+                pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 4)
 
     def draw_lines(self, game, camera_x, camera_y, car):
         car.get_centerline()
@@ -204,12 +188,19 @@ class Render:
         for point in points:
             target_x = point[0]
             target_y = point[1]
-            # Draw circles for the transformed points
+            distance = calculate_distance((car.x, car.y), (target_x, target_y))
+            new_dist = distance * self.zoom_factor
+
+            angle = np.arctan2(target_y - car.y, target_x - car.x)
+
+            new_x = car.x + new_dist * np.cos(angle)
+            new_y = car.y + new_dist * np.sin(angle)
+
             if first:
-                pygame.draw.circle(self.screen, (255, 0, 0), (target_x - camera_x, target_y - camera_y), 2 * self.zoom_factor)
+                pygame.draw.circle(self.screen, (255, 0, 0), (new_x - camera_x, new_y - camera_y), 4)
                 first = False
             else:
-                pygame.draw.circle(self.screen, (255, 128, 0), ((target_x - camera_x), (target_y - camera_y)), 2 * self.zoom_factor)
+                pygame.draw.circle(self.screen, (255, 128, 0), ((new_x - camera_x), (new_y - camera_y)), 4)
 
     def use_agent_debug(self, game):
         tps = game.clock.get_fps()
@@ -272,9 +263,9 @@ class Render:
             self.screen.blit(text_surface, (w * 0.75, y_offset))
             y_offset += text_surface.get_height() + 5
     def handle_slider(self, game):
-        pygame.draw.rect(self.screen, (200, 200, 200), (self.slider_x, self.slider_y, self.slider_width, self.slider_height))
-        slider_pos = self.slider_x + self.slider_value * self.slider_width
-        pygame.draw.rect(self.screen, (0, 0, 0), (slider_pos - 5, self.slider_y - 5, 10, self.slider_height + 10))
+        pygame.draw.rect(self.screen, (200, 200, 200), (self.slider_x, self.slider_y, slider_width, slider_height))
+        slider_pos = self.slider_x + self.slider_value * slider_width
+        pygame.draw.rect(self.screen, (0, 0, 0), (slider_pos - 5, self.slider_y - 5, 10, slider_height + 10))
         if game.player == 0:
             car = game.car
         else:
@@ -286,13 +277,13 @@ class Render:
                 game.running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                if self.slider_x <= mouse_x <= self.slider_x + self.slider_width and self.slider_y <= mouse_y <= self.slider_y + self.slider_height:
+                if self.slider_x <= mouse_x <= self.slider_x + slider_width and self.slider_y <= mouse_y <= self.slider_y + slider_height:
                     self.slider_dragging = True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.slider_dragging = False
             elif event.type == pygame.MOUSEMOTION and self.slider_dragging:
                 mouse_x, _ = pygame.mouse.get_pos()
-                self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / self.slider_width))  # Convert to range -1 to 1
+                self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / slider_width))  # Convert to range -1 to 1
                 if game.player in [0, 4, 5]:
                     car.direction = self.slider_value * 360
     def update_zoom_offset(self):
@@ -318,11 +309,10 @@ class Render:
 
         total_power_var = acceleration_var - brake_var
 
-        # Apply acceleration and steering to offset
         offset_x, offset_y = steer_var * y_sin + total_power_var * x_cos, steer_var * x_cos - total_power_var * y_sin
 
         if game.visual:
-            self.draw_track(game.track, (centered_car.x, centered_car.y), self.screen, game)
+            self.draw_track((centered_car.x, centered_car.y), self.screen, game)
             if not game.debug: self.draw_car(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, False)
             else: self.draw_car(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True)
         else:
@@ -333,7 +323,7 @@ class Render:
         if game.player != 0:
             for agent in game.environment.agents:
                 if agent.car == centered_car: continue
-                self.draw_car(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track)
+                self.draw_car(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, True)
         self.info(centered_car, game)
 
         if game.debug or not game.visual:
