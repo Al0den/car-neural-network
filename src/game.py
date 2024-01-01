@@ -14,7 +14,7 @@ from car import Car
 from utils import is_color_within_margin, calculate_distance, get_new_starts, update_progress, get_nearest_centerline
 from agent import Agent
 from settings import *
-from precomputed import start_dir, offsets, directions
+from precomputed import start_dir, offsets, directions, real_track_lengths
 from smoothen import main as smoothen
 
 class Game:
@@ -430,13 +430,14 @@ class Game:
             
             print(" - Finding center line")
             self.find_center_line()
+            center_line_coords = np.argwhere(self.track == 10).tolist()
             print(" - Generating new starts")
             starts = get_new_starts(self.track, 1000)
             real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
-            center_line = self.init_center_line()
+            center_line = {}
             assert(real_start != None)
             data = {
                 "track": self.track,
@@ -448,7 +449,7 @@ class Game:
             np.save("./data/tracks/" + track_name, data)
             print(" - Smoothening track")
             smoothen(track_name)
-            print(f" - Generated track, center-line: {str(len(center_line))}")
+            print(f" - Generated track, calculated a ppm of: {str(len(center_line_coords) / real_track_lengths[track_name])}")
             return self.load_track(track_name)
         else:
             print("Not able to find track with this name")
@@ -495,7 +496,7 @@ class Game:
                 offset = offsets[directions.tolist().index(i*45)]
                 if self.track[car.y + offset[1], car.x + offset[0]] == 10:
                     try:
-                        obtained_center_line[index] = car.center_line_3_input(int(car.x), int(car.y), i * 45)
+                        obtained_center_line[index] = car.CalculateCenterlineInputs(int(car.x), int(car.y), i * 45)
                     except Exception as e:
                         if self.debug: print("Error calculating center line input" + str(e))
                         pass

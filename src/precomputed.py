@@ -13,7 +13,9 @@ start_dir = {
     "monaco": 70,
     "abu-dhabi": 270,
     "melbourne": 180,
-    "cota": 300
+    "cota": 300,
+    "test": 320,
+    "monza": 180
 }
 
 real_track_lengths = { 
@@ -25,7 +27,9 @@ real_track_lengths = {
     "silverstone": 5891,
     "abu-dhabi": 5554,
     "melbourne": 5303,
-    "cota": 5551
+    "cota": 5551,
+    "test": 5891,
+    "monza": 5793
 }
 
 real_track_width = {
@@ -37,10 +41,12 @@ real_track_width = {
     "brazil": 14,
     "abu-dhabi" : 14,
     "melbourne": 13,
-    "cota": 14
+    "cota": 14,
+    "test": 15,
+    "monza": 13
 }
 
-pixel_per_meter = {'silverstone': 4.413, 'monaco': 6.052, 'brazil': 6.68, 'singapoure': 5.738, 'spa': 4.066, 'vegas': 3.818, 'abu-dhabi': 4.541, 'melbourne': 4.108, "cota":4.374}
+pixel_per_meter = {'silverstone': 2.23, 'monaco': 4.36, 'brazil': 3.35, 'spa': 1.99, 'melbourne': 2.19, "cota": 2.54, "monza": 1.8}
 
 # Offsets and angle values
 two_wide_offsets = np.array([(2, 0), (-2, 0), (0, 2), (0, -2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (-1, 2), (1, -2), (-1, -2), (2, 2), (2, -2), (-2, 2), (-2, -2)])

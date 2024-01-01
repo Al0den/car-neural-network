@@ -300,7 +300,7 @@ class Car:
         distances = travel_distances_centerlines
         if not initial_direction or initial_direction == 9999:
             initial_direction = self.direction
-            direction, offset = self.CalculateNextCenterlineDirection(x, y, dir)
+            direction, offset = self.CalculateNextCenterlineDirection(x, y, initial_direction)
         else:
             direction = initial_direction
             offset = offsets[directions.tolist().index(direction)]
