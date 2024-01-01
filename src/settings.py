@@ -26,7 +26,7 @@ state_space_size += len(travel_distances_centerlines)
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters
-point_search_jump = 25.0
+point_search_jump = 10.0
 perft_ticks = 5
 perft_duration = 20
 
