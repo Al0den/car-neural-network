@@ -31,11 +31,10 @@ def main():
 
     if game.player == 7:
         generated = np.copy(game.track).astype(np.uint16)
-        speeds = []
-        throttle = []
-        brake = []
-        steer = []
+        brake, steer, throttle, speeds = [], [], [], []
     game.restart = False
+
+    # Main loop
     while game.running:
         if game_options['display']:
             for event in pygame.event.get(): 
@@ -50,7 +49,6 @@ def main():
             game.agent = False
             game.render.RenderFrame(game)
             HumanMethod(game, game_options, pygame)
-
         elif game.player == 4:
             game.speed = max(0, game.speed)
             clock.tick(game.speed)
@@ -90,11 +88,8 @@ def main():
             game.render.RenderFrame(game)
             clock.tick(game.speed)
         elif game.player == 9:
-            if not value:
-                game.running = False
-            data = {
-                "info": game.generated_data,
-            }
+            if not value: game.running = False
+            data = { "info": game.generated_data }
             np.save(f"./data/per_track/{game.track_name}/generated_run.npy", data)
     if game_options['display']:
         pygame.quit()

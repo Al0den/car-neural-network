@@ -146,7 +146,7 @@ class Game:
             self.ticks += 1
             if self.ticks % 100 == 0 and debug:
                 print("Ticks: " + str(self.ticks))
-            self.car.tick(self)
+            self.car.Tick(self)
             if self.car.died == True:
                 self.restart = True
                 self.car.died = False
@@ -171,7 +171,7 @@ class Game:
             self.ticks += 1
         elif self.player == 8:
             for agent in self.environment.agents:
-                agent.tick(self.ticks, self)
+                agent.Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 9:
             any_alive = False
@@ -218,7 +218,7 @@ class Game:
             agent.car.start_y = starts[try_number][0][0]
             ticks = 0
             while not agent.car.died:
-                agent.tick(ticks, self, self.player)
+                agent.Tick(ticks, self)
                 ticks += 1
             if agent.car.lap_time != 0:
                 with laps.get_lock():
@@ -227,7 +227,7 @@ class Game:
                 local_scores[agent_index] += 1 * score_multiplier
             else:
                 local_lap_times[agent_index * self.map_tries + try_number] = 0
-                local_scores[agent_index] += min(1 * score_multiplier, int((agent.car.calculateScore() * score_multiplier)))
+                local_scores[agent_index] += min(1 * score_multiplier, int((agent.car.CalculateScore() * score_multiplier)))
         with lap_times.get_lock():
             for i in range(len(lap_times)):
                 lap_times[i] += local_lap_times[i]
@@ -535,7 +535,7 @@ class Game:
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):
-                    agent.tick(i, self)
+                    agent.Tick(i, self)
             tick_time += time.time() - start_time
         score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score

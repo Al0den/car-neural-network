@@ -188,7 +188,7 @@ class Environment:
     
     def mutate(self, agent):
         rate = np.random.choice(mutation_rates)
-        agent.mutate(rate)
+        agent.Mutate(rate)
         return rate
 
     def log_data(self, ranked_agents, path="./data/train/log.csv"):

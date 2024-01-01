@@ -29,16 +29,16 @@ class Car:
         self.checkpoints_seen, self.checkpoints = [], []
         self.previous_points = [None] * len(points_offset)
 
-        self.update_corners()
+        self.UpdateCorners()
 
         self.died = False
         
-    def tick(self, game):
-        self.applyPlayerInputs()
-        self.updateCar()
-        return self.checkCollisions(game.ticks)
+    def Tick(self, game):
+        self.ApplyPlayerInputs()
+        self.UpdateCar()
+        return self.CheckCollisions(game.ticks)
 
-    def checkCollisions(self, ticks, player=0):
+    def CheckCollisions(self, ticks):
         toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
         count = 0
         # Check that atleast 1 wheel is on track
@@ -48,16 +48,14 @@ class Car:
             else:
                 break
         if count > 3 and not god:
-            self.kill()
+            self.Kill()
             return False
         # Checkpoints and end of lap
         if self.track[int(self.y), int(self.x)] == 3:
             self.lap_time = ticks
             if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                 self.lap_time = 0
-                self.kill()
-                return False
-            self.kill()
+            self.Kill()
             return False
         elif self.track[int(self.y), int(self.x)] == 2:
             seen = False
@@ -68,12 +66,11 @@ class Car:
             if seen == False:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
             elif ticks - seen_time > max_time_on_checkpoint:
-                self.kill()
+                self.Kill()
                 return False
         return True
     
-    def kill(self):
-
+    def Kill(self):
         self.died = True
         self.x = self.start_x
         self.y = self.start_y
@@ -85,15 +82,15 @@ class Car:
         self.start_ticks = 0
         self.checkpoints_seen = []
 
-    def accelerate(self):
+    def Accelerate(self):
         self.acceleration += acceleration_increment
         self.acceleration = min(1, self.acceleration)
 
-    def slow_down(self):
+    def Decelerate(self):
         self.brake += brake_increment
         self.brake = min(1, self.brake)
 
-    def update_steer(self, value):
+    def UpdateSteer(self, value):
         if value > 0:
             self.steer += steer_increment
             self.steer = min(1, self.steer)
@@ -101,43 +98,43 @@ class Car:
             self.steer -= steer_increment
             self.steer = max(-1, self.steer)
 
-    def applyPlayerInputs(self):
+    def ApplyPlayerInputs(self):
         keys = pygame.key.get_pressed()
         power, steer, brake = False, False, False
         if keys[pygame.K_w]:
-            self.accelerate()
+            self.Accelerate()
             power = True
         if keys[pygame.K_s]:
-            self.slow_down()
+            self.Decelerate()
             brake = True
         if keys[pygame.K_a]:
-            self.update_steer(1)
+            self.UpdateSteer(1)
             steer = True
         if keys[pygame.K_d]:
-            self.update_steer(-1)
+            self.UpdateSteer(-1)
             steer = True
        
-        self.checkForAction(brake, power, steer)
+        self.CheckForAction(brake, power, steer)
         
-    def applyAgentInputs(self, action):
+    def ApplyAgentInputs(self, action):
         power = action[0]
         steer = action[1]
         steer_change, brake_change, power_change = False, False, False
         if power > 0.5:
-            self.accelerate()
+            self.Accelerate()
             power_change = True
         if power < -0.5:
-            self.slow_down()
+            self.Decelerate()
             brake_change = True
         if steer > 0.5:
-            self.update_steer(1)
+            self.UpdateSteer(1)
             steer_change = True
         if steer < -0.5:
-            self.update_steer(-1)
+            self.UpdateSteer(-1)
             steer_change = True
-        self.checkForAction(brake_change, power_change, steer_change)
+        self.CheckForAction(brake_change, power_change, steer_change)
     
-    def checkForAction(self, brake, power, steer):
+    def CheckForAction(self, brake, power, steer):
         if brake == False:
             self.brake -= delta_t * 3
             self.brake = max(0, self.brake)
@@ -156,7 +153,7 @@ class Car:
         if self.steer < -1:
             self.steer = -1
         
-    def updateCar(self):     
+    def UpdateCar(self):     
         wheel_angle = self.steer * 14 
         speed_factor = max(1.0 - self.speed / (max_speed + 20), 0.1)
 
@@ -187,9 +184,9 @@ class Car:
         self.x = max(0, min(len(self.track[0]) - 1, self.x))
         self.y = max(0, min(len(self.track) - 1, self.y))
 
-        self.update_corners()
+        self.UpdateCorners()
 
-    def update_corners(self):
+    def UpdateCorners(self):
         # Ugly formulas for corners positions, but they work
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
@@ -207,7 +204,7 @@ class Car:
         self.back_right[0] = self.x + half_small_side * cos_1 + half_big_side * sin_1
         self.back_right[1] = self.y + half_big_side * cos_1 - half_small_side * sin_1
 
-    def getPoint(self, offset):
+    def CalculatePoint(self, offset):
         dx = 1.0
         angle = int(self.direction + 90 + offset) % 360
         sinus = sin[angle * 10]
@@ -244,44 +241,43 @@ class Car:
 
         return (eval_x, eval_y)
     
-    def getPoints(self):
-        self.previous_points = [self.getPoint(offset) for offset in points_offset]
+    def GetPointsInput(self):
+        self.previous_points = [self.CalculatePoint(offset) for offset in points_offset]
         return self.previous_points
     
-    def get_centerline(self, game):
+    def CenterlinePosition(self, x, y):
+        if self.validIndex(x, y) and self.track[int(y), int(x)] == 10:
+            return int(x), int(y)
+        return None
+
+    def GetNearestCenterline(self, game):
         if self.track[int(self.y), int(self.x)] == 10:
             self.previous_center_line = (int(self.x), int(self.y))
             self.center_line_direction = 0
             return int(self.x), int(self.y)
+        
         for i in range(max_center_line_distance):
-            angle = int(self.direction + 90) % 360
-            x = self.x + i * cos[int(angle * 10)] * 2
-            y = self.y - i * sin[int(angle * 10)] * 2
-            if self.validIndex(y, x) and self.track[int(y), int(x)] == 10:
-                self.previous_center_line = (int(x), int(y))
-                self.center_line_direction = 1
-                return int(x), int(y)
-            # Check potential neighbors
-            for offset in potential_offsets_for_angle[angle]:
-                if self.validIndex(x + offset[0], y + offset[1]) and self.track[int(y + offset[1]), int(x + offset[0])] == 10:
-                    self.previous_center_line = (int(x + offset[0]), int(y + offset[1]))
-                    self.center_line_direction = 1
-                    return int(x + offset[0]), int(y + offset[1])
-            angle = int(self.direction - 90) % 360
-            x = self.x + i * cos[int(angle * 10)] * 2
-            y = self.y - i * sin[int(angle * 10)] * 2
-            if self.validIndex(x, y) and self.track[int(y), int(x)] == 10:
-                self.previous_center_line = (int(x), int(y))
-                self.center_line_direction = -1
-                return int(x), int(y)
-            # Check potential neighbors
-            for offset in potential_offsets_for_angle[angle]:
-                if self.validIndex(x + offset[0], y + offset[1]) and self.track[int(y + offset[1]), int(x + offset[0])] == 10:
-                    self.center_line_direction = -1
-                    self.previous_center_line = (int(x + offset[0]), int(y + offset[1]))
-                    return int(x + offset[0]), int(y + offset[1])
+            for direction in [1, -1]:
+                angle = int(self.direction + direction * 90) % 360
+                x = self.x + i * cos[int(angle * 10)] * 2
+                y = self.y - i * sin[int(angle * 10)] * 2
                 
-        if game.debug: print("Didnt find center line, using previous. Ticknum: " + str(game.ticks))
+                center_pos = self.CenterlinePosition(x, y)
+                if center_pos is not None:
+                    self.previous_center_line = center_pos
+                    self.center_line_direction = direction
+                    return center_pos
+                
+                for offset in potential_offsets_for_angle[angle]:
+                    new_x, new_y = x + offset[0], y + offset[1]
+                    center_pos = self.CenterlinePosition(new_x, new_y)
+                    if center_pos is not None:
+                        self.previous_center_line = center_pos
+                        self.center_line_direction = direction
+                        return center_pos
+        
+        if game.debug:
+            print(f"Didnt find center line, using previous. Ticknum: {game.ticks}")
 
         self.center_line_direction = 0
         return self.previous_center_line
@@ -300,18 +296,19 @@ class Car:
             if (error < 60): break
         return direction, offset
     
-    def center_line_3_input(self, x, y, dir=None):
+    def CalculateCenterlineInputs(self, x, y, initial_direction=None):
         distances = travel_distances_centerlines
-        if not dir or dir == 9999:
-            dir = self.direction
+        if not initial_direction or initial_direction == 9999:
+            initial_direction = self.direction
             direction, offset = self.CalculateNextCenterlineDirection(x, y, dir)
         else:
-            direction = dir
+            direction = initial_direction
             offset = offsets[directions.tolist().index(direction)]
         if len(offset) == 0:
             return [(self.x, self.y)] * len(distances)
         results = []
         assert(self.track[int(y), int(x)] == 10)
+
         distances_copy = distances.copy()
         for i in range(int(max(distances) * self.ppm * 2)):
             if distances_copy == []: break
@@ -332,7 +329,7 @@ class Car:
                     direction = directions[index]
         return results
     
-    def calculateScore(self):
+    def CalculateScore(self):
         current_x = self.start_x
         current_y = self.start_y
         current_dir = self.start_direction
@@ -352,9 +349,9 @@ class Car:
             seen += 1
         if (seen > 8000 and len(self.checkpoints_seen) < 1) or seen == 50000:
             return 0
-        return min(1, seen / self.calculateMaxPotential())
+        return min(1, seen / self.CalculateMaxPotential())
     
-    def calculateMaxPotential(self):
+    def CalculateMaxPotential(self):
         current_x = self.start_x
         current_y = self.start_y
         current_dir = self.start_direction

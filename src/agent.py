@@ -1,13 +1,13 @@
 import numpy as np
 
 from car import Car
-from utils import calculate_distance, get_centerline_points, angle_range_180
+from utils import calculate_distance, GetCenterlineInputs, angle_range_180
 from settings import *
 
 class Agent:
     def __init__(self, options, track, start_pos, start_dir, track_name=None):
         self.car = Car(track, start_pos, start_dir, track_name)
-        self.initialize_network(options)
+        self.InitializeNetwork(options)
         self.evolution = ["r"]
         self.mutation_rates = ["-"]
         self.state = []
@@ -17,13 +17,13 @@ class Agent:
         self.mutation_strengh = mutation_strenght
         self.last_update = 0
     
-    def tick(self, ticks, game, player=0):
+    def Tick(self, ticks, game):
         if self.car.died == True: return
         self.mutation_strengh = game.mutation_strength
 
-        center_line_x, center_line_y = self.car.get_centerline(game)
-        points = get_centerline_points(game, self.car)
-        self.car.getPoints()
+        center_line_x, center_line_y = self.car.GetNearestCenterline(game)
+        points = GetCenterlineInputs(game, self.car)
+        self.car.GetPointsInput()
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
         state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line]
         
@@ -41,22 +41,22 @@ class Agent:
             for inp in state:
                 if abs(inp) > 1: print("One of the inputs is iout of bounds, input num: " + str(state.index(inp)))
         
-        power, steer = self.get_action(state)
-        self.car.applyAgentInputs([power, steer])
-        self.car.updateCar()
-        self.car.checkCollisions(ticks, player)
+        power, steer = self.CalculateNextAction(state)
+        self.car.ApplyAgentInputs([power, steer])
+        self.car.UpdateCar()
+        self.car.CheckCollisions(ticks)
 
         self.state = state
         self.action = [power, steer]
 
         if ticks > 50 and self.car.speed < min_speed:
-            self.car.kill()
+            self.car.Kill()
             self.car.died = True
         if ticks > max_ticks_before_kill:
-            self.car.kill()
+            self.car.Kill()
         return state
 
-    def initialize_network(self, options):
+    def InitializeNetwork(self, options):
         network = []
         state_size = options['state_space_size']
         hidden_layer_size = options['hidden_layer_size']
@@ -80,7 +80,7 @@ class Agent:
 
         self.network = network
 
-    def mutate(self, rate):
+    def Mutate(self, rate):
         for layer in self.network:
             for i in range(layer.shape[0]):
                 for j in range(layer.shape[1]):
@@ -89,7 +89,7 @@ class Agent:
                         layer[i][j] += np.random.uniform(-mutation_strenght, mutation_strenght)
                         layer[i][j] = min(1, max(-1, layer[i][j]))
     
-    def get_action(self, state):  
+    def CalculateNextAction(self, state):  
         current_layer_output = state
         for layer_weights in self.network:
             current_layer_output =  activation_function(np.dot(current_layer_output, layer_weights))

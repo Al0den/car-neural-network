@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import time
+import sys
 
 from PIL import Image
 
@@ -68,19 +69,19 @@ def angle_range_180(angle):
         angle += 360
     return angle
 
-def get_centerline_points(game, car):
+def GetCenterlineInputs(game, car):
     start_x, start_y = car.previous_center_line[0], car.previous_center_line[1]
-    start_dir, _ = car.get_center_line_3_dir(start_x, start_y, car.direction)
+    start_dir, _ = car.CalculateNextCenterlineDirection(start_x, start_y, car.direction)
     if car.track[int(start_y), int(start_x)] != 10:
         if game.debug: print("No available values, calculating")
-        return car.center_line_3_input(start_x, start_y, start_dir)
+        return car.CalculateCenterlineInputs(start_x, start_y, start_dir)
     else:
         try:
             index = f"{int(start_y)}{int(start_x)}{int(start_dir)}"
             return game.center_lines[car.track_name][index]
         except KeyError:
             if game.debug: print("Errored out, trying to recalculate new value")
-            new_data = car.center_line_3_input(start_x, start_y, start_dir)
+            new_data = car.CalculateCenterlineInputs(start_x, start_y, start_dir)
             game.center_lines[car.track_name][index] = new_data
             return new_data
 
@@ -206,7 +207,6 @@ def InitialiseDisplay(game, game_options, pygame):
     return clock, last_render
 
 def get_nearest_centerline(track, x, y):
-    # Get nearest block track==10 to track[y, x]
     distance = 1
     for _ in range(100):
         for i in range(-distance, distance):
@@ -215,5 +215,4 @@ def get_nearest_centerline(track, x, y):
                     return x+j, y+i
         distance += 1
     print("Could find the nearest track, aborting")
-    import sys
     sys.exit()
