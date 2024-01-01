@@ -154,20 +154,20 @@ class Game:
         elif self.player == 1 or self.player == 3:
             self.train_agents()
         elif self.player == 4:
-            self.environment.agents[0].tick(self.ticks, self)
+            self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 5:
             import pygame
             keys = pygame.key.get_pressed()
             if keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_h]:
-                self.environment.agents[0].car.applyPlayerInputs()
-                self.environment.agents[0].car.updateCar()
-                self.environment.agents[0].car.checkCollisions(self.ticks)
+                self.environment.agents[0].car.ApplyPlayerInputs()
+                self.environment.agents[0].car.UpdateCar()
+                self.environment.agents[0].car.CheckCollisions(self.ticks)
             else:
-                self.environment.agents[0].tick(self.ticks, self)
+                self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 7:
-            self.environment.agents[0].tick(self.ticks, self)
+            self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 8:
             for agent in self.environment.agents:

@@ -49,7 +49,7 @@ def ContinuousMethod(game, game_options, pygame):
     continuous_commands(game, pygame)
     if not game.environment.agents[0].car.died: return
     
-    print(f" - Completed: {game.environment.agents[0].car.calculateScore() * 100:0.2f}%")
+    print(f" - Completed: {game.environment.agents[0].car.CalculateScore() * 100:0.2f}%")
     new_track = random.choice(list(game.tracks.values()))
     game.track = new_track
     game.track_name = [name for name, track in game.tracks.items() if track is game.track][0]
@@ -67,7 +67,7 @@ def ContinuousMethod(game, game_options, pygame):
 def HumanVSaiMethod(game, game_options, pygame):
     if game.environment.agents[0].car.died:
         game.restart = True
-        game.environment.agents[0].car.kill()
+        game.environment.agents[0].car.Kill()
         game.environment.agents[0].car.died = False
         game.environment.agents[0].car.x = game.start_pos[0]
         game.environment.agents[0].car.y = game.start_pos[1]
@@ -121,7 +121,7 @@ def continuous_commands(game, pygame):
     keys = pygame.key.get_pressed()
     if game.last_keys_update + 0.3 < datetime.now().timestamp():
         if keys[pygame.K_r]:
-            game.environment.agents[0].car.kill()
+            game.environment.agents[0].car.Kill()
             game.last_keys_update = datetime.now().timestamp()
         
 def AgentsRaceMethod(game, game_options, pygame):
@@ -141,7 +141,7 @@ def AgentsRaceMethod(game, game_options, pygame):
             game.last_keys_update = datetime.now().timestamp()
     if all([agent.car.died for agent in game.environment.agents]):
         for agent in game.environment.agents:
-            agent.car.kill()
+            agent.car.Kill()
             agent.car.died = False
             game.ticks = 0
 
