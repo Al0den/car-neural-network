@@ -30,7 +30,7 @@ class Render:
         self.slider_x = self.screen.get_width() - slider_width - slider_padding  # X position of the slider
         self.slider_y = self.screen.get_height() - slider_height - slider_padding  # Y position of the slider
         self.slider_dragging = False  # Flag to track if the slider is being dragged
-        self.zoom_factor = 8 / pixel_per_meter[game.track_name]
+        self.zoom_factor = 6 / pixel_per_meter[game.track_name]
         self.zoomed_width = int(screen.get_width() / self.zoom_factor)
         self.zoomed_height = int(screen.get_height() / self.zoom_factor)
         self.visible_track = pygame.Surface((self.zoomed_width, self.zoomed_height), pygame.SRCALPHA)
@@ -331,7 +331,7 @@ class Render:
         centered_car = None
         if game.player == 0: centered_car = game.car 
         else: centered_car = game.environment.agents[0].car
-        self.zoom_factor = (8 / pixel_per_meter[centered_car.track_name]) + self.zoom_offset
+        self.zoom_factor = (4 / pixel_per_meter[centered_car.track_name]) + self.zoom_offset
         camera_x = centered_car.x - game.screen.get_width() // 2
         camera_y = centered_car.y - game.screen.get_height() // 2
         x_cos = np.cos(np.radians(centered_car.direction))
