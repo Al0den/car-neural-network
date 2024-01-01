@@ -248,7 +248,7 @@ class Car:
         self.previous_points = [self.getPoint(offset) for offset in points_offset]
         return self.previous_points
     
-    def get_centerline(self):
+    def get_centerline(self, game):
         if self.track[int(self.y), int(self.x)] == 10:
             self.previous_center_line = (int(self.x), int(self.y))
             self.center_line_direction = 0
@@ -281,20 +281,20 @@ class Car:
                     self.previous_center_line = (int(x + offset[0]), int(y + offset[1]))
                     return int(x + offset[0]), int(y + offset[1])
                 
-        if debug: print("Didnt find center line, using previous")
+        if game.debug: print("Didnt find center line, using previous. Ticknum: " + str(game.ticks))
 
         self.center_line_direction = 0
         return self.previous_center_line
     
-    def get_center_line_3_dir(self, x, y, dir):
+    def CalculateNextCenterlineDirection(self, x, y, direction_target):
         direction = 9999
         error = 999
         offset = None
-        dir %= 360
+        direction_target %= 360
         for i in range(len(offsets)):
             if self.track[int(y + offsets[i][1]), int(x + offsets[i][0])] == 10:
-                if angle_distance(dir, directions[i]) < error or direction > 360:
-                    error = angle_distance(dir, directions[i])
+                if angle_distance(direction_target, directions[i]) < error or direction > 360:
+                    error = angle_distance(direction_target, directions[i])
                     direction = directions[i]
                     offset = offsets[i]
             if (error < 60): break
@@ -304,7 +304,7 @@ class Car:
         distances = travel_distances_centerlines
         if not dir or dir == 9999:
             dir = self.direction
-            direction, offset = self.get_center_line_3_dir(x, y, dir)
+            direction, offset = self.CalculateNextCenterlineDirection(x, y, dir)
         else:
             direction = dir
             offset = offsets[directions.tolist().index(direction)]
@@ -312,9 +312,11 @@ class Car:
             return [(self.x, self.y)] * len(distances)
         results = []
         assert(self.track[int(y), int(x)] == 10)
-
-        for i in range(max(distances) + 1):
-            if i in distances:
+        distances_copy = distances.copy()
+        for i in range(int(max(distances) * self.ppm * 2)):
+            if distances_copy == []: break
+            if distances_copy != [] and i / self.ppm > min(distances_copy):
+                distances_copy.pop(0)
                 results.append((int(x), int(y)))
             x += offset[0]
             y += offset[1]

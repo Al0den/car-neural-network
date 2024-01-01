@@ -43,7 +43,7 @@ class Game:
         self.last_keys_update = 0 # - Time since last key click, Display parameter
         self.track_name = game_options['track_name'] # - Track name
 
-        if self.player != 0:
+        if not self.player in [0, 9]:
             self.load_all_tracks()
         else:
             self.load_single_track()
@@ -57,16 +57,15 @@ class Game:
             self.player = 1
         elif self.player == 3:
             self.environment.load_specific_agents(self)
-            
         elif self.player == 4:
             best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained")
             self.extract_csv(f"./data/per_track/{self.track_name}/log.csv")
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
+
             self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
             self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
             self.environment.agents[0].car.direction = self.real_starts[self.track_name][1]
-
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")
@@ -86,8 +85,8 @@ class Game:
                 agent = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                 agent.network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(best_agent) + ".npy", allow_pickle=True).item()['network']
             agent.car.speed = 0
-            start_x = self.real_starts[self.track_name][0][0]
-            start_y = self.real_starts[self.track_name][0][1]
+            start_x = self.real_starts[self.track_name][0][1]
+            start_y = self.real_starts[self.track_name][0][0]
             agent.car.x = start_x
             agent.car.y = start_y
             agent.car.direction = self.real_starts[self.track_name][1]
@@ -114,6 +113,28 @@ class Game:
                 self.environment.agents[i].network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(possible_agent_number[i]) + ".npy", allow_pickle=True).item()['network']
                 self.environment.agents[i].car.speed = 0
             self.environment.agents = self.environment.agents[::-1]
+        elif self.player == 9:
+            self.generated_data = []
+            available = []
+            lap_times = []
+            with open(f"./data/per_track/{self.track_name}/log.csv", 'r') as f:
+                lines = f.readlines()[1:]
+                for line in lines:
+                    available.append(line.split(",")[0])
+                    lap_times.append(line.split(",")[3])
+            available.sort(reverse=True)
+            lap_times.reverse()
+            lap_times = lap_times[:len(self.environment.agents)]
+            self.lowest_lap_time = min(lap_times)
+            available = available[:len(self.environment.agents)]
+            for i in range(len(self.environment.agents)):
+                self.environment.agents[i].network = self.environment.get_agent_network(f"./data/per_track/{self.track_name}/trained/best_agent_{available.pop()}.npy")
+                self.generated_data.append([])
+                agent = self.environment.agents[i]
+                agent.car.x = self.real_starts[self.track_name][0][1]
+                agent.car.y = self.real_starts[self.track_name][0][0]
+                agent.car.direction = self.real_starts[self.track_name][1]
+                assert(agent.car.track[agent.car.y, agent.car.x] == 10)
         elif self.player == 10:
             print(" - Starting performance test...")
             self.totalScore = 0
@@ -129,7 +150,7 @@ class Game:
             if self.car.died == True:
                 self.restart = True
                 self.car.died = False
-                if debug: print("Car died, restarting")
+                if self.debug: print("Car died, restarting")
         elif self.player == 1 or self.player == 3:
             self.train_agents()
         elif self.player == 4:
@@ -152,6 +173,17 @@ class Game:
             for agent in self.environment.agents:
                 agent.tick(self.ticks, self)
             self.ticks += 1
+        elif self.player == 9:
+            any_alive = False
+            for i in range(len(self.environment.agents)):
+                if self.environment.agents[i].car.died == True: continue
+                any_alive = True
+                self.environment.agents[i].tick(self.ticks, self)
+                car = self.environment.agents[i].car
+                self.generated_data[i].append((car.x, car.y, car.direction))
+            self.ticks += 1
+            print(f"Currently on tick: {self.ticks} /{self.lowest_lap_time}\r", end='', flush=True)
+            return any_alive
         elif self.player == 10:
             self.performanceTest()
             # If more than 2s has passed since last update, update the screen
@@ -314,7 +346,7 @@ class Game:
         print(" * Loading tracks...")
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
-                if debug: print(f" - Loading track: {file[:-4]}")
+                if self.debug: print(f" - Loading track: {file[:-4]}")
                 folder_path = f"./data/per_track/{file[:-4]}/trained"
                 os.makedirs(folder_path, exist_ok=True)
 
@@ -465,7 +497,7 @@ class Game:
                     try:
                         obtained_center_line[index] = car.center_line_3_input(int(car.x), int(car.y), i * 45)
                     except Exception as e:
-                        if debug: print("Error calculating center line input" + str(e))
+                        if self.debug: print("Error calculating center line input" + str(e))
                         pass
         return obtained_center_line
     

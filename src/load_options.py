@@ -58,11 +58,15 @@ def load_options():
         game_options['display'] = True
         game_options['environment']['num_agents'] = int(input("Number of agents: "))
         game_options['cores'] = 1
+    elif game_options['player'] == 9:
+        game_options['display'] == True
+        game_options['environment']['num_agents'] = int(input("Number of agents: "))
+        game_options['cores'] = 1
     elif game_options['player'] == 10:
         game_options['cores'] = 1
         game_options['environment']['num_agents'] = 10
 
-    if game_options['player'] in [0, 3, 4, 6, 7, 8]:
+    if game_options['player'] in [0, 3, 4, 6, 7, 8, 9]:
         print("Available tracks:")
         for file in os.listdir("data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):

@@ -72,14 +72,14 @@ def get_centerline_points(game, car):
     start_x, start_y = car.previous_center_line[0], car.previous_center_line[1]
     start_dir, _ = car.get_center_line_3_dir(start_x, start_y, car.direction)
     if car.track[int(start_y), int(start_x)] != 10:
-        if debug: print("No available values, calculating")
+        if game.debug: print("No available values, calculating")
         return car.center_line_3_input(start_x, start_y, start_dir)
     else:
         try:
             index = f"{int(start_y)}{int(start_x)}{int(start_dir)}"
             return game.center_lines[car.track_name][index]
         except KeyError:
-            if debug: print("Errored out, trying to recalculate new value")
+            if game.debug: print("Errored out, trying to recalculate new value")
             new_data = car.center_line_3_input(start_x, start_y, start_dir)
             game.center_lines[car.track_name][index] = new_data
             return new_data

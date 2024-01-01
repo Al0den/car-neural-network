@@ -181,7 +181,7 @@ class Render:
                 pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 4)
 
     def draw_lines(self, game, camera_x, camera_y, car):
-        car.get_centerline()
+        car.get_centerline(game)
         points = get_centerline_points(game, car)
         first = True
 
@@ -238,7 +238,7 @@ class Render:
 
         agent.car = new_car
         agent.tick(0, game)
-        agent.car.get_centerline()
+        agent.car.get_centerline(game)
 
         actions = [f"{action:0.2f}" for action in agent.action]
         state = [f"{state:0.2f}" for state in agent.state]

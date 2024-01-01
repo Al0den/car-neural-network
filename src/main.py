@@ -20,7 +20,7 @@ def main():
     game = Game(game_options)
 
     if god: print("WARNING: God mode is on, car will ignore track boundaries")
-    if debug: print("WARNING: Debug is on, console can get spammed")
+    if game.debug: print("WARNING: Debug is on, console can get spammed")
     if not pre_load: print("WARNING: Pre load is not on, track center-line will be calculated at every step")
 
     if game_options['display']:
@@ -42,7 +42,7 @@ def main():
                 if event.type == pygame.QUIT:
                     game.running = False
         
-        if not no_tick: game.tick()
+        if not no_tick: value = game.tick()
         no_tick = False
 
         if game.player == 0:
@@ -89,6 +89,13 @@ def main():
             AgentsRaceMethod(game, game_options, pygame)
             game.render.RenderFrame(game)
             clock.tick(game.speed)
+        elif game.player == 9:
+            if not value:
+                game.running = False
+            data = {
+                "info": game.generated_data,
+            }
+            np.save(f"./data/per_track/{game.track_name}/generated_run.npy", data)
     if game_options['display']:
         pygame.quit()
     sys.exit()

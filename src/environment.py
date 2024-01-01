@@ -246,3 +246,7 @@ class Environment:
         elif self.previous_agents[0].car.lap_time == 0: # - If no previous best lap time, add the first agent as it is just used as safety
             self.previous_agents.insert(0, best_agent)
             self.previous_agents.pop()
+
+    def get_agent_network(self, path):
+        data = np.load(path, allow_pickle=True).item()
+        return data['network']

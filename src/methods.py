@@ -36,7 +36,6 @@ def SpecificMapMethod(game, pygame, game_options):
        
         best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
-        print(f" - Loading best agent {best_agent} from {game.track_name}")
 
         game.environment.agents[0] = agent
         game.environment.generation = best_agent
@@ -58,7 +57,6 @@ def ContinuousMethod(game, game_options, pygame):
     
     best_agent, agent = extract_best_agent("./data/train/trained", game_options['environment'], game, start_pos, start_dir)
     load_csv_data("./data/train/log.csv", game)
-    print(f" - Loading best agent: {best_agent} from global training")
 
     game.environment.agents[0] = agent
     game.environment.generation = best_agent
@@ -115,6 +113,7 @@ def update_visual(game, pygame):
             game.visual = not game.visual
             game.last_keys_update = datetime.now().timestamp()
         if keys[pygame.K_b]:
+            print(" * Toggling debug mode")
             game.debug = not game.debug
             game.last_keys_update = datetime.now().timestamp()
 
