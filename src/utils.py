@@ -32,7 +32,7 @@ def next_speed(current_speed):
 def new_brake_speed(current_speed):
     applied_speed = min(current_speed, max_speed)
     diff = current_speed - applied_speed
-    return next_brake_speed_after_t[min(int(applied_speed * 10)/10, 330)] + diff
+    return next_brake_speed_after_t[min(int(applied_speed * 10)/10, 329.9)] + diff
 
 def angle_distance(angle1, angle2):
     val = abs(angle1 - angle2) % 360
@@ -73,7 +73,7 @@ def GetCenterlineInputs(game, car):
     start_x, start_y = car.previous_center_line[0], car.previous_center_line[1]
     start_dir, _ = car.CalculateNextCenterlineDirection(start_x, start_y, car.direction)
     if car.track[int(start_y), int(start_x)] != 10:
-        if game.debug: print("No available values, calculating")
+        if game.debug: print("Not on a centerline, doing a full calculation")
         return car.CalculateCenterlineInputs(start_x, start_y, start_dir)
     else:
         try:

@@ -13,7 +13,7 @@ def HumanMethod(game, game_options, pygame):
     keys = pygame.key.get_pressed()
     if keys[pygame.K_r]:
         game.restart = True
-        game.car.kill()
+        game.car.Kill()
     if game.restart:
         start_pos, start_dir = random.choice(game.start_positions[game.track_name])
         game.car.x = start_pos[1]

@@ -6,6 +6,7 @@ from agent import Agent
 from utils import copy_network
 from settings import *
 
+
 class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
         self.options = options
@@ -196,12 +197,12 @@ class Environment:
             with open(path, "w") as file:
                 file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, Number of Neurons, Best Agent Evolution, Mutation Rates Used\n")
         best_lap_time = self.previous_best_lap
-        best_score = self.previous_best_score
+        best_score = self.previous_best_score/ (map_tries)
         best_agent_evolution = "".join(ranked_agents[0].evolution)
         best_agent_rates = "/".join([str(rate) for rate in ranked_agents[0].mutation_rates])
         generation = self.generation
         laps = ranked_agents[0].car.laps
-        average_score = np.average([agent.car.score for agent in ranked_agents])
+        average_score = np.average([agent.car.score for agent in ranked_agents]) / map_tries
         average_lap = np.average([agent.car.laps for agent in ranked_agents])
 
         neurons = 0

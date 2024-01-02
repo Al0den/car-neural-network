@@ -41,7 +41,7 @@ class Car:
     def CheckCollisions(self, ticks):
         toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
         count = 0
-        # Check that atleast 1 wheel is on track
+
         for point in toCheck:
             if self.track[int(point[1]), int(point[0])] == 0: count += 1
             else: break
@@ -49,13 +49,14 @@ class Car:
         if count > 3 and not god:
             self.Kill()
             return False
-        # Checkpoints and end of lap
+
         if self.track[int(self.front_left[1]), int(self.front_left[0])] == 3 or self.track[int(self.front_right[1]), int(self.front_right[0])] == 3:
             self.lap_time = ticks
             if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                 self.lap_time = 0
             self.Kill()
             return False
+        
         elif self.track[int(self.y), int(self.x)] == 2:
             seen = False
             for checkpoint in self.checkpoints_seen:
@@ -262,8 +263,7 @@ class Car:
                     self.previous_center_line = center_pos
                     self.center_line_direction = direction
                     return center_pos
-                
-                for offset in potential_offsets_for_angle[angle]:
+                for offset in offsets:
                     new_x, new_y = x + offset[0], y + offset[1]
                     center_pos = self.CenterlinePosition(new_x, new_y)
                     if center_pos is not None:

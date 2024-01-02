@@ -195,6 +195,7 @@ class Game:
             if time.time() - self.start_time > perft_duration:
                 print(f"Average tps: {(self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks / perft_duration):.2f}, real speed x{(self.runs * len(self.track_names) * self.options['environment']['num_agents'] * perft_ticks / (perft_duration * 1/delta_t)):.2f}")
                 self.running = False
+
     def train_agents_process(self, agents, remaining, laps, lap_times, scores, starts, index_lock, current_index, start_tracks):
         local_scores = [0] * len(agents)
         local_lap_times = [0] * len(agents) * self.map_tries
@@ -236,7 +237,7 @@ class Game:
         with scores.get_lock():
             for i in range(len(scores)):
                 scores[i] += local_scores[i]
-    
+
     def train_agents(self):
         num_agents = len(self.environment.agents)
         num_processes = self.options['cores']
@@ -312,10 +313,11 @@ class Game:
     def load_single_track(self):
         self.tracks = {}
         self.start_positions = {}
-        self.center_lines = {}
+        self.center_lines ={}
         self.real_starts = {}
         track_name = self.options['track_name']
         data = self.load_track(track_name)
+
         self.tracks[track_name] = np.array(data['track'])
         self.track = self.tracks[track_name]
         self.center_lines[track_name] = data['center_line']
@@ -341,10 +343,10 @@ class Game:
 
         print(f" - Loaded track: {track_name}")
     def load_all_tracks(self):
-        self.start_positions = {}
+        self.start_positions = Manager().dict()
         self.tracks = {}
         self.center_lines = {}
-        self.real_starts = {}
+        self.real_starts = Manager().dict()
         print(" * Loading tracks...")
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
@@ -439,7 +441,7 @@ class Game:
             print(" - Generating center line inputs")
             center_line = self.init_center_line()
             assert(real_start != None)
-            
+
             data = {
                 "track": self.track,
                 "start_positions": starts,

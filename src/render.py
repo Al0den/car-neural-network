@@ -203,9 +203,8 @@ class Render:
 
             new_x = car.x + new_dist * np.cos(angle)
             new_y = car.y + new_dist * np.sin(angle)
-            if distance > 10:
-                pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
-                pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
+            pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
+            pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
 
     def DrawCenterlineInputs(self, game, camera_x, camera_y, car):
         car.GetNearestCenterline(game)
