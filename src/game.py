@@ -9,6 +9,8 @@ from PIL import Image
 from scipy.ndimage import distance_transform_edt
 from skimage.morphology import skeletonize
 
+Image.MAX_IMAGE_PIXELS = None
+
 from environment import Environment
 from car import Car
 from utils import is_color_within_margin, calculate_distance, get_new_starts, update_progress, get_nearest_centerline
@@ -425,8 +427,6 @@ class Game:
                             if len(start_positions) == 1:
                                 real_start = [[x, y], start_dir[track_name]]
             self.track=np.array(self.board)
-
-            
             
             print(" - Finding center line")
             self.find_center_line()
@@ -439,6 +439,7 @@ class Game:
             print(" - Generating center line inputs")
             center_line = self.init_center_line()
             assert(real_start != None)
+            
             data = {
                 "track": self.track,
                 "start_positions": starts,

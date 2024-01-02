@@ -43,15 +43,14 @@ class Car:
         count = 0
         # Check that atleast 1 wheel is on track
         for point in toCheck:
-            if self.track[int(point[1]), int(point[0])] == 0:
-                count += 1
-            else:
-                break
+            if self.track[int(point[1]), int(point[0])] == 0: count += 1
+            else: break
+
         if count > 3 and not god:
             self.Kill()
             return False
         # Checkpoints and end of lap
-        if self.track[int(self.y), int(self.x)] == 3:
+        if self.track[int(self.front_left[1]), int(self.front_left[0])] == 3 or self.track[int(self.front_right[1]), int(self.front_right[0])] == 3:
             self.lap_time = ticks
             if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                 self.lap_time = 0
@@ -62,12 +61,8 @@ class Car:
             for checkpoint in self.checkpoints_seen:
                 if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
                     seen = True
-                    seen_time = checkpoint[2]
             if seen == False:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
-            elif ticks - seen_time > max_time_on_checkpoint:
-                self.Kill()
-                return False
         return True
     
     def Kill(self):

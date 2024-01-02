@@ -36,7 +36,7 @@ debug = False
 random_start_position = True
 delta_t = 1/60
 pre_load = True
-min_checkpoint_distance = 150
+min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
 base_game_speed = 60
 
@@ -71,7 +71,7 @@ mutation_strenght = 0.15
 
 max_ticks_before_kill = 30000
 min_speed = 10
-base_score_per_checkpoint = 50
+base_score_per_checkpoint = 0
 
 # - Render Options
 default_width = 1220
