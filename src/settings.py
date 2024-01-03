@@ -13,7 +13,7 @@ first_layer_size_coeff = 1.3
 num_hidden_layers = 3
 action_space_size = 2
 activation_function = np.tanh
-map_tries = 10
+map_tries = 20
 
 real_starts_num = int(map_tries / 2)
 
