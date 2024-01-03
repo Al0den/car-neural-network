@@ -280,7 +280,7 @@ class Game:
             start_tracks = [self.track_name]
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
-            starts = [[[start_x, start_y], start_dir[self.track_name][1]]]
+            starts = [[[start_x, start_y], start_dir[self.track_name]]]
         progress_width = 30
 
         for i in range(len(start_tracks)):
