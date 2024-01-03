@@ -330,7 +330,7 @@ class Render:
         centered_car = None
         if game.player == 0: centered_car = game.car 
         else: centered_car = game.environment.agents[0].car
-        self.zoom_factor = (4 / pixel_per_meter[centered_car.track_name]) + self.zoom_offset
+        self.zoom_factor = (8 / pixel_per_meter[centered_car.track_name]) + self.zoom_offset
         camera_x = centered_car.x - game.screen.get_width() // 2
         camera_y = centered_car.y - game.screen.get_height() // 2
         x_cos = np.cos(np.radians(centered_car.direction))
