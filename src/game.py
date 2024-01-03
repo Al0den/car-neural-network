@@ -91,7 +91,7 @@ class Game:
             start_y = self.real_starts[self.track_name][0][0]
             agent.car.x = start_x
             agent.car.y = start_y
-            agent.car.direction = self.real_starts[self.track_name][1]
+            agent.car.direction = start_dir[self.track_name][1]
 
             self.best_agent = best_agent
             self.environment.agents[0] = agent
@@ -135,7 +135,7 @@ class Game:
                 agent = self.environment.agents[i]
                 agent.car.x = self.real_starts[self.track_name][0][1]
                 agent.car.y = self.real_starts[self.track_name][0][0]
-                agent.car.direction = self.real_starts[self.track_name][1]
+                agent.car.direction = start_dir[self.track_name][1]
                 assert(agent.car.track[agent.car.y, agent.car.x] == 10)
         elif self.player == 10:
             print(" - Starting performance test...")
@@ -271,15 +271,16 @@ class Game:
                     starts.append([[start_x, start_y], self.real_starts[track][1]])
                     chosen_tracks.append(track)
                 count += 1
-            for i in range(real_starts_num - len(chosen_tracks)):
+            while len(starts) < self.map_tries:
                 track = random.choice(list(self.tracks.keys()))
                 start_tracks.append(track)
-                starts.append(self.real_starts[track])
+                rand_start = random.choice(self.start_positions[track])
+                starts.append(rand_start)
         else:
             start_tracks = [self.track_name]
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
-            starts = [[[start_x, start_y], self.real_starts[self.track_name][1]]]
+            starts = [[[start_x, start_y], start_dir[self.track_name][1]]]
         progress_width = 30
 
         for i in range(len(start_tracks)):
