@@ -67,7 +67,7 @@ class Game:
 
             self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
             self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
-            self.environment.agents[0].car.direction = self.real_starts[self.track_name][1]
+            self.environment.agents[0].car.direction = start_dir[self.track_name]
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")

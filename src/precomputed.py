@@ -6,23 +6,23 @@ import numpy as np
 start_dir = {
     "pre-train": 320,
     "singapoure": 90,
-    "spa": 215,
+    "spa": 180,
     "vegas": 120,
     "brazil": 200,
     "silverstone": 320,
     "monaco": 70,
     "abu-dhabi": 270,
     "melbourne": 180,
-    "cota": 300,
-    "test": 320,
+    "cota": 340,
+    "test": 340,
     "monza": 180,
     "imola": 0,
     "redbullring": 70,
     "hungaroring": 90,
     "sakhir": 180,
     "abu-dhabi": 280,
-    "singapoure": 90,
-    "canada": 170
+    "singapoure": 100,
+    "canada": 165
 }
 
 real_track_lengths = { 
