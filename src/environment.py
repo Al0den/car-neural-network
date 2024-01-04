@@ -45,6 +45,8 @@ class Environment:
             agent.car.lap_time = -agent.car.lap_time
         ranked_agents = self.agents
 
+        scores = [agent.car.score for agent in ranked_agents]
+
         if ranked_agents[0].car.laps == game.map_tries:
             self.previous_best_lap = ranked_agents[0].car.lap_time
         else:
