@@ -45,6 +45,8 @@ class Game:
         self.last_keys_update = 0 # - Time since last key click, Display parameter
         self.track_name = game_options['track_name'] # - Track name
 
+        self.retries = []
+
         if self.player in [0, 3, 4, 7, 9]:
             self.load_single_track()
         else:
@@ -241,11 +243,12 @@ class Game:
         self.lap_times = Array('d', [0] * num_agents)
         self.laps = Array('i', [0] * num_agents)
         self.scores = Array('d', [0] * num_agents)
+        self.results = Array('b', [0] * len(self.environment.agents) * self.map_tries)
         self.working = Array('b', [False] * num_processes)
         self.secondary_lock = Manager().Lock()
 
         for i in range(num_processes):
-            process = Process(target=self.create_process, args=(self.agents_feed, self.waiting_for_agents, self.main_lock, self.lap_times, self.laps, self.scores, self.running, self.working, i))
+            process = Process(target=self.create_process, args=(self.agents_feed, self.waiting_for_agents, self.main_lock, self.lap_times, self.laps, self.scores, self.running, self.working, i, self.results))
             processes.append(process)
 
         for i in range(len(processes)):
@@ -257,7 +260,7 @@ class Game:
 
         print(f" * Created processes, running with: {num_processes} processes and {num_agents} agents")
 
-    def create_process(self, agents_feed, waiting_for_agents, main_lock, lap_times, laps, scores, running, working, p_id):
+    def create_process(self, agents_feed, waiting_for_agents, main_lock, lap_times, laps, scores, running, working, p_id, results):
         local_lap_times = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         local_scores = [0] * len(self.environment.agents)
@@ -265,7 +268,7 @@ class Game:
         while running.value:
             try:
                 if waiting_for_agents.value == True: raise Exception("Waiting for agents")
-                agent_index, agent, start_track, start = agents_feed.pop()
+                agent_index, try_num, agent, start_track, start = agents_feed.pop()
             except:
                 if updated == True:
                     with main_lock:
@@ -296,17 +299,20 @@ class Game:
                 agent.Tick(ticks, self)
                 ticks += 1
             if agent.car.lap_time != 0:
+                results[agent_index * self.map_tries + try_num] = True
                 local_lap_times[agent_index] += agent.car.lap_time
                 local_laps[agent_index] += 1
             local_scores[agent_index] += min(1 * score_multiplier, int((agent.car.CalculateScore() * score_multiplier)))
             updated = True
             
     def train_agents(self):
-        start_tracks = [random.choice(list(self.tracks.keys())) for _ in range(self.map_tries - real_starts_num)]
+        start_tracks = []
         starts = []
-        for track in start_tracks:
-            new_start = random.choice(self.start_positions[track])
-            starts.append(new_start)
+        for i in range(min(previous_fails_num, len(self.retries))):
+            s, t = self.retries.pop()
+            start_tracks.append(t)
+            starts.append(s)
+        self.retries = []
 
         if self.player != 3:
             chosen_tracks = []
@@ -339,7 +345,7 @@ class Game:
         for i in range(len(self.environment.agents)):
             for j in range(self.map_tries):
                 print(f" - Feeding agents to processes, {i*j}/{len(self.environment.agents) * self.map_tries}\r", end='', flush=True)
-                data = (i, self.environment.agents[i], start_tracks[j], starts[j])
+                data = (i, j, self.environment.agents[i], start_tracks[j], starts[j])
                 data_to_append.append(data)
         self.agents_feed.extend(data_to_append)
         self.waiting_for_agents.value = False
@@ -364,10 +370,24 @@ class Game:
         self.environment.next_generation(self)
 
         print(f" - Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, max laps finished: {max(self.laps)}       ")
+        
+        max_laps_index = np.argmax(self.laps)
+        results = self.results[max_laps_index * self.map_tries: (max_laps_index + 1) * self.map_tries]
+        failed = []
+        self.retries = []
+        for i in range(len(results)):
+            if results[i] == False:
+                failed.append(start_tracks[i])
+                self.retries.append((starts[i], start_tracks[i]))
+        if failed != []: print(" - Failed tracks: " + str(failed))
+
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
+            for j in range(self.map_tries):
+                self.results[i * self.map_tries + j] = False
+    
     def load_single_track(self):
         self.tracks = {}
         self.start_positions = {}

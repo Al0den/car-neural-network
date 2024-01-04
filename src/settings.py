@@ -16,6 +16,8 @@ activation_function = np.tanh
 map_tries = 20
 
 real_starts_num = 10
+previous_fails_num = 4
+assert(real_starts_num + previous_fails_num <= map_tries)
 
 travel_distances_centerlines = [1,2, 4, 6, 8, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300]
 
@@ -58,7 +60,7 @@ acceleration_increment = 1/10
 steer_increment = 1/10
 
 # - Evolution settings
-mutation_rates = [0.02, 0.1, 0.2, 0.3]
+mutation_rates = [0.01, 0.1, 0.2, 0.3]
 
 only_mutate_rate = 0.6
 cross_over_rate = 0.35
