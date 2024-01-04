@@ -113,8 +113,7 @@ class Car:
         self.CheckForAction(brake, power, steer)
         
     def ApplyAgentInputs(self, action):
-        power = action[0]
-        steer = action[1]
+        power, steer = action[0], action[1]
         steer_change, brake_change, power_change = False, False, False
         if power > 0.5:
             self.Accelerate()
@@ -154,18 +153,15 @@ class Car:
         speed_factor = max(1.0 - self.speed / (max_speed + 20), 0.1)
 
         wheel_angle *= speed_factor
-        if wheel_angle != 0:
-            turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
-        else:
-            turning_radius = float('inf')  # Ligne droite
+        if wheel_angle != 0: turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
+        else: turning_radius = float('inf')  # Ligne droite
         wheel_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
 
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
         # - Car speed
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
-        if self.brake > 0:
-            self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
+        if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
 
         drag_force = 0.5 * drag_coeff * reference_area * pow(self.speed, 2)
         drag_acceleration = drag_force / car_mass

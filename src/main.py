@@ -39,7 +39,7 @@ def main():
         if game_options['display']:
             for event in pygame.event.get(): 
                 if event.type == pygame.QUIT:
-                    game.running = False
+                    game.running.value = False
         
         if not no_tick: value = game.tick()
         no_tick = False
@@ -89,7 +89,10 @@ def main():
             clock.tick(game.speed)
         elif game.player == 9:
             if not value: game.running = False
-            data = { "info": game.generated_data }
+            data = { 
+                "info": game.generated_data,
+                "agents": game.environment.agents,
+            }
             np.save(f"./data/per_track/{game.track_name}/generated_run.npy", data)
     if game_options['display']:
         pygame.quit()

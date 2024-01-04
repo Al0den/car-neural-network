@@ -85,28 +85,27 @@ def GetCenterlineInputs(game, car):
             game.center_lines[car.track_name][index] = new_data
             return new_data
 
-def print_progress(total, agent, try_num, progress, game, width=30, eta=None):
+def print_progress(total, agent, progress,width, eta=None):
     bar_width = int(width * progress)
     eta_str = f"ETA: {eta}" if eta is not None else ""
-    print(f"Agent: {agent}/{int(total / game.map_tries)} | [{'█' * bar_width}{' ' * (width - bar_width)}] {progress * 100:.1f}% | Attempt: {try_num + 1}/{game.map_tries} - {eta_str} \r", end='', flush=True)
+    print(f"Agent: {agent}/{int(total)} | [{'█' * bar_width}{' ' * (width - bar_width)}] {progress * 100:.1f}% - {eta_str} \r", end='', flush=True)
 
-def update_progress(index, remaining, game, progress_width=30):
+def update_progress(remaining, total, progress_width=30):
     start_time = time.time()
     time_per_unit = 0  
     smoothing_factor = 0.2 
 
-    while index.value < len(remaining):
-        progress = index.value / len(remaining)
-        try_num = index.value % game.map_tries
+    while remaining > 0:
+        progress = 1 - remaining / total
 
         elapsed_time = time.time() - start_time
-        time_per_unit = (1 - smoothing_factor) * elapsed_time / (index.value + 1) + smoothing_factor * time_per_unit
+        time_per_unit = (1 - smoothing_factor) * elapsed_time / (total - remaining) + smoothing_factor * time_per_unit
 
-        units_remaining = len(remaining) - index.value - 1
+        units_remaining = len(remaining) - (total - remaining) - 1
         eta_seconds = units_remaining * time_per_unit
         eta_str = time.strftime("%H:%M:%S", time.gmtime(eta_seconds))
         try:
-            print_progress(len(remaining), remaining[index.value], try_num, progress, game, progress_width, eta_str)
+            print_progress(total, total - remaining, progress, progress_width, eta_str)
         except IndexError:
             pass
         time.sleep(0.1) 

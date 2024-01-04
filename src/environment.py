@@ -27,18 +27,17 @@ class Environment:
         else: self.previous_agents = [None] * 10
 
     def next_generation(self, game):
-        new_track = random.choice(list(game.tracks.values()))
-        game.track = new_track
-        game.track_name = [name for name, track in game.tracks.items() if track is game.track][0]
+        game.track_name = random.choice(list(game.tracks.keys()))
+        game.track = game.tracks[game.track_name]
 
-        self.track = new_track
+        self.track = game.track
         self.start_pos, self.start_dir = random.choice(game.start_positions[game.track_name])
 
         for agent in self.agents:
             if agent.car.laps != game.map_tries:
                 agent.car.lap_time = 0
             else:
-                agent.car.lap_time = -sum(agent.car.lap_times)
+                agent.car.lap_time = -agent.car.lap_time
 
         self.agents = sorted(self.agents, key=lambda x: (x.car.laps, x.car.lap_time, x.car.score), reverse=True)
 
