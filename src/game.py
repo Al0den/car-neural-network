@@ -45,10 +45,10 @@ class Game:
         self.last_keys_update = 0 # - Time since last key click, Display parameter
         self.track_name = game_options['track_name'] # - Track name
 
-        if not self.player in [0, 9]:
-            self.load_all_tracks()
-        else:
+        if self.player in [0, 3, 4, 7, 9]:
             self.load_single_track()
+        else:
+            self.load_all_tracks()
             
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
 
@@ -352,7 +352,7 @@ class Game:
             total = len(self.environment.agents) * self.map_tries
             time_per_unit = (time.time() - start_time) / (total - remaining + 1) + smoothing_factor * time_per_unit
             eta = time_per_unit * remaining
-            eta_str = time.strftime("%H:%M:%S", time.gmtime(eta))
+            eta_str = time.strftime("%H:%M:%S", time.gmtime(eta)) + "             "
             print_progress(total, total - remaining, (total - remaining) / total, 30, eta_str)
             time.sleep(0.1) # - Wait for all agents to be fed to processes
 
@@ -363,7 +363,7 @@ class Game:
             agent.car.score = self.scores[i]
         self.environment.next_generation(self)
 
-        print(f" - Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, max laps finished: {max(self.laps)}    ")
+        print(f" - Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, max laps finished: {max(self.laps)}       ")
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
@@ -399,15 +399,20 @@ class Game:
             self.start_pos[1] = self.real_starts[self.track_name][0][1]
             self.start_dir = start_dir[self.track_name]
 
+        if self.player == 3:
+            self.map_tries = 1
+            self.tracks = {}
+            self.tracks[self.track_name] = self.track
+
         print(f" - Loaded track: {track_name}")
     def load_all_tracks(self):
         self.start_positions = Manager().dict()
         self.tracks = Manager().dict()
         self.center_lines = {}
         self.real_starts = Manager().dict()
-        print(" * Loading tracks...")
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
+                print(f" - Loading track: {file[:-4]}         \r", end='', flush=True)
                 if self.debug: print(f" - Loading track: {file[:-4]}")
                 folder_path = f"./data/per_track/{file[:-4]}/trained"
                 os.makedirs(folder_path, exist_ok=True)
@@ -421,13 +426,13 @@ class Game:
                 self.center_lines[file[:-4]] = data['center_line']
                 self.start_positions[file[:-4]] = data['start_positions']
                 self.real_starts[file[:-4]] = data['real_start']
+        print(f" * Loaded tracks: {str(', '.join(list(self.tracks.keys())))}")
         self.track_name = random.choice(list(self.tracks.keys()))
         self.track = self.tracks[self.track_name]
 
-        if self.player in [0, 3, 4, 6, 7]:
+        if self.player in [0, 6, 7]:
             self.track_name = self.options['track_name']
             self.track = self.tracks[self.track_name]
-
 
         self.track_names = list(self.tracks.keys())
         self.start_pos = [0, 0]
@@ -440,17 +445,10 @@ class Game:
         
         self.agent = False
 
-        if self.player == 3:
-            self.map_tries = 1
-            self.tracks = {}
-            self.tracks[self.track_name] = self.track
-
         if self.player in [4, 8]:
             self.tracks = {}
             self.tracks[self.track_name] = self.track
             self.track_name = self.options['track_name']
-
-        print(f" * Loaded tracks: {str(', '.join(list(self.tracks.keys())))}")
 
     def load_track(self, track_name):
         if os.path.exists("./data/tracks/" + track_name + ".npy"):
