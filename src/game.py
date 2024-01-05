@@ -300,7 +300,7 @@ class Game:
             if agent.car.lap_time != 0:
                 local_lap_times[agent_index] += agent.car.lap_time
                 local_laps[agent_index] += 1
-                local_scores[agent_index * self.map_tries + try_num] = True
+                local_results[agent_index * self.map_tries + try_num] = True
             local_scores[agent_index] += min(1 * score_multiplier, int((agent.car.CalculateScore() * score_multiplier)))
             updated = True
             
