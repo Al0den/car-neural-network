@@ -244,7 +244,7 @@ class Game:
         self.lap_times = Array('d', [0] * num_agents)
         self.laps = Array('i', [0] * num_agents)
         self.scores = Array('d', [0] * num_agents)
-        self.results = Array('b', [0] * len(self.environment.agents) * self.map_tries)
+        self.results = Array('b', [False] * len(self.environment.agents) * self.map_tries)
         self.working = Array('b', [False] * num_processes)
         self.secondary_lock = Manager().Lock()
 
@@ -274,8 +274,6 @@ class Game:
                             lap_times[i] += local_lap_times[i]
                             laps[i] += local_laps[i]
                             scores[i] += local_scores[i]
-                        for i in range(len(local_results)):
-                            results[i] = local_results[i]
                     local_lap_times = [0] * len(self.environment.agents)
                     local_laps = [0] * len(self.environment.agents)
                     local_scores = [0] * len(self.environment.agents)
