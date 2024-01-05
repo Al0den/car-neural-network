@@ -214,7 +214,6 @@ class Environment:
             file.write(f"{generation}, {best_score}, {average_score}, {best_lap_time}, {laps}, {average_lap}, {neurons}, {best_agent_evolution}, {best_agent_rates}\n")
 
     def load_specific_agents(self, game):
-        method = "global"
         try:
             method = "specialised"
             data = np.load("./data/per_track/" + game.track_name + "/trained/agents.npy", allow_pickle=True).item()
@@ -242,9 +241,8 @@ class Environment:
             agent.car.died = False
             agent.car.checkpoints_seen = []
             agent.last_update = 0
-
     
-        print(f" - Loaded all agents from {method} training, generation: {str(self.generation)}")
+        print(f" * Loaded all agents from {method} training, generation: {str(self.generation)}")
 
     def add_previous_best(self, best_agent, game):
         if self.previous_agents[0] == None or (self.previous_agents[0].car.lap_time > best_agent.car.lap_time and best_agent.car.laps == game.map_tries) or game.player in [1, 2]:

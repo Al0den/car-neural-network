@@ -35,7 +35,7 @@ def main():
     game.restart = False
 
     # Main loop
-    while game.running:
+    while game.running.value:
         if game_options['display']:
             for event in pygame.event.get(): 
                 if event.type == pygame.QUIT:
