@@ -223,7 +223,7 @@ class Environment:
             data = np.load("./data/train/agents.npy", allow_pickle=True).item()
             os.makedirs("./data/per_track/" + game.track_name + "/trained/", exist_ok=True)
         self.agents = data['agents']
-        for i in range(specialised_training_multiple - 1):
+        for _ in range(int(specialised_training_multiple) - 1):
             if method == "specialised": continue
             new_data = np.load("./data/train/agents.npy", allow_pickle=True).item()
             self.agents += new_data['agents']

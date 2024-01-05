@@ -261,6 +261,7 @@ class Game:
         local_lap_times = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         local_scores = [0] * len(self.environment.agents)
+        local_results = [False] * len(self.environment.agents) * self.map_tries
         updated = False
         while running.value:
             try:
@@ -273,9 +274,12 @@ class Game:
                             lap_times[i] += local_lap_times[i]
                             laps[i] += local_laps[i]
                             scores[i] += local_scores[i]
+                        for i in range(len(local_results)):
+                            results[i] = local_results[i]
                     local_lap_times = [0] * len(self.environment.agents)
                     local_laps = [0] * len(self.environment.agents)
                     local_scores = [0] * len(self.environment.agents)
+                    local_results = [False] * len(self.environment.agents) * self.map_tries
                     updated = False
                     working[p_id] = False
                 time.sleep(0.1)
@@ -298,6 +302,7 @@ class Game:
             if agent.car.lap_time != 0:
                 local_lap_times[agent_index] += agent.car.lap_time
                 local_laps[agent_index] += 1
+                local_scores[agent_index * self.map_tries + try_num] = True
             local_scores[agent_index] += min(1 * score_multiplier, int((agent.car.CalculateScore() * score_multiplier)))
             updated = True
             
