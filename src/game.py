@@ -255,7 +255,7 @@ class Game:
         for i in range(len(processes)):
             print(f" - Starting process {i+1}/{len(processes)}         \r", end='', flush=True)
             processes[i].start()
-        print(f" - Started {len(processes)} processes")
+        print(f" - Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total")
 
     def create_process(self, agents_feed, waiting_for_agents, main_lock, lap_times, laps, scores, running, working, p_id, results):
         local_lap_times = [0] * len(self.environment.agents)

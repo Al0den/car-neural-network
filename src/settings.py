@@ -15,7 +15,7 @@ action_space_size = 2
 activation_function = np.tanh
 map_tries = 15
 
-real_starts_num = 4
+real_starts_num = 2
 previous_fails_num = 0
 assert(real_starts_num + previous_fails_num <= map_tries)
 

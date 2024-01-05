@@ -19,29 +19,34 @@ start_dir = {
     "imola": 0,
     "redbullring": 70,
     "hungaroring": 90,
-    "sakhir": 180,
+    "bahrain": 180,
     "abu-dhabi": 280,
     "singapoure": 100,
-    "canada": 165
+    "canada": 165,
+    "azerbaidjan": 20,
+    "spain": 180,
+    "mexico": 180,
 }
 
 real_track_lengths = { 
     "monaco": 3370, "singapoure": 4940, "spa": 7004, 
     "silverstone": 5891, "melbourne": 5303,"brazil": 5031,
     "cota": 5551, "monza": 5793, "imola": 4909,
-    "sakhir": 5412, "hungaroring": 4381, "redbullring": 4318,
-    "canada": 4361, "abu-dhabi": 5281
+    "bahrain": 5412, "hungaroring": 4381, "redbullring": 4318,
+    "canada": 4361, "abu-dhabi": 5281, "azerbaidjan": 6003,
+    "spain": 4657, "mexico": 4304,
 }
 
 real_track_width = {
     "monaco": 13, "silverstone": 17, "canada": 16, 
     "singapoure": 15, "spa": 14, "brazil": 16,
     "abu-dhabi" : 16, "melbourne": 15, "cota": 16,
-    "monza": 15, "imola": 17, "sakhir": 18,
-    "hungaroring": 17, "redbullring": 16
+    "monza": 15, "imola": 17, "bahrain": 18,
+    "hungaroring": 17, "redbullring": 16, "azerbaidjan": 13,
+    "spain": 13, "mexico": 16
 }
 
-pixel_per_meter = {'silverstone': 2.23, 'monaco': 4.36, 'brazil': 3.35, 'spa': 1.99, 'melbourne': 2.19, "cota": 2.54, "monza": 1.8, "imola": 2.36, "sakhir": 3.67, "redbullring": 4.04, "hungaroring": 3.952, "canada": 2.31, "singapoure": 3.04, "abu-dhabi": 2.77}
+pixel_per_meter = {'silverstone': 2.23, 'monaco': 4.36, 'brazil': 3.35, 'spa': 1.99, 'melbourne': 2.19, "cota": 2.54, "monza": 1.8, "imola": 2.36, "bahrain": 3.67, "redbullring": 4.04, "hungaroring": 3.952, "canada": 2.31, "singapoure": 3.04, "abu-dhabi": 2.77, "azerbaidjan": 1.96, "spain": 3.16, "mexico": 2.83}
 
 # Offsets and angle values
 two_wide_offsets = np.array([(2, 0), (-2, 0), (0, 2), (0, -2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (-1, 2), (1, -2), (-1, -2), (2, 2), (2, -2), (-2, 2), (-2, -2)])
