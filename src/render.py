@@ -306,7 +306,7 @@ class Render:
         self.slider_value = car.direction / 360
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                game.running = False
+                game.running.value = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 if self.slider_x <= mouse_x <= self.slider_x + slider_width and self.slider_y <= mouse_y <= self.slider_y + slider_height:

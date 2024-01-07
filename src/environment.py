@@ -39,13 +39,9 @@ class Environment:
             else:
                 agent.car.lap_time = -agent.car.lap_time
 
-        self.agents = sorted(self.agents, key=lambda x: (x.car.laps, x.car.lap_time, x.car.score), reverse=True)
-
         for agent in self.agents:
             agent.car.lap_time = -agent.car.lap_time
-        ranked_agents = self.agents
-
-        scores = [agent.car.score for agent in ranked_agents]
+        ranked_agents = sorted(self.agents, key=lambda x: (x.car.laps, x.car.lap_time, x.car.score), reverse=True)
 
         if ranked_agents[0].car.laps == game.map_tries:
             self.previous_best_lap = ranked_agents[0].car.lap_time
@@ -66,7 +62,7 @@ class Environment:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             father = None
             while father == None:
-                father = self.linear_weighted_selection(self.previous_agents, 1)
+                father = self.linear_weighted_selection(self.previous_agents)
             if father != None:
                 child.network = copy_network(father.network)
                 child.evolution = father.evolution + ["p"]
@@ -100,13 +96,18 @@ class Environment:
                 child.mutation_rates = child.mutation_rates + ["-"]
             new_agents.append(child)
 
+        if self.player in [1, 2]:
+            self.UpdateTrackResults(ranked_agents[0], game)
+            self.SaveTrackResults(game)
+            self.SaveBestAgentResults(ranked_agents[0], game)
+
         if game.player != 3:
-            self.log_data(ranked_agents)
-            self.save_agents()
+            self.log_data(ranked_agents, game)
+            self.save_agents(game)
             self.save_best_agent(ranked_agents[0], self.generation)
         else:
-            self.save_agents(f"./data/per_track/{game.track_name}/trained/agents")
-            self.log_data(ranked_agents, f"./data/per_track/{game.track_name}/log.csv")
+            self.save_agents(game, f"./data/per_track/{game.track_name}/trained/agents")
+            self.log_data(ranked_agents, game, f"./data/per_track/{game.track_name}/log.csv")
             self.save_best_agent(ranked_agents[0], self.generation, f"./data/per_track/{game.track_name}/trained/best_agent_")
 
         self.add_previous_best(ranked_agents[0], game)
@@ -114,22 +115,63 @@ class Environment:
         # Mix up agents to prevent getting best agents in first indices
         random.shuffle(new_agents)
 
-        self.agents = new_agents
+        self.agents = np.array(new_agents)
         self.generation += 1
         self.alive = len(self.agents)
+
+    def TestAgent(self, best_agent, game):
+        sorted_tracks = sorted(game.tracks.keys())
+        results = []
+        for track_name in sorted_tracks:
+            agent = Agent(self.options, game.tracks[track_name], game.real_starts[track_name][0], game.real_starts[track_name][1], track_name)
+            assert(agent.car.track[agent.car.y, agent.car.x] == 10)
+            agent.network = copy_network(best_agent.network)
+            ticks = 0
+            while not agent.car.died:
+                agent.Tick(ticks, game)
+                ticks += 1
+            results.append(agent.car.CalculateScore())
+        return results
     
-    def linear_weighted_selection(self, ranked_agents, coeff=7):
+    def UpdateTrackResults(self, best_agent, game):
+        best_agent_index = np.where(self.agents == best_agent)[0][0]
+        for i in range(real_starts_num):
+            if game.results[best_agent_index * game.map_tries + i] == True:
+                game.track_results[game.start_tracks[i]] += 1
+            else:
+                game.track_results[game.start_tracks[i]] -= 1
+
+    def SaveTrackResults(self, game):
+        track_names = sorted(game.tracks.keys())
+        if not os.path.isfile("./data/train/track_results.csv"):
+            with open("./data/train/track_results.csv", "w") as file:
+                tracks = ", ".join([track_name for track_name in track_names])
+                file.write(tracks + "\n")
+        with open("./data/train/track_results.csv", "a") as file:
+            file.write(", ".join([str(game.track_results[track_name]) for track_name in track_names]) + "\n")
+    
+    def linear_weighted_selection(self, ranked_agents):
         num_agents = len(ranked_agents)
         
         selection_weights = [num_agents - i + 1 for i in range(num_agents)]
-        selection_weights = [i ** coeff for i in selection_weights]
+        selection_weights = [i ** agent_selection_coeff for i in selection_weights]
         indices = [i for i in range(num_agents)]
         selected_agent = random.choices(indices, weights=selection_weights)[0]
         selected_agent = ranked_agents[selected_agent]
         
         return selected_agent
+    
+    def SaveBestAgentResults(self, best_agent, game, path="./data/train/test_results.csv"):
+        results = self.TestAgent(best_agent, game)
+        tracks = sorted(game.tracks.keys())
+        if not os.path.isfile(path):
+            with open(path, "w") as file:
+                tracks = ", ".join([track_name for track_name in tracks])
+                file.write(tracks + "\n")
+        with open(path, "a") as file:
+            file.write(", ".join([str(result) for result in results]) + "\n")
 
-    def save_agents(self, path="./data/train/agents"):
+    def save_agents(self, game, path="./data/train/agents"):
         for agent in self.agents:
             agent.car.track = []
             agent.car.previous_points = []
@@ -140,11 +182,12 @@ class Environment:
             'output_size': self.options['action_space_size'],
             'hidden_layer_size': self.options['hidden_layer_size'],
             'num_hidden_layers': self.options['num_hidden_layers'],
-            'generation': self.generation
+            'generation': self.generation,
+            'track_results': game.track_results
         }
         np.save(path, data, allow_pickle=True)
 
-    def load_agents(self):
+    def load_agents(self, game):
         data = np.load("./data/train/agents.npy", allow_pickle=True).item()
         self.agents = data['agents']
         self.previous_agents = data['previous_agents']
@@ -153,6 +196,7 @@ class Environment:
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
+        game.track_results = data['track_results']
 
         for agent in self.agents:
             agent.car.speed = 0
@@ -193,17 +237,17 @@ class Environment:
         agent.Mutate(rate)
         return rate
 
-    def log_data(self, ranked_agents, path="./data/train/log.csv"):
+    def log_data(self, ranked_agents, game, path="./data/train/log.csv"):
         if not os.path.isfile(path):
             with open(path, "w") as file:
                 file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, Number of Neurons, Best Agent Evolution, Mutation Rates Used\n")
         best_lap_time = self.previous_best_lap
-        best_score = self.previous_best_score/ (map_tries)
+        best_score = self.previous_best_score/ (game.map_tries)
         best_agent_evolution = "".join(ranked_agents[0].evolution)
         best_agent_rates = "/".join([str(rate) for rate in ranked_agents[0].mutation_rates])
         generation = self.generation
         laps = ranked_agents[0].car.laps
-        average_score = np.average([agent.car.score for agent in ranked_agents]) / map_tries
+        average_score = np.average([agent.car.score for agent in ranked_agents]) / game.map_tries
         average_lap = np.average([agent.car.laps for agent in ranked_agents])
 
         neurons = 0

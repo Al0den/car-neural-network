@@ -28,13 +28,14 @@ def SpecificMapMethod(game, pygame, game_options):
     update_visual(game, pygame)
     update_speed(game, pygame)
     if game.environment.agents[0].car.died:
+        print(f" - Completed: {game.environment.agents[0].car.CalculateScore() * 100:0.2f}%")
         new_track = random.choice(list(game.tracks.values()))
         game.track = new_track
         game.track_name = [name for name, track in game.tracks.items() if track is game.track][0]
         start_pos, start_dir = game.real_starts[game.track_name]
 
        
-        best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
+        best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, 80)
         load_csv_data("./data/train/log.csv", game)
 
         game.environment.agents[0] = agent

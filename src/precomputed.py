@@ -10,7 +10,7 @@ start_dir = {
     "vegas": 120,
     "brazil": 200,
     "silverstone": 320,
-    "monaco": 70,
+    "monaco": 80,
     "abu-dhabi": 270,
     "melbourne": 180,
     "cota": 340,

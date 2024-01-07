@@ -82,13 +82,13 @@ def main():
                 SaveOptimalLine(generated, game.track_name, game.best_agent)
                 SaveAgentsSpeedGraph(speeds, throttle, brake, game.best_agent, game.track_name, steer)
                 print(f" * Saved generated track to ./data/per_track/{game.track_name}/generated_{game.best_agent}.png")
-                game.running = False
+                game.running.value = False
         elif game.player == 8:
             AgentsRaceMethod(game, game_options, pygame)
             game.render.RenderFrame(game)
             clock.tick(game.speed)
         elif game.player == 9:
-            if not value: game.running = False
+            if not value: game.running.value = False
             data = { 
                 "info": game.generated_data,
                 "agents": game.environment.agents,

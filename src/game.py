@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import random
-import threading
 import time
 
 from multiprocessing import Process, Array, Manager, Value
@@ -52,13 +51,18 @@ class Game:
             self.load_single_track()
         else:
             self.load_all_tracks()
+
+        if self.player in [1, 2]:
+            self.track_results = {}
+            for track in self.track_names:
+                self.track_results[track] = 0
             
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
 
         if self.player == 0:
             self.car = Car(self.track, self.start_pos, self.start_dir, self.track_name)
         elif self.player == 2:
-            self.environment.load_agents()
+            self.environment.load_agents(self)
             self.player = 1
         elif self.player == 3:
             self.environment.load_specific_agents(self)
@@ -274,6 +278,8 @@ class Game:
                             lap_times[i] += local_lap_times[i]
                             laps[i] += local_laps[i]
                             scores[i] += local_scores[i]
+                        for i in range(len(local_results)):
+                            results[i] = local_results[i]
                     local_lap_times = [0] * len(self.environment.agents)
                     local_laps = [0] * len(self.environment.agents)
                     local_scores = [0] * len(self.environment.agents)
@@ -305,8 +311,9 @@ class Game:
             updated = True
             
     def train_agents(self):
-
         starts, start_tracks = self.GenerateTrainingStarts()
+        self.starts = starts
+        self.start_tracks = start_tracks
         
         self.waiting_for_agents.value = True
         data_to_append = []
@@ -343,6 +350,9 @@ class Game:
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
+        for i in range(len(self.results)):
+            self.results[i] = False
+
     
     def load_single_track(self):
         self.tracks = {}
@@ -386,29 +396,39 @@ class Game:
         start_tracks = []
         starts = []
 
-        if self.player != 3:
-            chosen_tracks = []
-            count = 0
-            while len(chosen_tracks) < real_starts_num and count < 100:
-                track = random.choice(list(self.tracks.keys()))
-                if track not in chosen_tracks:
-                    start_tracks.append(track)
-                    start_x = self.real_starts[track][0][0]
-                    start_y = self.real_starts[track][0][1]
-                    starts.append([[start_x, start_y], self.real_starts[track][1]])
-                    chosen_tracks.append(track)
-                count += 1
-            while len(starts) < self.map_tries:
-                track = random.choice(list(self.tracks.keys()))
-                start_tracks.append(track)
-                rand_start = random.choice(self.start_positions[track])
-                starts.append(rand_start)
-        else:
+        if self.player == 3:
             start_tracks = [self.track_name]
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
             starts = [[[start_x, start_y], start_dir[self.track_name]]]
-
+            return starts, start_tracks
+    
+        chosen_tracks = []
+        count = 0
+        _, maxi = max(self.track_results.items())
+        maxi = abs(maxi)
+        tracks = []
+        weights = []
+        for track in self.track_results:
+            weights.append(round(np.sqrt(-self.track_results[track] + maxi + 1), 3))
+            tracks.append(track)
+        while len(chosen_tracks) < real_starts_num and count < 300:
+            # Choose a track at random based on the score
+            track = random.choices(tracks, weights)[0]
+            if track not in chosen_tracks:
+                start_tracks.append(track)
+                start_x = self.real_starts[track][0][0]
+                start_y = self.real_starts[track][0][1]
+                starts.append([[start_x, start_y], self.real_starts[track][1]])
+                chosen_tracks.append(track)
+            count += 1
+        # Complete with random starts
+        while len(starts) < self.map_tries:
+            track = random.choice(list(self.tracks.keys()))
+            start_tracks.append(track)
+            rand_start = random.choice(self.start_positions[track])
+            starts.append(rand_start)
+            
         for i in range(len(start_tracks)):
             assert(self.tracks[start_tracks[i]][starts[i][0][0], starts[i][0][1]] == 10)
         return starts, start_tracks
@@ -515,7 +535,14 @@ class Game:
             print(" - Smoothening track")
             smoothen(track_name)
             print(f" - Generated track, calculated a ppm of: {str(len(center_line_coords) / real_track_lengths[track_name])}")
-            return self.load_track(track_name)
+            if self.player == 0:
+                self.running = False
+                import pygame
+                import sys
+                pygame.quit()
+                sys.exit()
+            else:
+                return self.load_track(track_name)
         else:
             print("Not able to find track with this name")
             import pygame
@@ -607,4 +634,3 @@ class Game:
         self.totalScore += score
         self.runs += 1
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
-        

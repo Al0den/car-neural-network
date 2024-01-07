@@ -33,7 +33,7 @@ class Agent:
             angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
             angle_diff = angle_range_180(angle - prev_angle)
             prev_angle = angle
-            state.append(max(-1, min(1, angle_diff / 70)))
+            state.append(max(-1, min(1, angle_diff / 90)))
         for point in self.car.previous_points:
             state.append(max(-1, min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2)))
 

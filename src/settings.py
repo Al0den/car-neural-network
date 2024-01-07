@@ -1,6 +1,6 @@
 import numpy as np
 
-points_offset = [0, -20, 20, 55, -55, 89, -89]
+points_offset = [0, -15, 15, 35, -35, 89, -89]
 
 
 # Make all inputs meter based instead of pixel based
@@ -15,11 +15,11 @@ action_space_size = 2
 activation_function = np.tanh
 map_tries = 15
 
-real_starts_num = 2
+real_starts_num = 5
 previous_fails_num = 0
 assert(real_starts_num + previous_fails_num <= map_tries)
 
-travel_distances_centerlines = [1, 2, 4, 6, 8, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100, 120, 140, 160, 180, 200, 250, 300]
+travel_distances_centerlines = [0, 4, 8, 13, 19, 25, 31, 37, 44, 50, 60, 70, 90, 120, 160, 200, 250, 300]
 
 max_points_distance = 200
 max_center_line_distance = 70
@@ -33,7 +33,7 @@ point_search_jump = 10.0
 perft_ticks = 5
 perft_duration = 20
 center_line_hash_size = 100000
-specialised_training_multiple = 5
+specialised_training_multiple = 2
 
 # - Game settings
 god = False
@@ -77,6 +77,8 @@ mutation_strenght = 0.15
 max_ticks_before_kill = 30000
 min_speed = 10
 base_score_per_checkpoint = 0
+
+agent_selection_coeff = 7
 
 # - Render Options
 default_width = 1220
