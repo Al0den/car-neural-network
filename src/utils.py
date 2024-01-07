@@ -5,7 +5,7 @@ import sys
 
 from PIL import Image
 
-from precomputed import next_brake_speed_after_t, two_wide_offsets, four_wide_offsets
+from precomputed import next_brake_speed_after_t, four_wide_offsets
 from settings import * 
 
 def calculate_distance(coords1, coords2):

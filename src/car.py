@@ -1,9 +1,10 @@
 import pygame
 import numpy as np
 import random
+import json
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, potential_offsets_for_angle, pixel_per_meter, offsets, directions, start_dir
+from precomputed import sin, cos, potential_offsets_for_angle, offsets, directions
 from settings import *
 
 class Car:
@@ -11,7 +12,9 @@ class Car:
         self.track = track
         self.track_name = track_name or False
 
-        self.ppm = pixel_per_meter[self.track_name]
+        with open('./src/config.json', 'r') as json_file:
+            config_data = json.load(json_file)
+        self.ppm = config_data['pixel_per_meter'].get(track_name)
         
         self.x = start_pos[1]
         self.y = start_pos[0]
@@ -167,7 +170,7 @@ class Car:
         drag_acceleration = drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
 
-        displacement = (self.speed / 3.6) * pixel_per_meter[self.track_name]
+        displacement = (self.speed / 3.6) * self.ppm
         self.x += displacement * cos[(int(self.direction) % 360) * 10] * delta_t
         self.y -= displacement * sin[(int(self.direction) % 360) * 10] * delta_t
 

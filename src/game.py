@@ -2,6 +2,7 @@ import os
 import numpy as np
 import random
 import time
+import json
 
 from multiprocessing import Process, Array, Manager, Value
 
@@ -16,7 +17,7 @@ from car import Car
 from utils import is_color_within_margin, calculate_distance, get_new_starts, print_progress, get_nearest_centerline
 from agent import Agent
 from settings import *
-from precomputed import start_dir, offsets, directions, real_track_lengths
+from precomputed import offsets, directions
 from smoothen import main as smoothen
 
 class Game:
@@ -47,6 +48,9 @@ class Game:
 
         self.retries = []
 
+        with open("./src/config.json") as f:
+            self.config = json.load(f)
+
         if self.player in [0, 3, 4, 7, 9]:
             self.load_single_track()
         else:
@@ -58,7 +62,7 @@ class Game:
                 self.track_results[track] = 0
             
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
-
+        
         if self.player == 0:
             self.car = Car(self.track, self.start_pos, self.start_dir, self.track_name)
         elif self.player == 2:
@@ -74,7 +78,7 @@ class Game:
 
             self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
             self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
-            self.environment.agents[0].car.direction = start_dir[self.track_name]
+            self.environment.agents[0].car.direction = self.config['start_dir'].get(self.track_name)
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")
@@ -98,7 +102,7 @@ class Game:
             start_y = self.real_starts[self.track_name][0][0]
             agent.car.x = start_x
             agent.car.y = start_y
-            agent.car.direction = start_dir[self.track_name]
+            agent.car.direction = self.real_starts[self.track_name][1]
 
             self.best_agent = best_agent
             self.environment.agents[0] = agent
@@ -151,7 +155,7 @@ class Game:
                 agent = self.environment.agents[i]
                 agent.car.x = self.real_starts[self.track_name][0][1]
                 agent.car.y = self.real_starts[self.track_name][0][0]
-                agent.car.direction = start_dir[self.track_name]
+                agent.car.direction = self.real_starts[self.track_name][1]
                 assert(agent.car.track[agent.car.y, agent.car.x] == 10)
         elif self.player == 10:
             print(" - Starting performance test...")
@@ -166,7 +170,7 @@ class Game:
             for agent in self.environment.agents:
                 agent.car.x = self.real_starts[self.track_name][0][1]
                 agent.car.y = self.real_starts[self.track_name][0][0]
-                agent.car.direction = start_dir[self.track_name]
+                agent.car.direction = self.real_starts[self.track_name][1]
                 agent.car.track = self.track
                 assert(agent.car.track[agent.car.y, agent.car.x] == 10)
 
@@ -383,7 +387,7 @@ class Game:
         else:
             self.start_pos[0] = self.real_starts[self.track_name][0][0]
             self.start_pos[1] = self.real_starts[self.track_name][0][1]
-            self.start_dir = start_dir[self.track_name]
+            self.start_dir = self.real_starts[self.track_name][1]
 
         if self.player == 3:
             self.map_tries = 1
@@ -400,7 +404,7 @@ class Game:
             start_tracks = [self.track_name]
             start_x = self.real_starts[self.track_name][0][0]
             start_y = self.real_starts[self.track_name][0][1]
-            starts = [[[start_x, start_y], start_dir[self.track_name]]]
+            starts = [[[start_x, start_y], self.real_starts[self.track_name][1]]]
             return starts, start_tracks
     
         chosen_tracks = []
@@ -468,7 +472,7 @@ class Game:
         else:
             self.start_pos[0] = self.real_starts[self.track_name][0][0]
             self.start_pos[1] = self.real_starts[self.track_name][0][1]
-            self.start_dir = start_dir[self.track_name]
+            self.start_dir = self.real_starts[self.track_name][1]
         
         self.agent = False
 
@@ -509,19 +513,28 @@ class Game:
                             start_positions.append((x, y))
                             self.board[y][x] = 100 + len(start_positions)
                             if len(start_positions) == 1:
-                                real_start = [[x, y], start_dir[track_name]]
+                                real_start = [[x, y], self.config['start_dir'].get(track_name)]
             self.track=np.array(self.board)
             
             print(" - Finding center line")
             self.find_center_line()
             center_line_coords = np.argwhere(self.track == 10).tolist()
+            with open('./src/config.json', 'r') as json_file:
+                config_data = json.load(json_file)
+            real_length = config_data['real_track_lengths'].get(track_name)
+            ppm = round(len(center_line_coords) / real_length, 3)
+            # Edit config.json to add/edit the ppm
+            with open('./src/config.json', 'w') as json_file:
+                config_data['pixel_per_meter'][track_name] = ppm
+                json.dump(config_data, json_file, indent=4)
+
             print(" - Generating new starts")
             starts = get_new_starts(self.track, 1000)
             real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
-            center_line = self.init_center_line()
+            center_line = {}
             assert(real_start != None)
 
             data = {
@@ -532,9 +545,11 @@ class Game:
             }
             
             np.save("./data/tracks/" + track_name, data)
+
             print(" - Smoothening track")
             smoothen(track_name)
-            print(f" - Generated track, calculated a ppm of: {str(len(center_line_coords) / real_track_lengths[track_name])}")
+
+            print(f" - Generated track: {track_name}")
             if self.player == 0:
                 self.running = False
                 import pygame

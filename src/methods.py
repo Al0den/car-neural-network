@@ -6,7 +6,6 @@ from multiprocessing import Manager
 from datetime import datetime
 
 from agent import Agent
-from game import Game
 
 def HumanMethod(game, game_options, pygame):
     update_visual(game, pygame)
@@ -35,7 +34,7 @@ def SpecificMapMethod(game, pygame, game_options):
         start_pos, start_dir = game.real_starts[game.track_name]
 
        
-        best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, 80)
+        best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
 
         game.environment.agents[0] = agent

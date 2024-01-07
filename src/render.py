@@ -6,7 +6,6 @@ from utils import calculate_distance, GetCenterlineInputs, copy_car
 from settings import *
 from agent import Agent
 from car import Car
-from precomputed import pixel_per_meter
 
 class Render:
     def __init__(self, screen, game_options, game):
@@ -30,7 +29,8 @@ class Render:
         self.slider_x = self.screen.get_width() - slider_width - slider_padding  # X position of the slider
         self.slider_y = self.screen.get_height() - slider_height - slider_padding  # Y position of the slider
         self.slider_dragging = False  # Flag to track if the slider is being dragged
-        self.zoom_factor = 6 / pixel_per_meter[game.track_name]
+        self.zoom_factor = 6 / game.config['pixel_per_meter'].get(game.track_name)
+        self.pixel_per_meter = game.config['pixel_per_meter']
         self.zoomed_width = int(screen.get_width() / self.zoom_factor)
         self.zoomed_height = int(screen.get_height() / self.zoom_factor)
         self.visible_track = pygame.Surface((self.zoomed_width, self.zoomed_height), pygame.SRCALPHA)
@@ -136,7 +136,7 @@ class Render:
             car_center_x = car.x - camera_x
             car_center_y = car.y - camera_y
 
-            scaling_factor = pixel_per_meter[car.track_name] /  (2.3 * 30) * self.zoom_factor
+            scaling_factor = self.pixel_per_meter.get(car.track_name) / (2.3 * 30) * self.zoom_factor
 
             scaled_car_image = pygame.transform.scale(car_image, (
                 int(car_image.get_width() * scaling_factor),
@@ -330,7 +330,7 @@ class Render:
         centered_car = None
         if game.player == 0: centered_car = game.car 
         else: centered_car = game.environment.agents[0].car
-        self.zoom_factor = (8 / pixel_per_meter[centered_car.track_name]) + self.zoom_offset
+        self.zoom_factor = (8 / self.pixel_per_meter.get(centered_car.track_name)) + self.zoom_offset
         camera_x = centered_car.x - game.screen.get_width() // 2
         camera_y = centered_car.y - game.screen.get_height() // 2
         x_cos = np.cos(np.radians(centered_car.direction))

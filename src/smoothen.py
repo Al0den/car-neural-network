@@ -1,7 +1,7 @@
 import numpy as np
+import json
 import pygame
 
-from precomputed import real_track_width, pixel_per_meter
 from utils import calculate_distance
 
 def main(track):
@@ -13,7 +13,13 @@ def main(track):
     for i, j in center_line:
         center_mat[i][j] = 255
 
-    offsets = [(i, j) for i in range(-80, 80) for j in range(-80, 80) if calculate_distance((0, 0), (i, j)) <= (real_track_width[track]/2 * pixel_per_meter[track]) and (i, j) != (0, 0)]
+    with open('./src/config.json', 'r') as json_file:
+        config_data = json.load(json_file)
+    real_width = config_data['real_track_width'].get(track)
+    ppm = config_data['pixel_per_meter'].get(track)
+
+
+    offsets = [(i, j) for i in range(-80, 80) for j in range(-80, 80) if calculate_distance((0, 0), (i, j)) <= (real_width/2 * ppm) and (i, j) != (0, 0)]
 
     def create_new_matrix(initial_matrix):
         height, width, _ = initial_matrix.shape
