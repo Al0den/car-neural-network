@@ -2,10 +2,6 @@ import numpy as np
 
 points_offset = [0, -15, 15, 35, -35, 89, -89]
 
-
-# Make all inputs meter based instead of pixel based
-# Change input for centerline to car-point angle + distance instead of point-point (Irregularity for same angle) ? (Surement meiux, a voir)
-
 # - Neural network settings
 center_line_input = True
 state_space_size = len(points_offset) + 4
@@ -43,6 +39,7 @@ delta_t = 1/60
 pre_load = True
 min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
+safety_ticks = 120
 base_game_speed = 60
 
 # - Simulation settings

@@ -534,7 +534,7 @@ class Game:
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
-            center_line = {}
+            center_line = self.init_center_line()
             assert(real_start != None)
 
             data = {

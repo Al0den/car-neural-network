@@ -39,7 +39,7 @@ class Agent:
 
         if debug: 
             for inp in state:
-                if abs(inp) > 1: print("One of the inputs is iout of bounds, input num: " + str(state.index(inp)))
+                if abs(inp) > 1: print("One of the inputs is out of bounds, input num: " + str(state.index(inp)))
         
         power, steer = self.CalculateNextAction(state)
         self.car.ApplyAgentInputs([power, steer])
@@ -49,7 +49,7 @@ class Agent:
         self.state = state
         self.action = [power, steer]
 
-        if ticks > 50 and self.car.speed < min_speed:
+        if ticks > safety_ticks and self.car.speed < min_speed:
             self.car.Kill()
             self.car.died = True
         if ticks > max_ticks_before_kill:
