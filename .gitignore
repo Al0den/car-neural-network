@@ -21,3 +21,6 @@ output.png
 Untitled.png
 saves/*
 input.png
+*/flatten.py
+*/generate_tracks.py
+*/update_start.py
