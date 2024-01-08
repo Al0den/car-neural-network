@@ -55,9 +55,9 @@ class Game:
             self.load_single_track()
         else:
             self.load_all_tracks()
-
+        self.track_results = {}
         if self.player in [1, 2]:
-            self.track_results = {}
+            
             for track in self.track_names:
                 self.track_results[track] = 0
             
