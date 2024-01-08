@@ -37,9 +37,8 @@ class Environment:
             if agent.car.laps != game.map_tries:
                 agent.car.lap_time = 999999999999999999
 
-        print([agent.car.lap_time for agent in self.agents])
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
-        print([agent.car.lap_time for agent in ranked_agents])
+
         if ranked_agents[0].car.laps == game.map_tries:
             self.previous_best_lap = ranked_agents[0].car.lap_time
         else:
@@ -94,9 +93,8 @@ class Environment:
             new_agents.append(child)
 
         if self.player in [1, 2]:
-            self.UpdateTrackResults(ranked_agents[0], game)
-            self.SaveTrackResults(game)
             self.SaveBestAgentResults(ranked_agents[0], game)
+            self.SaveTrackResults(game)
 
         if game.player != 3:
             self.log_data(ranked_agents, game)
@@ -127,16 +125,13 @@ class Environment:
             while not agent.car.died:
                 agent.Tick(ticks, game)
                 ticks += 1
-            results.append(agent.car.CalculateScore())
-        return results
-    
-    def UpdateTrackResults(self, best_agent, game):
-        best_agent_index = np.where(self.agents == best_agent)[0][0]
-        for i in range(real_starts_num):
-            if game.results[best_agent_index * game.map_tries + i] == True:
-                game.track_results[game.start_tracks[i]] += 1
+            score = agent.car.CalculateScore()
+            results.append(score)
+            if score == 1:
+                game.track_results[track_name] += 1
             else:
-                game.track_results[game.start_tracks[i]] -= 1
+                game.track_results[track_name] -= 1
+        return results
 
     def SaveTrackResults(self, game):
         track_names = sorted(game.tracks.keys())

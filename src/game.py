@@ -57,7 +57,6 @@ class Game:
             self.load_all_tracks()
         self.track_results = {}
         if self.player in [1, 2]:
-            
             for track in self.track_names:
                 self.track_results[track] = 0
             
@@ -263,7 +262,7 @@ class Game:
         for i in range(len(processes)):
             print(f" - Starting process {i+1}/{len(processes)}         \r", end='', flush=True)
             processes[i].start()
-        print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total")
+        print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total, on {len(self.track_names)} tracks")
 
     def create_process(self, agents_feed, waiting_for_agents, main_lock, lap_times, laps, scores, running, working, p_id, results):
         local_lap_times = [0] * len(self.environment.agents)
@@ -409,13 +408,15 @@ class Game:
     
         chosen_tracks = []
         count = 0
-        _, maxi = max(self.track_results.items())
-        maxi = abs(maxi)
+        to_absolute = [abs(self.track_results[track]) for track in self.track_results]
+        maxi = max(to_absolute)
         tracks = []
         weights = []
         for track in self.track_results:
+            if track not in self.track_names: continue
             weights.append(round(np.sqrt(-self.track_results[track] + maxi + 1), 3))
             tracks.append(track)
+
         while len(chosen_tracks) < real_starts_num and count < 300:
             # Choose a track at random based on the score
             track = random.choices(tracks, weights)[0]
