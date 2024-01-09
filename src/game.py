@@ -355,7 +355,6 @@ class Game:
             self.laps[i] = 0
         for i in range(len(self.results)):
             self.results[i] = False
-
     
     def load_single_track(self):
         self.tracks = {}

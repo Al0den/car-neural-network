@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import os
+import time
 
 from agent import Agent
 from utils import copy_network
@@ -92,9 +93,9 @@ class Environment:
                 child.mutation_rates = child.mutation_rates + ["-"]
             new_agents.append(child)
 
-        if self.player in [1, 2]:
-            self.SaveBestAgentResults(ranked_agents[0], game)
-            self.SaveTrackResults(game)
+        #if self.player in [1, 2]:
+        #    self.SaveBestAgentResults(ranked_agents[0], game)
+        #    self.SaveTrackResults(game)
 
         if game.player != 3:
             self.log_data(ranked_agents, game)
@@ -117,20 +118,27 @@ class Environment:
     def TestAgent(self, best_agent, game):
         sorted_tracks = sorted(game.tracks.keys())
         results = []
+        game.waiting_for_agents.value = True
+        i = 0
+        to_append = []
         for track_name in sorted_tracks:
             agent = Agent(self.options, game.tracks[track_name], game.real_starts[track_name][0], game.real_starts[track_name][1], track_name)
             assert(agent.car.track[agent.car.y, agent.car.x] == 10)
             agent.network = copy_network(best_agent.network)
-            ticks = 0
-            while not agent.car.died:
-                agent.Tick(ticks, game)
-                ticks += 1
-            score = agent.car.CalculateScore()
-            results.append(score)
-            if score == 1:
-                game.track_results[track_name] += 1
-            else:
-                game.track_results[track_name] -= 1
+            self.agents[i] = agent
+            data = (i, 0, self.agents[i], track_name, game.real_starts[track_name])
+            game.scores[i] = 0
+            to_append.append(data)
+            i += 1
+        game.agents_feed.extend(to_append)
+        game.waiting_for_agents.value = False
+        while len(game.agents_feed) != 0 or any(game.working):
+            time.sleep(0.1)
+        for i in range(len(sorted_tracks)):
+            results.append(game.scores[i])
+            if game.laps[i] > game.map_tries:
+                game.laps[i] = game.map_tries
+
         return results
 
     def SaveTrackResults(self, game):
@@ -188,7 +196,6 @@ class Environment:
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
-        game.track_results = data['track_results']
 
         for agent in self.agents:
             agent.car.speed = 0
