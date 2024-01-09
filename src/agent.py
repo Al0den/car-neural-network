@@ -40,7 +40,7 @@ class Agent:
         if debug: 
             for inp in state:
                 if abs(inp) > 1: print("One of the inputs is out of bounds, input num: " + str(state.index(inp)))
-        
+        # sqlut 
         power, steer = self.CalculateNextAction(state)
         self.car.ApplyAgentInputs([power, steer])
         self.car.UpdateCar()
