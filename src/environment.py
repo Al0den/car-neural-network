@@ -93,9 +93,8 @@ class Environment:
                 child.mutation_rates = child.mutation_rates + ["-"]
             new_agents.append(child)
 
-        #if self.player in [1, 2]:
-        #    self.SaveBestAgentResults(ranked_agents[0], game)
-        #    self.SaveTrackResults(game)
+        if self.player in [1, 2]:
+            self.UpdateTrackResults(game)
 
         if game.player != 3:
             self.log_data(ranked_agents, game)
@@ -116,12 +115,11 @@ class Environment:
         self.alive = len(self.agents)
 
     def TestAgent(self, best_agent, game):
-        sorted_tracks = sorted(game.tracks.keys())
         results = []
         game.waiting_for_agents.value = True
         i = 0
         to_append = []
-        for track_name in sorted_tracks:
+        for track_name in game.real_start_tracks:
             agent = Agent(self.options, game.tracks[track_name], game.real_starts[track_name][0], game.real_starts[track_name][1], track_name)
             assert(agent.car.track[agent.car.y, agent.car.x] == 10)
             agent.network = copy_network(best_agent.network)
@@ -132,23 +130,41 @@ class Environment:
             i += 1
         game.agents_feed.extend(to_append)
         game.waiting_for_agents.value = False
-        while len(game.agents_feed) != 0 or any(game.working):
-            time.sleep(0.1)
-        for i in range(len(sorted_tracks)):
-            results.append(game.scores[i])
-            if game.laps[i] > game.map_tries:
-                game.laps[i] = game.map_tries
 
+        start_time = time.time()
+        while len(game.agents_feed) != 0 or any(game.working) or (time.time() - start_time) < 2:
+            time.sleep(0.1)
+        
+        for i in range(len(game.real_start_tracks)):
+            results.append((game.scores[i], game.real_start_tracks[i]))
+            if game.scores[i] == 1 * score_multiplier:
+                game.laps[i] -= 1
         return results
+
+    def UpdateTrackResults(self, game):
+        results = self.TestAgent(self.agents[0], game)
+        fails = 0
+        for i in range(len(results)):
+            score, track = results[i]
+            if score == 1 * score_multiplier:
+                game.track_results[track] += 1.2
+            else:
+                game.track_results[track] -= 0.8
+                fails += 1
+        for track in game.track_results:
+            game.track_results[track] -= 0.1 + fails/(len(results) * 2)
+        self.SaveTrackResults(game)
 
     def SaveTrackResults(self, game):
         track_names = sorted(game.tracks.keys())
         if not os.path.isfile("./data/train/track_results.csv"):
             with open("./data/train/track_results.csv", "w") as file:
-                tracks = ", ".join([track_name for track_name in track_names])
+                tracks = "Generation, " + ", ".join([track_name for track_name in track_names])
                 file.write(tracks + "\n")
+                file.wite(self.generation + ", " + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
         with open("./data/train/track_results.csv", "a") as file:
-            file.write(", ".join([str(game.track_results[track_name]) for track_name in track_names]) + "\n")
+            gen = f"{self.generation}, "
+            file.write(gen + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
     
     def linear_weighted_selection(self, ranked_agents):
         num_agents = len(ranked_agents)
@@ -196,6 +212,7 @@ class Environment:
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
+        game.track_results = data['track_results']
 
         for agent in self.agents:
             agent.car.speed = 0

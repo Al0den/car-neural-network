@@ -59,7 +59,7 @@ class Game:
         if self.player in [1, 2]:
             for track in self.track_names:
                 self.track_results[track] = 0
-            
+        
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
         
         if self.player == 0:
@@ -274,6 +274,7 @@ class Game:
             try:
                 if waiting_for_agents.value == True: raise Exception("Waiting for agents")
                 agent_index, try_num, agent, start_track, start = agents_feed.pop()
+                if not updated: working[p_id] = True
             except:
                 if updated == True:
                     with main_lock:
@@ -291,7 +292,6 @@ class Game:
                     working[p_id] = False
                 time.sleep(0.1)
                 continue
-            if updated == False: working[p_id] = True
             if agent.car.died: agent.car.died = False
             agent.car.x = start[0][1]
             agent.car.y = start[0][0]
@@ -395,8 +395,7 @@ class Game:
         print(f" * Loaded track: {track_name}")
 
     def GenerateTrainingStarts(self):
-        start_tracks = []
-        starts = []
+        start_tracks, starts, weights, tracks, chosen_tracks = [], [], [], [], []
 
         if self.player == 3:
             start_tracks = [self.track_name]
@@ -405,17 +404,13 @@ class Game:
             starts = [[[start_x, start_y], self.real_starts[self.track_name][1]]]
             return starts, start_tracks
     
-        chosen_tracks = []
         count = 0
-        to_absolute = [abs(self.track_results[track]) for track in self.track_results]
-        maxi = max(to_absolute)
-        tracks = []
-        weights = []
-        for track in self.track_results:
-            if track not in self.track_names: continue
-            weights.append(round(np.sqrt(-self.track_results[track] + maxi + 1), 3))
-            tracks.append(track)
+        maxi = max([abs(self.track_results[track]) for track in self.track_results])
 
+        for track in self.track_results:
+            weights.append(round(pow(-self.track_results[track] + maxi + 1, 0.75), 3))
+            tracks.append(track)
+        print(weights)
         while len(chosen_tracks) < real_starts_num and count < 300:
             # Choose a track at random based on the score
             track = random.choices(tracks, weights)[0]
@@ -426,6 +421,7 @@ class Game:
                 starts.append([[start_x, start_y], self.real_starts[track][1]])
                 chosen_tracks.append(track)
             count += 1
+        self.real_start_tracks = chosen_tracks
         # Complete with random starts
         while len(starts) < self.map_tries:
             track = random.choice(list(self.tracks.keys()))
