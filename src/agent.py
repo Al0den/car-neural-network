@@ -1,4 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import threading
+from matplotlib.animation import FuncAnimation
 
 from car import Car
 from utils import calculate_distance, GetCenterlineInputs, angle_range_180
@@ -94,6 +97,5 @@ class Agent:
         for layer_weights in self.network:
             current_layer_output =  activation_function(np.dot(current_layer_output, layer_weights))
         return current_layer_output
-    
     
 

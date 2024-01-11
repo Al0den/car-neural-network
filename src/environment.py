@@ -46,7 +46,7 @@ class Environment:
             self.previous_best_lap = 0
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
     
-        best_agents = ranked_agents[:int(len(ranked_agents) * 0.01) + 1]
+        best_agents = ranked_agents[:(int(len(ranked_agents) * 0.01) + 1)]
         new_agents = []
         for father in best_agents:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
@@ -54,7 +54,8 @@ class Environment:
             child.evolution = father.evolution + ["i"]
             child.mutation_rates = father.mutation_rates + ["-"]
             new_agents.append(child)
-        for _ in range(int(len(ranked_agents) * previous_ratio)):
+            
+        for _ in range(max(1, int(len(ranked_agents) * previous_ratio))):
             if self.previous_agents[0] == None: break
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             father = None

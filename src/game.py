@@ -410,8 +410,8 @@ class Game:
         for track in self.track_results:
             weights.append(round(pow(-self.track_results[track] + maxi + 1, 0.75), 3))
             tracks.append(track)
-        print(weights)
-        while len(chosen_tracks) < real_starts_num and count < 300:
+
+        while len(chosen_tracks) < real_starts_num and count < 10000:
             # Choose a track at random based on the score
             track = random.choices(tracks, weights)[0]
             if track not in chosen_tracks:
