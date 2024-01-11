@@ -98,4 +98,14 @@ class Agent:
             current_layer_output =  activation_function(np.dot(current_layer_output, layer_weights))
         return current_layer_output
     
+    def AgentDistance(self, agent2):
+        # Calculate the euclidian distance, wihout using calculate distance
+        difference = 0
+        for i in range(len(self.network)):
+            for j in range(len(self.network[i])):
+                for k in range(len(self.network[i][j])):
+                    difference += abs(self.network[i][j][k] - agent2.network[i][j][k])
+        return difference
+
+    
 

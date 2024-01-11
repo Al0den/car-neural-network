@@ -78,6 +78,7 @@ class Game:
             self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
             self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
             self.environment.agents[0].car.direction = self.config['start_dir'].get(self.track_name)
+            self.environment.agents[0].car.speed = self.config['quali_start_speed'].get(self.track_name)
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")
@@ -302,6 +303,8 @@ class Game:
             agent.car.track = self.tracks[start_track]
             agent.car.track_name = start_track
             agent.car.lap_time = 0
+            if self.player in [3, 4]:
+                agent.car.speed = self.config['quali_start_speed'].get(start_track)
             ticks = 0
             while not agent.car.died:
                 agent.Tick(ticks, self)

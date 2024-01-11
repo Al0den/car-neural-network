@@ -77,5 +77,24 @@
         "azerbaidjan": 1.96,
         "spain": 3.16,
         "mexico": 2.83
+    },
+    "quali_start_speed": {
+        "monaco": 280,
+        "singapoure": 280,
+        "spa": 280,
+        "silverstone": 280, 
+        "melbourne": 280,
+        "brazil": 280,
+        "cota": 280,
+        "monza": 280,
+        "imola": 280,
+        "bahrain": 280,
+        "hungaroring": 280,
+        "redbullring": 280,
+        "canada": 280,
+        "abu-dhabi": 280,
+        "azerbaidjan": 280,
+        "spain": 280,
+        "mexico": 280
     }
 }

@@ -189,12 +189,11 @@ class Environment:
             file.write(", ".join([str(result) for result in results]) + "\n")
 
     def save_agents(self, game, path="./data/train/agents"):
-        for agent in self.agents:
-            agent.car.track = []
-            agent.car.previous_points = []
+        networks = [agent.network for agent in self.agents]
+        previous_networks = [agent.network for agent in self.previous_agents]
         data = {
-            'agents': self.agents,
-            'previous_agents': self.previous_agents,
+            'networks': networks,
+            'previous_networks': previous_networks,
             'input_size': self.options['state_space_size'],
             'output_size': self.options['action_space_size'],
             'hidden_layer_size': self.options['hidden_layer_size'],
@@ -206,8 +205,15 @@ class Environment:
 
     def load_agents(self, game):
         data = np.load("./data/train/agents.npy", allow_pickle=True).item()
-        self.agents = data['agents']
-        self.previous_agents = data['previous_agents']
+        self.agents, self.previous_agents = [], []
+        for network in data['networks']:
+            agent = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            agent.network = network
+            self.agents.append(agent)
+        for network in data['previous_networks']:
+            agent = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            agent.network = network
+            self.previous_agents.append(agent)
         self.options['state_space_size'] = data['input_size']
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
@@ -282,11 +288,17 @@ class Environment:
             method = "global"
             data = np.load("./data/train/agents.npy", allow_pickle=True).item()
             os.makedirs("./data/per_track/" + game.track_name + "/trained/", exist_ok=True)
-        self.agents = data['agents']
-        for _ in range(int(specialised_training_multiple) - 1):
+        self.agents = []
+        for network in data['networks']:
+            agent = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            agent.network = network
+            self.agents.append(agent)
+            
+        for _ in range(int((specialised_training_multiple - 1)* len(self.agents)) - 1):
             if method == "specialised": continue
-            new_data = np.load("./data/train/agents.npy", allow_pickle=True).item()
-            self.agents += new_data['agents']
+            agent = np.random.choice(self.agents)
+            self.agents.append(agent)
+
         self.options['state_space_size'] = data['input_size']
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
