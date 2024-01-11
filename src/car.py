@@ -153,7 +153,7 @@ class Car:
         
     def UpdateCar(self):     
         wheel_angle = self.steer * 14 
-        speed_factor = max(1.0 - self.speed / (max_speed + 20), 0.1)
+        speed_factor = max(1.0 - self.speed / (max_speed), 0.1)
 
         wheel_angle *= speed_factor
         if wheel_angle != 0: turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
