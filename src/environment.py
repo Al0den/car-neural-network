@@ -190,7 +190,11 @@ class Environment:
 
     def save_agents(self, game, path="./data/train/agents"):
         networks = [agent.network for agent in self.agents]
-        previous_networks = [agent.network for agent in self.previous_agents]
+        
+        previous_networks = []
+        for agent in self.previous_agents:
+            if agent != None:
+                previous_networks.append(agent.network)
         data = {
             'networks': networks,
             'previous_networks': previous_networks,
@@ -293,7 +297,7 @@ class Environment:
             agent = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             agent.network = network
             self.agents.append(agent)
-            
+
         for _ in range(int((specialised_training_multiple - 1)* len(self.agents)) - 1):
             if method == "specialised": continue
             agent = np.random.choice(self.agents)
