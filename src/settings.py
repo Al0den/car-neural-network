@@ -4,23 +4,25 @@ points_offset = [0, -15, 15, 35, -35, 89, -89]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 4
+state_space_size = len(points_offset) + 5
 first_layer_size_coeff = 1.2
-num_hidden_layers = 4
+num_hidden_layers = 2
 action_space_size = 2
 activation_function = np.tanh
-map_tries = 15
+map_tries = 10
 
-real_starts_num = 5
+batch_size = 10
+
+real_starts_num = 10
 previous_fails_num = 0
 assert(real_starts_num + previous_fails_num <= map_tries)
 
-travel_distances_centerlines = [0, 4, 8, 13, 19, 25, 31, 37, 44, 50, 60, 70, 90, 120, 160, 200, 250, 300]
+travel_distances_centerlines = [0, 8, 19, 31, 44, 60, 90, 160, 230, 300]
 
 max_points_distance = 200
 max_center_line_distance = 70
 
-state_space_size += len(travel_distances_centerlines)
+state_space_size += len(travel_distances_centerlines) - 1
 
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
@@ -39,7 +41,7 @@ delta_t = 1/60
 pre_load = True
 min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
-safety_ticks = 120
+safety_ticks = 60
 base_game_speed = 60
 
 # - Simulation settings
@@ -52,9 +54,9 @@ reference_area = 1.7
 lift_coeff = -1.247
 car_mass = 733
 gravity = 9.81
-brake_increment = 1/10
-acceleration_increment = 1/10
-steer_increment = 1/10
+brake_increment = 1/15
+acceleration_increment = 1/15
+steer_increment = 1/15
 
 # - Evolution settings
 mutation_rates = [0.01, 0.1, 0.2, 0.3]
@@ -72,7 +74,7 @@ score_multiplier = 10000
 mutation_strenght = 0.15
 
 max_ticks_before_kill = 30000
-min_speed = 10
+min_speed = 5
 base_score_per_checkpoint = 0
 
 agent_selection_coeff = 7

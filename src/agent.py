@@ -19,24 +19,41 @@ class Agent:
         self.attempted = True
         self.mutation_strengh = mutation_strenght
         self.last_update = 0
+
+    def CalculateState(self, game, calculated_points=None):
+        center_line_x, center_line_y = self.car.GetNearestCenterline(game)
+        points = GetCenterlineInputs(game, self.car)
+        if calculated_points is None:
+            self.car.GetPointsInput()
+        else:
+            self.car.previous_points = calculated_points
+
+        distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
+        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line] + points
+        
+        for point in self.car.previous_points:
+            state.append(max(-1, min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2)))
+
+        if debug: 
+            for inp in state:
+                if abs(inp) > 1: print("One of the inputs is out of bounds, input num: " + str(state.index(inp)))
+
+        return state
     
-    def Tick(self, ticks, game):
+    def Tick(self, ticks, game, calculated_points=None):
         if self.car.died == True: return
         self.mutation_strengh = game.mutation_strength
 
         center_line_x, center_line_y = self.car.GetNearestCenterline(game)
         points = GetCenterlineInputs(game, self.car)
-        self.car.GetPointsInput()
+        if calculated_points is None:
+            self.car.GetPointsInput()
+        else:
+            self.car.previous_points = calculated_points
+
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
-        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line]
+        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line] + points
         
-        prev_angle = self.car.direction
-        for i in range(len(points)):
-            if i == 0: continue
-            angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
-            angle_diff = angle_range_180(angle - prev_angle)
-            prev_angle = angle
-            state.append(max(-1, min(1, angle_diff / 90)))
         for point in self.car.previous_points:
             state.append(max(-1, min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2)))
 

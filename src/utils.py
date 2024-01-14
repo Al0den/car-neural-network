@@ -124,6 +124,18 @@ def copy_car(car, new_car):
     new_car.died = car.died
     return new_car
 
+def copy_agent(agent, new_agent):
+    new_agent.car = copy_car(agent.car, new_agent.car)
+    new_agent.network = copy_network(agent.network)
+    new_agent.evolution = agent.evolution
+    new_agent.mutation_rates = agent.mutation_rates
+    new_agent.state = agent.state
+    new_agent.action = agent.action
+    new_agent.attempted = agent.attempted
+    new_agent.mutation_strengh = agent.mutation_strengh
+    new_agent.last_update = agent.last_update
+    return new_agent
+
 def interpolate_color(index):
     if index < 0 or index > 1:
         raise ValueError("Index must be between 0 and 1")

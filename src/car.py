@@ -3,8 +3,8 @@ import numpy as np
 import random
 import json
 
-from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, potential_offsets_for_angle, offsets, directions
+from utils import calculate_distance, next_speed, angle_distance, new_brake_speed, angle_range_180
+from precomputed import sin, cos, offsets, directions
 from settings import *
 
 class Car:
@@ -40,6 +40,34 @@ class Car:
         self.ApplyPlayerInputs()
         self.UpdateCar()
         return self.CheckCollisions(game.ticks)
+    def CheckCollisionsNoTrack(self, ticks):
+
+        toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
+        count = 0
+
+        for point in toCheck:
+            if self.track[int(point[1]), int(point[0])] == 0: count += 1
+            else: break
+        
+        if count > 3 and not god:
+            self.Kill()
+            return False
+        
+        if self.track[int(self.front_left[1]), int(self.front_left[0])] == 3 or self.track[int(self.front_right[1]), int(self.front_right[0])] == 3:
+            self.lap_time = ticks
+            if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90:
+                self.lap_time = 0
+            self.Kill()
+            return False
+        
+        elif self.track[int(self.y), int(self.x)] == 2:
+            seen = False
+            for checkpoint in self.checkpoints_seen:
+                if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
+                    seen = True
+            if seen == False:
+                self.checkpoints_seen.append((self.x, self.y, ticks))
+        return True
 
     def CheckCollisions(self, ticks):
         toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
@@ -78,15 +106,17 @@ class Car:
         self.acceleration = 0
         self.brake = 0
         self.steer = 0
-        self.start_ticks = 0
-        self.checkpoints_seen = []
 
     def Accelerate(self):
         self.acceleration += acceleration_increment
+        self.brake -= acceleration_increment * 2
+        self.brake = max(0, self.brake)
         self.acceleration = min(1, self.acceleration)
 
     def Decelerate(self):
         self.brake += brake_increment
+        self.acceleration -= brake_increment * 2
+        self.acceleration = max(0, self.acceleration)
         self.brake = min(1, self.brake)
 
     def UpdateSteer(self, value):
@@ -133,12 +163,7 @@ class Car:
         self.CheckForAction(brake_change, power_change, steer_change)
     
     def CheckForAction(self, brake, power, steer):
-        if brake == False:
-            self.brake -= delta_t * 3
-            self.brake = max(0, self.brake)
-        if power == False:
-            self.acceleration -= delta_t * 3
-            self.acceleration = max(0, self.acceleration)
+
         if steer == False:
             if(self.steer > 0):
                 self.steer -= delta_t * 3
@@ -300,7 +325,7 @@ class Car:
             offset = offsets[directions.tolist().index(direction)]
         if len(offset) == 0:
             return [(self.x, self.y)] * len(distances)
-        results = []
+        points = []
         assert(self.track[int(y), int(x)] == 10)
 
         distances_copy = distances.copy()
@@ -308,7 +333,7 @@ class Car:
             if distances_copy == []: break
             if distances_copy != [] and i / self.ppm > min(distances_copy):
                 distances_copy.pop(0)
-                results.append((int(x), int(y)))
+                points.append((int(x), int(y)))
             x += offset[0]
             y += offset[1]
             possible_offsets = [
@@ -321,9 +346,18 @@ class Car:
                     offset = potential_offset
                     index = np.where((offsets == offset).all(axis=1))[0]
                     direction = directions[index]
+        prev_angle = initial_direction
+        results = []
+        for i in range(len(points)):
+            if i == 0: continue
+            angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
+            angle_diff = angle_range_180(angle - prev_angle)
+            prev_angle = angle
+            results.append(max(-1, min(1, angle_diff / 90)))
+
         return results
     
-    def CalculateScore(self):
+    def CalculateScore(self, max_potential=None):
         current_x = self.start_x
         current_y = self.start_y
         current_dir = self.start_direction
@@ -331,8 +365,7 @@ class Car:
         final_y = self.previous_center_line[1]
         seen = 0
         assert(self.track[current_y, current_x] == 10)
-        if self.lap_time != 0:
-            return 1
+        
         while (current_x, current_y) != (final_x, final_y) and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
@@ -341,19 +374,25 @@ class Car:
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
-        if (seen > 8000 and len(self.checkpoints_seen) < 1) or seen == 50000:
+
+        if (seen > 1000 and len(self.checkpoints_seen) < 1) or seen == 50000:
             return 0
-        return min(1, seen / self.CalculateMaxPotential())
+        
+        if max_potential is None:
+            max_potential = self.CalculateMaxPotential()
+        
+        return min(1, seen / max_potential)
     
-    def CalculateMaxPotential(self):
+    def CalculateMaxPotential(self, current_dir=None):
         current_x = self.start_x
         current_y = self.start_y
-        current_dir = self.start_direction
+        if current_dir is None:
+            current_dir = self.start_direction
         seen = 0
-        while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]) and seen < 50000:
+        while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
-            current_offset = random.choice(potential_offsets)
+            current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))

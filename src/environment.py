@@ -44,6 +44,7 @@ class Environment:
             self.previous_best_lap = ranked_agents[0].car.lap_time
         else:
             self.previous_best_lap = 0
+
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
     
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.01) + 1)]
@@ -56,7 +57,7 @@ class Environment:
             new_agents.append(child)
             
         for _ in range(max(1, int(len(ranked_agents) * previous_ratio))):
-            if self.previous_agents[0] == None: break
+            if self.previous_agents == [] or self.previous_agents[0] == None: break
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             father = None
             while father == None:
@@ -94,8 +95,8 @@ class Environment:
                 child.mutation_rates = child.mutation_rates + ["-"]
             new_agents.append(child)
 
-        if self.player in [1, 2]:
-            self.UpdateTrackResults(game)
+        #if self.player in [1, 2]:
+        #    self.UpdateTrackResults(game)
 
         if game.player != 3:
             self.log_data(ranked_agents, game)
@@ -162,7 +163,7 @@ class Environment:
             with open("./data/train/track_results.csv", "w") as file:
                 tracks = "Generation, " + ", ".join([track_name for track_name in track_names])
                 file.write(tracks + "\n")
-                file.wite(self.generation + ", " + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
+                file.write(str(self.generation) + ", " + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
         with open("./data/train/track_results.csv", "a") as file:
             gen = f"{self.generation}, "
             file.write(gen + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")

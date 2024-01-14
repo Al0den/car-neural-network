@@ -36,6 +36,7 @@ def SpecificMapMethod(game, pygame, game_options):
        
         best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
+        agent.car.speed = game.config['quali_start_speed'].get(game.track_name)
 
         game.environment.agents[0] = agent
         game.environment.generation = best_agent

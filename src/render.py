@@ -186,13 +186,18 @@ class Render:
 
         pygame.draw.line(self.screen, (255, 255, 255), (x + width / 2, y), (x + width / 2, y + height))
 
-    def DrawPointsInput(self, car, camera_x, camera_y, prev_points=None):
-        if prev_points == None:
-            car.GetPointsInput()
-            points = car.previous_points
-        else:
-            points = prev_points
-        if (points[0] == None): return
+    def DrawPointsInput(self, car, camera_x, camera_y, game, prev_points=None):
+        input_data = []
+        for offset in points_offset:
+            input_data += [int(car.x), int(car.y), int(car.direction + offset + 90) % 360]
+        input_buf = game.dev.buffer(np.array(input_data))
+        out_buf = game.dev.buffer(np.zeros(len(points_offset) * 2, dtype=np.int32))
+
+        handle = game.compute(len(points_offset), input_buf, game.track_bufs[car.track_name], out_buf)
+        del handle
+        points = (np.frombuffer(out_buf, dtype=np.int32)).reshape((len(points_offset), 2))
+        
+        
         for point in points:
             target_x = point[0]
             target_y = point[1]
@@ -361,8 +366,8 @@ class Render:
 
         if game.debug or not game.visual:
             self.debug(game)
-            self.DrawPointsInput(centered_car, camera_x + offset_x, camera_y + offset_y)
-            self.DrawCenterlineInputs(game, camera_x + offset_x, camera_y + offset_y, centered_car)
+            self.DrawPointsInput(centered_car, camera_x + offset_x, camera_y + offset_y, game)
+            #self.DrawCenterlineInputs(game, camera_x + offset_x, camera_y + offset_y, centered_car)
 
         self.handle_slider(game)
         pygame.display.update()
