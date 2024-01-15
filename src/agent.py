@@ -4,7 +4,7 @@ import threading
 from matplotlib.animation import FuncAnimation
 
 from car import Car
-from utils import calculate_distance, GetCenterlineInputs, angle_range_180
+from utils import calculate_distance, GetCenterlineInputs, angle_range_180, calculate_distance_vectorized
 from settings import *
 
 class Agent:
@@ -20,19 +20,25 @@ class Agent:
         self.mutation_strengh = mutation_strenght
         self.last_update = 0
 
-    def CalculateState(self, game, calculated_points=None):
+    def CalculateState(self, game, ticks, calculated_points=None):
         center_line_x, center_line_y = self.car.GetNearestCenterline(game)
         points = GetCenterlineInputs(game, self.car)
+
         if calculated_points is None:
-            self.car.GetPointsInput()
-        else:
-            self.car.previous_points = calculated_points
+            input_data = []
+            for offset in points_offset:
+                input_data += [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, 1]
+            if ticks == 0: calculated_points = game.getPointsOffset(1, np.array(input_data).flatten().astype(np.int32), self.car.track.flatten().astype(np.int32))
+            else: calculated_points = game.getPointsOffset(0, np.array(input_data).flatten().astype(np.int32), None)
+            calculated_points = calculated_points.reshape((len(points_offset), 2))
 
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
         state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line] + points
-        
-        for point in self.car.previous_points:
-            state.append(max(-1, min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2)))
+        car_pos = np.array([self.car.x, self.car.y])
+        distances = calculate_distance_vectorized(calculated_points, car_pos)
+        normalized_distances = np.maximum(-1, np.minimum(1, distances / (max_points_distance * self.car.ppm) * 1.2))
+
+        state += normalized_distances.tolist()
 
         if debug: 
             for inp in state:
@@ -44,23 +50,8 @@ class Agent:
         if self.car.died == True: return
         self.mutation_strengh = game.mutation_strength
 
-        center_line_x, center_line_y = self.car.GetNearestCenterline(game)
-        points = GetCenterlineInputs(game, self.car)
-        if calculated_points is None:
-            self.car.GetPointsInput()
-        else:
-            self.car.previous_points = calculated_points
-
-        distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
-        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line] + points
+        state = self.CalculateState(game, ticks, calculated_points)
         
-        for point in self.car.previous_points:
-            state.append(max(-1, min(1, calculate_distance(point, (self.car.x, self.car.y)) / (max_points_distance * self.car.ppm)* 1.2)))
-
-        if debug: 
-            for inp in state:
-                if abs(inp) > 1: print("One of the inputs is out of bounds, input num: " + str(state.index(inp)))
-        # sqlut 
         power, steer = self.CalculateNextAction(state)
         self.car.ApplyAgentInputs([power, steer])
         self.car.UpdateCar()
@@ -123,6 +114,24 @@ class Agent:
                 for k in range(len(self.network[i][j])):
                     difference += abs(self.network[i][j][k] - agent2.network[i][j][k])
         return difference
+    
+    def SetAgent(self, start, track=None, track_name=None):
+        self.car.x = start[0][1]
+        self.car.y = start[0][0]
+        self.car.start_x = start[0][1]
+        self.car.start_y = start[0][0]
+        self.car.direction = start[1]
+        self.car.start_direction = start[1]
+        self.car.speed = 0
+        self.car.acceleration = 0
+        self.car.brake = 0
+        self.car.steer = 0
+        self.car.died = False
+        self.car.previous_points = []
+        self.car.lap_time = 0
+        if track is not None:
+            self.car.track = track
+            self.car.track_name = track_name
 
     
 

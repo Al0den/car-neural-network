@@ -9,11 +9,11 @@ first_layer_size_coeff = 1.2
 num_hidden_layers = 2
 action_space_size = 2
 activation_function = np.tanh
-map_tries = 10
+map_tries = 15
 
 batch_size = 10
 
-real_starts_num = 10
+real_starts_num = 4
 previous_fails_num = 0
 assert(real_starts_num + previous_fails_num <= map_tries)
 
@@ -71,9 +71,9 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.15
+mutation_strenght = 0.25
 
-max_ticks_before_kill = 30000
+max_ticks_before_kill = 10000
 min_speed = 5
 base_score_per_checkpoint = 0
 

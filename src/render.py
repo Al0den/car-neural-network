@@ -187,17 +187,8 @@ class Render:
         pygame.draw.line(self.screen, (255, 255, 255), (x + width / 2, y), (x + width / 2, y + height))
 
     def DrawPointsInput(self, car, camera_x, camera_y, game, prev_points=None):
-        input_data = []
-        for offset in points_offset:
-            input_data += [int(car.x), int(car.y), int(car.direction + offset + 90) % 360]
-        input_buf = game.dev.buffer(np.array(input_data))
-        out_buf = game.dev.buffer(np.zeros(len(points_offset) * 2, dtype=np.int32))
-
-        handle = game.compute(len(points_offset), input_buf, game.track_bufs[car.track_name], out_buf)
-        del handle
-        points = (np.frombuffer(out_buf, dtype=np.int32)).reshape((len(points_offset), 2))
-        
-        
+        car.GetPointsInput()
+        points = car.previous_points
         for point in points:
             target_x = point[0]
             target_y = point[1]
@@ -267,6 +258,7 @@ class Render:
             text_surface = font.render(line, True, (0, 0, 0))
             self.screen.blit(text_surface, (w * 0.75, y_offset))
             y_offset += text_surface.get_height() + 5
+
     def generate_agent_debug(self, game):
         new_car = Car(game.car.track, game.start_pos, game.start_dir, game.track_name)
         new_car = copy_car(game.car, new_car)
@@ -274,7 +266,7 @@ class Render:
         agent = Agent(game.options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
 
         agent.car = new_car
-        agent.Tick(0, game)
+        agent.Tick(game.ticks, game)
         agent.car.GetNearestCenterline(game)
 
         actions = [f"{action:0.2f}" for action in agent.action]
@@ -284,6 +276,7 @@ class Render:
 
         lines = [
             f"Action: [{', '.join(actions)}]",
+            f"tps: {game.clock.get_fps():.1f}",
             "State:"
         ]
 

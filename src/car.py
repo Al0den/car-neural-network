@@ -30,7 +30,7 @@ class Car:
         self.acceleration, self.brake, self.speed, self.steer = 0, 0, 0, 0
         self.lap_times, self.lap_time = [], 0
         self.checkpoints_seen, self.checkpoints = [], []
-        self.previous_points = [None] * len(points_offset)
+        self.previous_points = np.array([None] * len(points_offset))
 
         self.UpdateCorners()
 
@@ -163,7 +163,6 @@ class Car:
         self.CheckForAction(brake_change, power_change, steer_change)
     
     def CheckForAction(self, brake, power, steer):
-
         if steer == False:
             if(self.steer > 0):
                 self.steer -= delta_t * 3
@@ -207,6 +206,7 @@ class Car:
         self.UpdateCorners()
 
     def UpdateCorners(self):
+        
         # Ugly formulas for corners positions, but they work
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
@@ -238,7 +238,7 @@ class Car:
             eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
         
         if int(eval_x) >= len(self.track[0]) or int(eval_y) >= len(self.track):
-            return (eval_x, eval_y)
+            return np.array([eval_x, eval_y])
         
         if distance_from_track == 50: return (self.x,self.y)
 
@@ -259,10 +259,10 @@ class Car:
 
         eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
 
-        return (eval_x, eval_y)
+        return np.array([eval_x, eval_y])
     
     def GetPointsInput(self):
-        self.previous_points = [self.CalculatePoint(offset) for offset in points_offset]
+        self.previous_points = np.array([self.CalculatePoint(offset) for offset in points_offset])
         return self.previous_points
     
     def CenterlinePosition(self, x, y):
@@ -306,13 +306,20 @@ class Car:
         error = 999
         offset = None
         direction_target %= 360
-        for i in range(len(offsets)):
-            if self.track[int(y + offsets[i][1]), int(x + offsets[i][0])] == 10:
-                if angle_distance(direction_target, directions[i]) < error or direction > 360:
-                    error = angle_distance(direction_target, directions[i])
-                    direction = directions[i]
-                    offset = offsets[i]
-            if (error < 60): break
+        
+        for offset, direction in zip(offsets, directions):
+            x_offset, y_offset = int(x + offset[0]), int(y + offset[1])
+            track_value = self.track[y_offset, x_offset]
+            
+            if track_value == 10:
+                current_error = angle_distance(direction_target, direction)
+                if current_error < error or direction > 360:
+                    error = current_error
+                    direction = direction
+                    offset = offset
+            if error < 60:
+                break
+        
         return direction, offset
     
     def CalculateCenterlineInputs(self, x, y, initial_direction=None):
@@ -348,6 +355,7 @@ class Car:
                     direction = directions[index]
         prev_angle = initial_direction
         results = []
+
         for i in range(len(points)):
             if i == 0: continue
             angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
@@ -375,7 +383,7 @@ class Car:
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
 
-        if (seen > 1000 and len(self.checkpoints_seen) < 1) or seen == 50000:
+        if (seen > 8000 and len(self.checkpoints_seen) < 1) or seen == 50000:
             return 0
         
         if max_potential is None:

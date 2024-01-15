@@ -39,7 +39,7 @@ class Environment:
                 agent.car.lap_time = 999999999999999999
 
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
-
+        
         if ranked_agents[0].car.laps == game.map_tries:
             self.previous_best_lap = ranked_agents[0].car.lap_time
         else:
@@ -323,6 +323,7 @@ class Environment:
         print(f" * Loaded all agents from {method} training, generation: {str(self.generation)}")
 
     def add_previous_best(self, best_agent, game):
+        if self.previous_agents == []: return
         if self.previous_agents[0] == None or (self.previous_agents[0].car.lap_time > best_agent.car.lap_time and best_agent.car.laps == game.map_tries) or game.player in [1, 2]:
             self.previous_agents.insert(0, best_agent)
             self.previous_agents.pop()

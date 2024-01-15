@@ -1,10 +1,10 @@
+import gc
 import os
 import numpy as np
 import random
 import time
 import json
-import sys
-import metalcompute as mc
+import ctypes
 
 from multiprocessing import Process, Array, Manager, Value
 
@@ -16,13 +16,21 @@ Image.MAX_IMAGE_PIXELS = None
 
 from environment import Environment
 from car import Car
-from utils import is_color_within_margin, calculate_distance, get_new_starts, print_progress, get_nearest_centerline
+from utils import is_color_within_margin, calculate_distance, get_new_starts, get_nearest_centerline
 from agent import Agent
 from settings import *
 from precomputed import offsets, directions
 from smoothen import main as smoothen
 
+swift_fun = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
 
+swift_fun.get_points_offsets.argtypes = [
+    ctypes.c_int,
+    ctypes.POINTER(ctypes.c_int32),
+    ctypes.POINTER(ctypes.c_int32), 
+    ctypes.POINTER(ctypes.c_int32), 
+    ctypes.c_int
+]
 
 class Game:
     def __init__(self, game_options):
@@ -303,101 +311,95 @@ class Game:
                 agent.track = self.shared_tracks[track]
                 score = agent.car.CalculateScore(max_potential) * score_multiplier
                 local_scores[index] += score
-                if score == 1 * score_multiplier: local_laps[index] += 1
+    def getPointsOffset(self, copy_track, input, track_data):
+        input_ptr = input.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        output_mutable_ptr = (ctypes.c_int32 * (int(len(input)/4) * 2))()
+        if copy_track == 1:
+            track_data_ptr = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+            swift_fun.get_points_offsets(copy_track, input_ptr, track_data_ptr, output_mutable_ptr, int(len(input)/4))
+        else:
+            swift_fun.get_points_offsets(copy_track, input_ptr, None, output_mutable_ptr, int(len(input)/4))
+        output = np.array(output_mutable_ptr)
+
+        del input_ptr    
+        del output_mutable_ptr
+        return output
 
     def train_agents_gpu(self):
         starts, start_tracks = self.GenerateTrainingStarts()
-        
+
+        timestamps = [0] * 5
+        alives = [True] * len(self.environment.agents) * self.map_tries
+
         gpu_compute_time = 0
-        non_gpu_compute_time = 0
-        alive = len(self.environment.agents) * self.map_tries
-        alives = [True] * alive
+
+        start_time = time.time()
 
         for i in range(self.map_tries):
-            running = True
-            current_track = self.tracks[start_tracks[i]]
             for agent in self.environment.agents:
-                agent.car.x = starts[i][0][1]
-                agent.car.y = starts[i][0][0]
-                agent.car.direction = starts[i][1]
-                agent.car.start_x = starts[i][0][1]
-                agent.car.start_y = starts[i][0][0]
-                agent.car.start_direction = starts[i][1]
-                agent.car.track = current_track
-                agent.car.track_name = start_tracks[i]
-                agent.car.lap_time = 0
-                agent.car.speed = 0
-                agent.car.died = False
+                agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
 
-            track_buf = self.track_bufs[start_tracks[i]]
             ticks = 0
-            
+            running = True
+
             while running:
-                non_gpu_start = time.time()
+                tick_start = time.time()
                 running = False
                 input_data = []
-                ind = -1
                 
-                for agent in self.environment.agents:
-                    ind += 1
-                    if not agent.car.died: 
-                        running = True
-                    else:
-                        if alives[i * len(self.environment.agents) + ind] == False: pass
-                        else:
-                            alives[i * len(self.environment.agents) + ind] = False
-                            alive -= 1
-                    for offset in points_offset:
-                        input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360]
-                print(f"Still: {alive} agents left, and spent: {(gpu_compute_time/(gpu_compute_time + non_gpu_compute_time + 0.0001) * 100):0.2f}  % time on gpu compute        \r", end='', flush=True)
-                inp_data = np.array(input_data, dtype=np.int32)
-                input_buf = self.dev.buffer(inp_data)
-                out_buf = self.dev.buffer(np.zeros(len(points_offset) * 2 * len(self.environment.agents), dtype=np.int32))
-                non_gpu_compute_time += time.time() - non_gpu_start
-                start = time.time()
-                handle = self.compute(len(points_offset) * len(self.environment.agents), input_buf, track_buf, out_buf)
-                del handle
-                del input_buf
-                
-                
-                gpu_compute_time += time.time() - start
-                non_gpu_start = time.time()
-                out_data = np.frombuffer(out_buf, dtype=np.int32)
-                per_agents_points = out_data.reshape((len(self.environment.agents), len(points_offset) * 2))
                 for j in range(len(self.environment.agents)):
-                    calculated_points = per_agents_points[j].reshape((len(points_offset), 2))
-                    self.environment.agents[j].Tick(ticks, self, calculated_points)
+                    agent = self.environment.agents[j]
+                    if not agent.car.died: running = True
+                    else: 
+                        alives[i * len(self.environment.agents) + j] = False
+                    for offset in points_offset:
+                        if agent.car.died: input_data += [0, 0, 0, 0]
+                        else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, 1]
+                stamp_1 = time.time() - tick_start
+
+                print(f"Still: {sum(alives)} agents left, and spent: {(gpu_compute_time / (time.time() - start_time) * 100):0.2f}  % time on gpu compute, tick: {ticks}       \r", end='', flush=True)
+
+                gpu_start = time.time()
+                if ticks == 0: out_data = self.getPointsOffset(1, np.array(input_data).flatten().astype(np.int32), self.tracks[start_tracks[i]].flatten().astype(np.int32))
+                else: out_data = self.getPointsOffset(0, np.array(input_data).flatten().astype(np.int32), None)
+                gpu_compute_time += time.time() - gpu_start
+                stamp_2 = time.time() - tick_start - stamp_1
+
+                per_agents_points = out_data.reshape((len(self.environment.agents), len(points_offset), 2))
+                for j in range(len(self.environment.agents)):
+                    self.environment.agents[j].Tick(ticks, self, per_agents_points[j])
                 del out_data
-                del out_buf
-                del per_agents_points
+                stamp_3 = time.time() - tick_start - stamp_1 - stamp_2
+
+                timestamps[0] += stamp_1
+                timestamps[1] += stamp_2
+                timestamps[2] += stamp_3
+
                 ticks += 1
-                non_gpu_compute_time += time.time() - non_gpu_start
-            start = time.time()
-            to_push = []
-            batch = []
+            to_push, batch = [], []
+
             max_potential = self.environment.agents[0].car.CalculateMaxPotential(starts[i][1])
-            
-            k = 0
+            push_start = time.time()
             for j in range(len(self.environment.agents)):
-                k += 1
                 data = (self.environment.agents[j], j, max_potential, start_tracks[i])
                 batch.append(data)
-                if k == batch_size:
-                    k = 0
+                if (j + 1) % batch_size == 0:
                     to_push.append(batch)
                     batch = []
                 self.lap_times[j] += agent.car.lap_time
+                if agent.car.lap_time != 0: self.laps[j] += 1
 
-            if k != 0:
-                to_push.append(batch)
+            if batch != []: to_push.append(batch)
 
             self.agents_feed.extend(to_push)
-            non_gpu_compute_time += time.time() - start
+            timestamps[3] += time.time() - push_start
+
+            #print(timestamps)
         
         while len(self.agents_feed) != 0 or any(self.working):
             time.sleep(1)
-            print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} remaining \r", end='', flush=True)
-
+            print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} at least remaining \r", end='', flush=True)
+        elapsed = time.time() - start_time
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time = self.lap_times[i]
             self.environment.agents[i].car.laps = self.laps[i]
@@ -405,12 +407,14 @@ class Game:
 
         self.environment.next_generation(self)
 
-        print(f" - Moving to generation: {self.environment.generation}, best lap: {self.environment.previous_best_lap}, best completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, max laps finished: {max(self.laps)}, spent {(gpu_compute_time/(gpu_compute_time + non_gpu_compute_time + 0.0001) * 100):0.2f}% of time on gpu compute")
+        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, {int((gpu_compute_time) // 60 % 60)}m{int((gpu_compute_time) % 60)}s GPU, {int((elapsed) // 60 % 60)}m{int(elapsed % 60)}s total" )
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
+
+        gc.collect()
     
     def load_single_track(self):
         self.tracks = {}
@@ -489,7 +493,7 @@ class Game:
             assert(self.tracks[start_tracks[i]][starts[i][0][0], starts[i][0][1]] == 10)
         return starts, start_tracks
 
-    def load_all_tracks(self):
+    def load_all_tracks(self, shared=False):
         self.start_positions = {}
         self.tracks = {}
         if self.shared_tracks is None:
@@ -512,6 +516,7 @@ class Game:
                 self.center_lines[file[:-4]] = data['center_line']
                 self.start_positions[file[:-4]] = data['start_positions']
                 self.real_starts[file[:-4]] = data['real_start']
+        
         print(f" * Loaded tracks: {str(', '.join(list(self.tracks.keys())))}")
         self.track_name = random.choice(list(self.tracks.keys()))
         self.track = self.tracks[self.track_name]
@@ -698,7 +703,7 @@ class Game:
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):
-                    agent.Tick(i, self)
+                    agent.Tick(i, self, [(2,1)] * len(points_offset))
             tick_time += time.time() - start_time
         score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score
@@ -706,73 +711,4 @@ class Game:
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
 
     def init_shader(self):
-        print(" * Initialising shader")
-        
-        self.dev = mc.Device()
-
-        self.kernel = self.dev.kernel("""
-        #include <metal_stdlib>
-        using namespace metal;
-
-        kernel void compute(const device int *input [[ buffer(0) ]], const device int *track [[ buffer(1) ]], device int2 *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
-            int car_x = input[id * 6];
-            int car_y = input[id * 6+ 2];
-            int direction = input[id * 6 + 4];
-            float pi = 3.1415;
-            float cosinus = (float)cos((float)direction * pi/180);
-            float sinus = (float)sin((float)direction * pi/180);
-            
-            int distance = 0;
-            int max_distance = 200;
-            int dx = 0;
-            int dy = 0;
-            int x = car_x;
-            int y = car_y;
-                                      
-            int point_search_jump = 25;
-            
-            if (track[y * 5000 + x] == 0) {
-                out[id] = int2(x, y);
-                return;
-            }
-            
-            for (int i = 0; i < max_distance; i += point_search_jump) {
-                x = car_x + (int)(i * sinus);
-                y = car_y + (int)(i * cosinus);
-                if (track[y * 5000 + x] == 0) {
-                    distance = i;
-                    break;
-                }
-                distance = i;
-            }
-            if (distance == max_distance) {
-                out[id] = int2(x, y);
-                return;
-            }
-                                      
-            int jump = point_search_jump / 2;
-            while (jump > 0) {
-                if (track[y * 5000 + x] == 0) {
-                    distance -= jump;
-                } else {
-                    distance += jump;
-                }
-                jump /= 2;
-                x = car_x + (int)(distance * sinus);
-                y = car_y + (int)(distance * cosinus);
-            }
-                                      
-            out[id] = int2(x, y);
-            return;
-        }
-        """)
-
-        self.compute = self.kernel.function("compute")
-        self.track_bufs = {}
-        self.out_buf = None
-        self.input_buf = None
-        for track_name in self.track_names:
-            track = self.tracks[track_name]
-            track_sent = track.flatten().astype(np.int32)
-            track_buf = self.dev.buffer(track_sent)
-            self.track_bufs[track_name] = track_buf
+        return
