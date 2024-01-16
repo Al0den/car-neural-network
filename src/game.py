@@ -32,6 +32,11 @@ swift_fun.get_points_offsets.argtypes = [
     ctypes.c_int
 ]
 
+swift_fun.add_track.argtypes = [
+    ctypes.c_int,
+    ctypes.POINTER(ctypes.c_int32),
+]
+
 class Game:
     def __init__(self, game_options):
         self.player = game_options['player']
@@ -289,6 +294,7 @@ class Game:
         local_scores = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         updated = False
+
         while self.running.value:
             try:
                 if waiting_for_agents.value: raise "Waiting"
@@ -306,11 +312,14 @@ class Game:
                 time.sleep(1)
                 continue
             updated = True
-            while input_feed != []:
+            start_time = time.time()
+
+            while len(input_feed) > 0 and time.time() - start_time < 60:
                 agent, index, max_potential, track = input_feed.pop(0)
                 agent.track = self.shared_tracks[track]
                 score = agent.car.CalculateScore(max_potential) * score_multiplier
                 local_scores[index] += score
+
     def getPointsOffset(self, copy_track, input, track_data):
         input_ptr = input.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
         output_mutable_ptr = (ctypes.c_int32 * (int(len(input)/4) * 2))()
@@ -318,11 +327,14 @@ class Game:
             track_data_ptr = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
             swift_fun.get_points_offsets(copy_track, input_ptr, track_data_ptr, output_mutable_ptr, int(len(input)/4))
         else:
+            track_data_ptr = None
             swift_fun.get_points_offsets(copy_track, input_ptr, None, output_mutable_ptr, int(len(input)/4))
         output = np.array(output_mutable_ptr)
 
         del input_ptr    
         del output_mutable_ptr
+        if track_data_ptr is not None:
+            del track_data_ptr
         return output
 
     def train_agents_gpu(self):
@@ -710,5 +722,18 @@ class Game:
         self.runs += 1
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
 
+    def AddTrackBuffer(self, track_index, track_data):
+        track_data = track_data.flatten().astype(np.int32)
+        track_data = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        swift_fun.add_track(track_index, track_data)
+  
+        del track_data
+    
     def init_shader(self):
+        self.track_index = {}
+        increment = 0
+        for track_name in self.track_names:
+            self.track_index[track_name] = increment
+            self.AddTrackBuffer(increment, self.tracks[track_name])
+            increment += 1
         return

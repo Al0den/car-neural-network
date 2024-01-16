@@ -11,12 +11,22 @@ let metallib =  "\(#file.replacingOccurrences(of: "/PyMetalBridge.swift", with: 
      defaultLibrary = try! device.makeLibrary(filepath: metallib)
 
 var trackVectorBuffer: MTLBuffer?
+var trackBectorBuffers = [Int: MTLBuffer]()
 
 @available(macOS 10.13, *)
 @_cdecl("get_points_offsets")
-
 public func get_points_offsets(copy_track : Int, input: UnsafePointer<Int32>, track: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
     return computeOffsets(copy_track : copy_track, input: input, track: track, out: out, count: count)
+}
+
+@available(macOS 10.13, *)
+@_cdecl("add_track")
+public func add_track(track: Int, track_data: UnsafePointer<Int32>) {
+    let trackByteLength = 5000 * 5000 * MemoryLayout<Int32>.size
+    let trackBuffer = UnsafeRawPointer (track_data)
+    let trackVectorBuffer = device.makeBuffer(bytes: trackBuffer, length: trackByteLength, options: [])
+    trackBectorBuffers[track] = trackVectorBuffer
+    print("Created track buffer for track \(track)")
 }
 
 @available(macOS 10.13, *)
