@@ -28,7 +28,6 @@ swift_fun.get_points_offsets.argtypes = [
     ctypes.c_int,
     ctypes.POINTER(ctypes.c_int32),
     ctypes.POINTER(ctypes.c_int32), 
-    ctypes.POINTER(ctypes.c_int32), 
     ctypes.c_int
 ]
 
@@ -36,6 +35,8 @@ swift_fun.add_track.argtypes = [
     ctypes.c_int,
     ctypes.POINTER(ctypes.c_int32),
 ]
+
+swift_fun.concatenate_tracks.argtypes = []
 
 class Game:
     def __init__(self, game_options):
@@ -320,21 +321,15 @@ class Game:
                 score = agent.car.CalculateScore(max_potential) * score_multiplier
                 local_scores[index] += score
 
-    def getPointsOffset(self, copy_track, input, track_data):
-        input_ptr = input.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-        output_mutable_ptr = (ctypes.c_int32 * (int(len(input)/4) * 2))()
-        if copy_track == 1:
-            track_data_ptr = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-            swift_fun.get_points_offsets(copy_track, input_ptr, track_data_ptr, output_mutable_ptr, int(len(input)/4))
-        else:
-            track_data_ptr = None
-            swift_fun.get_points_offsets(copy_track, input_ptr, None, output_mutable_ptr, int(len(input)/4))
+    def getPointsOffset(self, track_name, input_data):
+        input_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/4) * 2))()
+        track_index = self.track_index[track_name]
+        swift_fun.get_points_offsets(track_index, input_ptr, output_mutable_ptr, int(len(input_data)/4))
         output = np.array(output_mutable_ptr)
 
         del input_ptr    
         del output_mutable_ptr
-        if track_data_ptr is not None:
-            del track_data_ptr
         return output
 
     def train_agents_gpu(self):
@@ -372,8 +367,8 @@ class Game:
                 print(f"Still: {sum(alives)} agents left, and spent: {(gpu_compute_time / (time.time() - start_time) * 100):0.2f}  % time on gpu compute, tick: {ticks}       \r", end='', flush=True)
 
                 gpu_start = time.time()
-                if ticks == 0: out_data = self.getPointsOffset(1, np.array(input_data).flatten().astype(np.int32), self.tracks[start_tracks[i]].flatten().astype(np.int32))
-                else: out_data = self.getPointsOffset(0, np.array(input_data).flatten().astype(np.int32), None)
+
+                out_data = self.getPointsOffset(start_tracks[i], np.array(input_data).flatten().astype(np.int32))
                 gpu_compute_time += time.time() - gpu_start
                 stamp_2 = time.time() - tick_start - stamp_1
 
@@ -736,4 +731,5 @@ class Game:
             self.track_index[track_name] = increment
             self.AddTrackBuffer(increment, self.tracks[track_name])
             increment += 1
+        swift_fun.concatenate_tracks()
         return
