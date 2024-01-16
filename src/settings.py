@@ -32,7 +32,7 @@ perft_ticks = 5
 perft_duration = 20
 center_line_hash_size = 100000
 specialised_training_multiple = 1
-compile_shaders = True
+compile_shaders = False
 
 # - Game settings
 god = False

@@ -28,7 +28,7 @@ class Agent:
             input_data = []
             for offset in points_offset:
                 input_data += [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name]]
-            calculated_points = game.getPointsOffset(self.car.track_name, np.array(input_data).flatten().astype(np.int32))
+            calculated_points = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
             calculated_points = calculated_points.reshape((len(points_offset), 2))
 
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)

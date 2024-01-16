@@ -190,7 +190,7 @@ class Render:
         input_data = []
         for offset in points_offset:
             input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name]]
-        points = game.getPointsOffset(car.track_name, np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset), 2))
+        points = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset), 2))
 
         for point in points:
             target_x = point[0]

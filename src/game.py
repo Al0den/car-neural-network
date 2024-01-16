@@ -309,11 +309,10 @@ class Game:
                 score = agent.car.CalculateScore(max_potential) * score_multiplier
                 local_scores[index] += score
 
-    def getPointsOffset(self, track_name, input_data):
+    def getPointsOffset(self, input_data):
         input_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
         output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/4) * 2))()
-        track_index = self.track_index[track_name]
-        self.metal_shaders.get_points_offsets(track_index, input_ptr, output_mutable_ptr, int(len(input_data)/4))
+        self.metal_shaders.get_points_offsets(input_ptr, output_mutable_ptr, int(len(input_data)/4))
         output = np.array(output_mutable_ptr)
 
         del input_ptr    
@@ -323,83 +322,54 @@ class Game:
     def train_agents_gpu(self):
         starts, start_tracks = self.GenerateTrainingStarts()
 
-        timestamps = [0] * 5
-        alives = [True] * len(self.environment.agents) * self.map_tries
-
-        gpu_compute_time = 0
-
-        start_time = time.time()
-
+        all_agents = []
         for i in range(self.map_tries):
             for agent in self.environment.agents:
-                agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
-
-            ticks = 0
-            running = True
-
-            while running:
-                tick_start = time.time()
-                running = False
-                input_data = []
-                
-                for j in range(len(self.environment.agents)):
-                    agent = self.environment.agents[j]
-                    if not agent.car.died: running = True
-                    else: 
-                        alives[i * len(self.environment.agents) + j] = False
-                    for offset in points_offset:
-                        if agent.car.died: input_data += [-1, -1, -1, -1]
-                        else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[start_tracks[i]]]
-                stamp_1 = time.time() - tick_start
-
-                print(f"Still: {sum(alives)} agents left, and spent: {(gpu_compute_time / (time.time() - start_time) * 100):0.2f}  % time on gpu compute, tick: {ticks}       \r", end='', flush=True)
-
-                gpu_start = time.time()
-
-                out_data = self.getPointsOffset(start_tracks[i], np.array(input_data).flatten().astype(np.int32))
-                gpu_compute_time += time.time() - gpu_start
-                stamp_2 = time.time() - tick_start - stamp_1
-
-                per_agents_points = out_data.reshape((len(self.environment.agents), len(points_offset), 2))
-                for j in range(len(self.environment.agents)):
-                    self.environment.agents[j].Tick(ticks, self, per_agents_points[j])
-                del out_data
-                stamp_3 = time.time() - tick_start - stamp_1 - stamp_2
-
-                timestamps[0] += stamp_1
-                timestamps[1] += stamp_2
-                timestamps[2] += stamp_3
-
-                ticks += 1
-            to_push, batch = [], []
-
-            max_potential = self.environment.agents[0].car.CalculateMaxPotential(starts[i][1])
-            push_start = time.time()
-            for j in range(len(self.environment.agents)):
-                if agent.car.lap_time != 0: 
-                    self.laps[j] += 1
-                    self.scores[j] += 1 * score_multiplier
-                    self.lap_times += agent.car.lap_time
+                start_track = start_tracks[i]
+                new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
+                new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
+                all_agents.append(new_agent)
+        running = True
+        ticks = 0
+        while running:
+            running = False
+            input_data = []
+            for agent in all_agents:
+                if not agent.car.died: running = True
+                for offset in points_offset:
+                    if agent.car.died: input_data += [-1, -1, -1, -1]
+                    else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[agent.car.track_name]]
+            remaining_alive = len([agent for agent in all_agents if not agent.car.died])
+            print(f"Still: {remaining_alive} agents left, on tick: {ticks}         \r", end='', flush=True)
+            out_data = self.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
+            per_agents_points = out_data.reshape((len(all_agents), len(points_offset), 2))
+            for i in range(len(all_agents)):
+                all_agents[i].Tick(ticks, self, per_agents_points[i])
+            del out_data
+            ticks += 1
+        batch_num = len(all_agents) // batch_size
+        batches = [[] for _ in range(batch_num)]
+        for j in range(self.map_tries):
+            max_potential = all_agents[j * self.map_tries + 1].car.CalculateMaxPotential()
+            for i in range(len(self.environment.agents)):
+                agent_index = j * self.map_tries + i
+                agent = all_agents[agent_index]
+                if all_agents[agent_index].car.lap_time != 0:
+                    self.lap_times[i] += all_agents[agent_index].car.lap_time
+                    self.laps[i] += 1 
+                    self.scores[i] += 1 * score_multiplier
                 else:
-                    data = (self.environment.agents[j], j, max_potential, start_tracks[i])
-                    batch.append(data)
-                    if (j + 1) % batch_size == 0:
-                        to_push.append(batch)
-                        batch = []
-                    self.lap_times[j] += agent.car.lap_time
-                
-
-            if batch != []: to_push.append(batch)
-
-            self.agents_feed.extend(to_push)
-            timestamps[3] += time.time() - push_start
-
-            #print(timestamps)
+                    data = [agent, i, max_potential, start_tracks[j]]
+                    batches[agent_index % batch_num].append(data)
         
+        self.agents_feed.extend(batches)
+        del all_agents
+        
+        time.sleep(2)
         while len(self.agents_feed) != 0 or any(self.working):
             time.sleep(1)
             print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} at least remaining \r", end='', flush=True)
-        elapsed = time.time() - start_time
+
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time = self.lap_times[i]
             self.environment.agents[i].car.laps = self.laps[i]
@@ -407,7 +377,7 @@ class Game:
 
         self.environment.next_generation(self)
 
-        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, {int((gpu_compute_time) // 60 % 60)}m{int((gpu_compute_time) % 60)}s GPU, {int((elapsed) // 60 % 60)}m{int(elapsed % 60)}s total" )
+        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}")
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
@@ -721,8 +691,9 @@ class Game:
     def init_shader(self):
         self.metal_shaders = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
 
+        self.metal_shaders.init_shaders()
+
         self.metal_shaders.get_points_offsets.argtypes = [
-            ctypes.c_int,
             ctypes.POINTER(ctypes.c_int32),
             ctypes.POINTER(ctypes.c_int32), 
             ctypes.c_int
@@ -734,20 +705,23 @@ class Game:
         ]
 
         self.metal_shaders.concatenate_tracks.argtypes = []
+        self.metal_shaders.init_shaders.argtypes = []
 
         # Check if file has been edited since last run
-        if os.path.exists("./src/shaders/Shaders.metal") or os.path.exists("./src/shaders/PyMetalBridge.swift") and compile_shaders:
+        if (os.path.exists("./src/shaders/Shaders.metal") or os.path.exists("./src/shaders/PyMetalBridge.swift")) and compile_shaders:
             print(" - Recompiling shaders")
             os.system("make compile_shader")
             self.metal_shaders = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
+            self.metal_shaders.init_shaders()
 
         self.track_index = {}
         increment = 0
-        print(len(self.tracks))
+
         for track_name in self.track_names:
             self.track_index[track_name] = increment
             self.AddTrackBuffer(increment, self.tracks[track_name])
             increment += 1
         self.metal_shaders.concatenate_tracks()
+        
 
         return

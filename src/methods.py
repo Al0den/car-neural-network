@@ -10,16 +10,21 @@ from agent import Agent
 def HumanMethod(game, game_options, pygame):
     update_visual(game, pygame)
     keys = pygame.key.get_pressed()
+
     if keys[pygame.K_r]:
         game.restart = True
         game.car.Kill()
     if game.restart:
+        
+        score = game.car.CalculateScore()
+        print(f" - Completed: {score * 100:0.2f}%")
         start_pos, start_dir = random.choice(game.start_positions[game.track_name])
         game.car.x = start_pos[1]
         game.car.start_x = start_pos[1]
         game.car.y = start_pos[0]
         game.car.start_y = start_pos[0]
         game.car.direction = start_dir
+        game.car.start_direction = start_dir
         game.car.died = False
         game.restart = False
 

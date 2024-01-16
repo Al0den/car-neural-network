@@ -24,6 +24,8 @@ class Car:
         self.start_y = self.y
         self.start_direction  = self.direction
         self.previous_center_line = (self.x, self.y)
+        self.finish_x = self.x
+        self.finish_y = self.y
         self.score = 0
 
         self.front_left, self.front_right, self.back_left, self.back_right = [0, 0], [0, 0], [0, 0], [0, 0]
@@ -99,6 +101,8 @@ class Car:
     
     def Kill(self):
         self.died = True
+        self.finish_x, self.finish_y = self.GetNearestCenterline(None)
+
         self.x = self.start_x
         self.y = self.start_y
         self.direction = self.start_direction
@@ -271,7 +275,7 @@ class Car:
             return int(x), int(y)
         return None
 
-    def GetNearestCenterline(self, game):
+    def GetNearestCenterline(self, game=None):
         if self.track[int(self.y), int(self.x)] == 10:
             self.previous_center_line = (int(self.x), int(self.y))
             self.center_line_direction = 0
@@ -296,7 +300,7 @@ class Car:
                         self.center_line_direction = direction
                         return center_pos
         
-        if game.debug:
+        if game is not None and game.debug:
             print(f"Didnt find center line, using previous. Ticknum: {game.ticks}")
 
         self.center_line_direction = 0
@@ -370,26 +374,19 @@ class Car:
         current_x = self.start_x
         current_y = self.start_y
         current_dir = self.start_direction
-        final_x = self.previous_center_line[0]
-        final_y = self.previous_center_line[1]
+        final_x = self.finish_x
+        final_y = self.finish_y
         seen = 0
-        assert(self.track[current_y, current_x] == 10)
-        
-        while (current_x, current_y) != (final_x, final_y) and seen < 50000:
+        if max_potential is None:
+            max_potential = self.CalculateMaxPotential(current_dir)
+        while (final_x, final_y) != (current_x, current_y) and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
-            current_offset = random.choice(potential_offsets)
+            current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
-
-        if (seen > 8000 and len(self.checkpoints_seen) < 1) or seen == 50000:
-            return 0
-        
-        if max_potential is None:
-            max_potential = self.CalculateMaxPotential()
-        
         return min(1, seen / max_potential)
     
     def CalculateMaxPotential(self, current_dir=None):
@@ -399,7 +396,7 @@ class Car:
             current_dir = self.start_direction
         seen = 0
         while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 50 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]

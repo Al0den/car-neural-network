@@ -14,10 +14,13 @@ var trackVectorBuffer: MTLBuffer?
 var trackVectorBuffers = [Int: MTLBuffer]()
 var allTracksBuffer: MTLBuffer?
 
+var commandBuffer : MTLCommandBuffer?
+var computeCommandEncoder : MTLComputeCommandEncoder?
+
 @available(macOS 10.13, *)
 @_cdecl("get_points_offsets")
-public func get_points_offsets(track_id : Int, input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
-    return computeOffsets(track_id : track_id, input: input, out: out, count: count)
+public func get_points_offsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
+    return computeOffsets(input: input, out: out, count: count)
 }
 
 @available(macOS 10.13, *)
@@ -42,38 +45,44 @@ public func concatenate_tracks() {
         buffer?.setPurgeableState(.empty)
     }
 }
+@available(macOS 10.13, *)
+@_cdecl("init_shaders")
+public func init_shaders() {
+
+}
 
 @available(macOS 10.13, *)
-public func computeOffsets(track_id: Int, input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
+public func computeOffsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
     do {
         let inputBuffer = UnsafeRawPointer(input)
+
+        let commandBuffer = commandQueue.makeCommandBuffer()
+        let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
       
-        let commandBuffer = commandQueue.makeCommandBuffer()!
-        let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
 
         let getPointsFunction = defaultLibrary.makeFunction(name: "points_offsets")!
         let computePipelineState = try device.makeComputePipelineState(function: getPointsFunction)
-        computeCommandEncoder.setComputePipelineState(computePipelineState)
+        computeCommandEncoder!.setComputePipelineState(computePipelineState)
 
         let inputByteLength = 4 * MemoryLayout<Int32>.size * count
 
         let inVectorBuffer = device.makeBuffer(bytes: inputBuffer, length: inputByteLength, options: [])
 
-        computeCommandEncoder.setBuffer(inVectorBuffer, offset: 0, index: 0)
-        computeCommandEncoder.setBuffer(allTracksBuffer, offset: 0, index: 1)
+        computeCommandEncoder!.setBuffer(inVectorBuffer, offset: 0, index: 0)
+        computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
 
         let resultRef = UnsafeMutablePointer<Int32>.allocate(capacity: count * 2)
         let outVectorBuffer = device.makeBuffer(bytes: resultRef, length: count * 2 * MemoryLayout<Int32>.size, options: [])
 
-        computeCommandEncoder.setBuffer(outVectorBuffer, offset: 0, index: 2)
+        computeCommandEncoder!.setBuffer(outVectorBuffer, offset: 0, index: 2)
         
         let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
         let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
 
-        computeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
-        computeCommandEncoder.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        computeCommandEncoder!.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+        computeCommandEncoder!.endEncoding()
+        commandBuffer!.commit()
+        commandBuffer!.waitUntilCompleted()
 
         // unsafe bitcast and assigin result pointer to output
 
