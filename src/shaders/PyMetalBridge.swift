@@ -5,10 +5,10 @@ import Foundation
 
 let metallib =  "\(#file.replacingOccurrences(of: "/PyMetalBridge.swift", with: ""))/Shaders.metallib"
 
- @available(macOS 10.13, *)
- let device = MTLCreateSystemDefaultDevice()!,
-     commandQueue = device.makeCommandQueue()!,
-     defaultLibrary = try! device.makeLibrary(filepath: metallib)
+@available(macOS 10.13, *)
+let device = MTLCreateSystemDefaultDevice()!,
+    commandQueue = device.makeCommandQueue()!,
+    defaultLibrary = try! device.makeLibrary(filepath: metallib)
 
 var trackVectorBuffer: MTLBuffer?
 var trackVectorBuffers = [Int: MTLBuffer]()
@@ -32,14 +32,14 @@ public func add_track(track: Int, track_data: UnsafePointer<Int32>) {
 @available(macOS 10.13, *)
 @_cdecl("concatenate_tracks")
 public func concatenate_tracks() {
-    let trackByteLength = 5000 * 5000 * MemoryLayout<Int32>.size * trackVectorBuffers.count
-    let allTracksBuffer = device.makeBuffer(length: trackByteLength, options: [])
+    allTracksBuffer = device.makeBuffer(length: 5000 * 5000 * MemoryLayout<Int32>.size * trackVectorBuffers.count, options: [])
     var offset = 0
     for index in 0...(trackVectorBuffers.count - 1) {
         let buffer = trackVectorBuffers[index]
         let content = UnsafeMutableRawPointer(allTracksBuffer!.contents() + offset)
         content.copyMemory(from: buffer!.contents(), byteCount: buffer!.length)
         offset += buffer!.length
+        buffer?.setPurgeableState(.empty)
     }
 }
 
@@ -47,7 +47,7 @@ public func concatenate_tracks() {
 public func computeOffsets(track_id: Int, input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
     do {
         let inputBuffer = UnsafeRawPointer(input)
-        let trackVectorBuffer = trackVectorBuffers[track_id]
+      
         let commandBuffer = commandQueue.makeCommandBuffer()!
         let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()!
 
@@ -60,7 +60,7 @@ public func computeOffsets(track_id: Int, input: UnsafePointer<Int32>, out: Unsa
         let inVectorBuffer = device.makeBuffer(bytes: inputBuffer, length: inputByteLength, options: [])
 
         computeCommandEncoder.setBuffer(inVectorBuffer, offset: 0, index: 0)
-        computeCommandEncoder.setBuffer(trackVectorBuffer, offset: 0, index: 1)
+        computeCommandEncoder.setBuffer(allTracksBuffer, offset: 0, index: 1)
 
         let resultRef = UnsafeMutablePointer<Int32>.allocate(capacity: count * 2)
         let outVectorBuffer = device.makeBuffer(bytes: resultRef, length: count * 2 * MemoryLayout<Int32>.size, options: [])
@@ -83,7 +83,6 @@ public func computeOffsets(track_id: Int, input: UnsafePointer<Int32>, out: Unsa
 
         inVectorBuffer!.setPurgeableState(.empty)
         outVectorBuffer!.setPurgeableState(.empty)
-        
         
         return 0 
     } catch {

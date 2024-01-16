@@ -6,10 +6,13 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
     int car_x = input[id * 4];
     int car_y = input[id * 4 + 1];
     int direction = input[id * 4 + 2];
-    int ded = input[id * 4 + 3];
-    if (ded == 0) {
+    int track_id = input[id * 4 + 3];
+    if (track_id == -1) {
+        out[id * 2] = -1;
+        out[id * 2 + 1] = -1;
         return;
     }
+
     float pi = 3.1415;
     float cosinus = (float)cos((float)direction * pi/180);
     float sinus = (float)sin((float)direction * pi/180);
@@ -21,7 +24,7 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
                                 
     int point_search_jump = 25;
 
-    if (track[y * 5000 + x] == 0) {
+    if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
         out[id * 2] = x;
         out[id * 2 + 1] = y;
         return;
@@ -30,7 +33,7 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
     for (int i = 0; i < max_distance; i += point_search_jump) {
         x = car_x + (int)(i * sinus);
         y = car_y + (int)(i * cosinus);
-        if (track[y * 5000 + x] == 0) {
+        if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
             distance = i;
             break;
         }
@@ -45,7 +48,7 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
     int jump = point_search_jump / 2;
     int rep = 0;
     while (jump > 0 && rep < 20) {
-        if (track[y * 5000 + x] == 0) {
+        if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
             distance -= jump;
         } else {
             distance += jump;

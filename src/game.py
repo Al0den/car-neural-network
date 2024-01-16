@@ -22,21 +22,9 @@ from settings import *
 from precomputed import offsets, directions
 from smoothen import main as smoothen
 
-swift_fun = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
 
-swift_fun.get_points_offsets.argtypes = [
-    ctypes.c_int,
-    ctypes.POINTER(ctypes.c_int32),
-    ctypes.POINTER(ctypes.c_int32), 
-    ctypes.c_int
-]
 
-swift_fun.add_track.argtypes = [
-    ctypes.c_int,
-    ctypes.POINTER(ctypes.c_int32),
-]
 
-swift_fun.concatenate_tracks.argtypes = []
 
 class Game:
     def __init__(self, game_options):
@@ -325,7 +313,7 @@ class Game:
         input_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
         output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/4) * 2))()
         track_index = self.track_index[track_name]
-        swift_fun.get_points_offsets(track_index, input_ptr, output_mutable_ptr, int(len(input_data)/4))
+        self.metal_shaders.get_points_offsets(track_index, input_ptr, output_mutable_ptr, int(len(input_data)/4))
         output = np.array(output_mutable_ptr)
 
         del input_ptr    
@@ -360,8 +348,8 @@ class Game:
                     else: 
                         alives[i * len(self.environment.agents) + j] = False
                     for offset in points_offset:
-                        if agent.car.died: input_data += [0, 0, 0, 0]
-                        else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, 1]
+                        if agent.car.died: input_data += [-1, -1, -1, -1]
+                        else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[start_tracks[i]]]
                 stamp_1 = time.time() - tick_start
 
                 print(f"Still: {sum(alives)} agents left, and spent: {(gpu_compute_time / (time.time() - start_time) * 100):0.2f}  % time on gpu compute, tick: {ticks}       \r", end='', flush=True)
@@ -388,13 +376,18 @@ class Game:
             max_potential = self.environment.agents[0].car.CalculateMaxPotential(starts[i][1])
             push_start = time.time()
             for j in range(len(self.environment.agents)):
-                data = (self.environment.agents[j], j, max_potential, start_tracks[i])
-                batch.append(data)
-                if (j + 1) % batch_size == 0:
-                    to_push.append(batch)
-                    batch = []
-                self.lap_times[j] += agent.car.lap_time
-                if agent.car.lap_time != 0: self.laps[j] += 1
+                if agent.car.lap_time != 0: 
+                    self.laps[j] += 1
+                    self.scores[j] += 1 * score_multiplier
+                    self.lap_times += agent.car.lap_time
+                else:
+                    data = (self.environment.agents[j], j, max_potential, start_tracks[i])
+                    batch.append(data)
+                    if (j + 1) % batch_size == 0:
+                        to_push.append(batch)
+                        batch = []
+                    self.lap_times[j] += agent.car.lap_time
+                
 
             if batch != []: to_push.append(batch)
 
@@ -518,7 +511,8 @@ class Game:
                 data = self.load_track(file[:-4])
                 
                 self.tracks[file[:-4]] = np.array(data['track']).astype(np.int8)
-                self.shared_tracks[file[:-4]] = self.tracks[file[:-4]]
+                if self.player in [1,2,3]:
+                    self.shared_tracks[file[:-4]] = self.tracks[file[:-4]]
                 self.track = self.tracks[file[:-4]]
                 self.center_lines[file[:-4]] = data['center_line']
                 self.start_positions[file[:-4]] = data['start_positions']
@@ -720,16 +714,40 @@ class Game:
     def AddTrackBuffer(self, track_index, track_data):
         track_data = track_data.flatten().astype(np.int32)
         track_data = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-        swift_fun.add_track(track_index, track_data)
+        self.metal_shaders.add_track(track_index, track_data)
   
         del track_data
     
     def init_shader(self):
+        self.metal_shaders = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
+
+        self.metal_shaders.get_points_offsets.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_int32), 
+            ctypes.c_int
+        ]
+
+        self.metal_shaders.add_track.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_int32),
+        ]
+
+        self.metal_shaders.concatenate_tracks.argtypes = []
+
+        # Check if file has been edited since last run
+        if os.path.exists("./src/shaders/Shaders.metal") or os.path.exists("./src/shaders/PyMetalBridge.swift") and compile_shaders:
+            print(" - Recompiling shaders")
+            os.system("make compile_shader")
+            self.metal_shaders = ctypes.CDLL("./src/shaders/compiled_shader.dylib")
+
         self.track_index = {}
         increment = 0
+        print(len(self.tracks))
         for track_name in self.track_names:
             self.track_index[track_name] = increment
             self.AddTrackBuffer(increment, self.tracks[track_name])
             increment += 1
-        swift_fun.concatenate_tracks()
+        self.metal_shaders.concatenate_tracks()
+
         return

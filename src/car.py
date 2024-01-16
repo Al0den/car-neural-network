@@ -262,6 +262,7 @@ class Car:
         return np.array([eval_x, eval_y])
     
     def GetPointsInput(self):
+        return 
         self.previous_points = np.array([self.CalculatePoint(offset) for offset in points_offset])
         return self.previous_points
     
