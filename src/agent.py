@@ -61,7 +61,6 @@ class Agent:
 
         if ticks > safety_ticks and self.car.speed < min_speed:
             self.car.Kill()
-            self.car.died = True
         if ticks > max_ticks_before_kill:
             self.car.Kill()
         return state

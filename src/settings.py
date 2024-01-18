@@ -5,22 +5,21 @@ points_offset = [0, -15, 15, 35, -35, 89, -89]
 # - Neural network settings
 center_line_input = True
 state_space_size = len(points_offset) + 5
-first_layer_size_coeff = 1.2
-num_hidden_layers = 2
+first_layer_size_coeff = 1.3
+num_hidden_layers = 3
 action_space_size = 2
 activation_function = np.tanh
-map_tries = 15
+map_tries = 10
 
-batch_size = 10
+batch_size = 30
 
-real_starts_num = 4
-previous_fails_num = 0
-assert(real_starts_num + previous_fails_num <= map_tries)
+real_starts_num = 3
+assert(real_starts_num <= map_tries)
 
 travel_distances_centerlines = [0, 8, 19, 31, 44, 60, 90, 160, 230, 300]
 
 max_points_distance = 200
-max_center_line_distance = 70
+max_center_line_distance = 20
 
 state_space_size += len(travel_distances_centerlines) - 1
 

@@ -15,7 +15,6 @@ def HumanMethod(game, game_options, pygame):
         game.restart = True
         game.car.Kill()
     if game.restart:
-        
         score = game.car.CalculateScore()
         print(f" - Completed: {score * 100:0.2f}%")
         start_pos, start_dir = random.choice(game.start_positions[game.track_name])
@@ -47,6 +46,7 @@ def SpecificMapMethod(game, pygame, game_options):
         game.environment.generation = best_agent
     
         agent.track = game.track
+        agent.car.track = game.track
         game.ticks = 0
 
 def ContinuousMethod(game, game_options, pygame):
@@ -54,7 +54,7 @@ def ContinuousMethod(game, game_options, pygame):
     update_speed(game, pygame)
     continuous_commands(game, pygame)
     if not game.environment.agents[0].car.died: return
-    
+
     print(f" - Completed: {game.environment.agents[0].car.CalculateScore() * 100:0.2f}%")
     
     game.track_name = random.choice(list(game.tracks.keys()))
@@ -67,6 +67,7 @@ def ContinuousMethod(game, game_options, pygame):
     game.environment.agents[0] = agent
     game.environment.generation = best_agent
     agent.track = game.track
+    agent.car.track = game.track
 
     game.ticks = 0
 

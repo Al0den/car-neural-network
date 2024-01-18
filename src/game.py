@@ -22,10 +22,6 @@ from settings import *
 from precomputed import offsets, directions
 from smoothen import main as smoothen
 
-
-
-
-
 class Game:
     def __init__(self, game_options):
         self.player = game_options['player']
@@ -80,17 +76,24 @@ class Game:
         elif self.player == 4:
             best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained")
             self.extract_csv(f"./data/per_track/{self.track_name}/log.csv")
+            agent.car.track = self.track
+            agent.car.track_name = self.track_name
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
-
-            self.environment.agents[0].car.x = self.real_starts[self.track_name][0][1]
-            self.environment.agents[0].car.y = self.real_starts[self.track_name][0][0]
-            self.environment.agents[0].car.direction = self.config['start_dir'].get(self.track_name)
+            
             self.environment.agents[0].car.speed = self.config['quali_start_speed'].get(self.track_name)
             
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
             self.extract_csv("./data/train/log.csv")
+            agent.car.track = self.track
+            agent.car.track_name = self.track_name
+            agent.car.x = self.real_starts[self.track_name][0][1]
+            agent.car.start_x = self.real_starts[self.track_name][0][1]
+            agent.car.y = self.real_starts[self.track_name][0][0]
+            agent.car.start_y = self.real_starts[self.track_name][0][0]
+            agent.car.direction = self.config['start_dir'].get(self.track_name)
+            agent.car.start_direction = self.config['start_dir'].get(self.track_name)
 
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
@@ -110,8 +113,11 @@ class Game:
             start_x = self.real_starts[self.track_name][0][1]
             start_y = self.real_starts[self.track_name][0][0]
             agent.car.x = start_x
+            agent.car.start_x = start_x
             agent.car.y = start_y
+            agent.car.start_y = start_y
             agent.car.direction = self.real_starts[self.track_name][1]
+            agent.car.start_direction = self.real_starts[self.track_name][1]
 
             self.best_agent = best_agent
             self.environment.agents[0] = agent
@@ -164,7 +170,10 @@ class Game:
                 agent = self.environment.agents[i]
                 agent.car.x = self.real_starts[self.track_name][0][1]
                 agent.car.y = self.real_starts[self.track_name][0][0]
+                agent.car.start_x = self.real_starts[self.track_name][0][1]
+                agent.car.start_y = self.real_starts[self.track_name][0][0]
                 agent.car.direction = self.real_starts[self.track_name][1]
+                agent.car.start_direction = self.real_starts[self.track_name][1]
                 assert(agent.car.track[agent.car.y, agent.car.x] == 10)
         elif self.player == 10:
             print(" - Starting performance test...")
@@ -300,12 +309,14 @@ class Game:
                     working[p_id] = False
                 time.sleep(1)
                 continue
+            
             updated = True
             start_time = time.time()
 
             while len(input_feed) > 0 and time.time() - start_time < 60:
                 agent, index, max_potential, track = input_feed.pop(0)
-                agent.track = self.shared_tracks[track]
+                agent.car.track = self.shared_tracks[track]
+                agent.car.track_name = track
                 score = agent.car.CalculateScore(max_potential) * score_multiplier
                 local_scores[index] += score
 
@@ -327,57 +338,86 @@ class Game:
             for agent in self.environment.agents:
                 start_track = start_tracks[i]
                 new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
+                new_agent.network = agent.network
                 new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
+                new_agent.lap_time = 0
+                new_agent.score = 0
+                new_agent.laps = 0
+                new_agent.car.laps = 0
+                new_agent.car.lap_times = 0
+                new_agent.car.score = 0
+                new_agent.car.lap_time = 0
                 all_agents.append(new_agent)
+        for agent in self.environment.agents:
+            agent.car.lap_time = 0
+            agent.car.laps = 0
+            agent.car.score = 0
+
         running = True
         ticks = 0
+        alives = [True] * len(all_agents)
+        current_batch = []
+        track_potentials = {}
+        best_score = 0
+        best_laps = 0
+        for track in self.track_names:
+            track_potentials[track] = 0
         while running:
             running = False
             input_data = []
             for agent in all_agents:
                 if not agent.car.died: running = True
+                if agent.car.died and alives[all_agents.index(agent)]:
+                    alives[all_agents.index(agent)] = False
+                    real_agent_index = all_agents.index(agent) % len(self.environment.agents)
+                    if agent.car.lap_time > 0:
+                        self.scores[real_agent_index] += 1 * score_multiplier
+                        self.laps[real_agent_index] += 1
+                        self.lap_times[real_agent_index] += agent.car.lap_time
+                    else:
+                        if track_potentials[agent.car.track_name] == 0:
+                            track_potentials[agent.car.track_name] = agent.car.CalculateMaxPotential()
+                        data = [agent, real_agent_index, track_potentials[agent.car.track_name], agent.car.track_name]
+                        current_batch.append(data)
                 for offset in points_offset:
                     if agent.car.died: input_data += [-1, -1, -1, -1]
                     else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[agent.car.track_name]]
             remaining_alive = len([agent for agent in all_agents if not agent.car.died])
-            print(f"Still: {remaining_alive} agents left, on tick: {ticks}         \r", end='', flush=True)
+            if ticks % 10 == 0:
+                best_score = max(self.scores)
+                best_laps = max(self.laps)
+            print(f"Still: {remaining_alive} agents left, on tick: {ticks}, laps: {best_laps}, score: {best_score/ (score_multiplier * self.map_tries) * 100:0.2f}%          \r", end='', flush=True)
             out_data = self.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
             per_agents_points = out_data.reshape((len(all_agents), len(points_offset), 2))
             for i in range(len(all_agents)):
                 all_agents[i].Tick(ticks, self, per_agents_points[i])
             del out_data
             ticks += 1
-        batch_num = len(all_agents) // batch_size
-        batches = [[] for _ in range(batch_num)]
-        for j in range(self.map_tries):
-            max_potential = all_agents[j * self.map_tries + 1].car.CalculateMaxPotential()
-            for i in range(len(self.environment.agents)):
-                agent_index = j * self.map_tries + i
-                agent = all_agents[agent_index]
-                if all_agents[agent_index].car.lap_time != 0:
-                    self.lap_times[i] += all_agents[agent_index].car.lap_time
-                    self.laps[i] += 1 
-                    self.scores[i] += 1 * score_multiplier
-                else:
-                    data = [agent, i, max_potential, start_tracks[j]]
-                    batches[agent_index % batch_num].append(data)
-        
-        self.agents_feed.extend(batches)
+            batches = []
+            while len(current_batch) > batch_size:
+                batches.append(current_batch[:batch_size])
+                current_batch = current_batch[batch_size:]
+            # Start thread to extend the batch without hanging main code
+            
+            self.agents_feed.extend(batches)
+
         del all_agents
+        if current_batch != []:
+            self.agents_feed.append(current_batch)
         
-        time.sleep(2)
+        time.sleep(1.5)
         while len(self.agents_feed) != 0 or any(self.working):
             time.sleep(1)
-            print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} at least remaining \r", end='', flush=True)
+            print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} at least remaining                     \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
-            self.environment.agents[i].car.lap_time = self.lap_times[i]
-            self.environment.agents[i].car.laps = self.laps[i]
-            self.environment.agents[i].car.score = self.scores[i]
+            self.environment.agents[i].car.lap_time += self.lap_times[i]
+            self.environment.agents[i].car.laps += self.laps[i]
+            self.environment.agents[i].car.score += self.scores[i]
 
         self.environment.next_generation(self)
 
-        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}")
+        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}                     ")
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0

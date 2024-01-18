@@ -38,6 +38,8 @@ class Render:
 
         self.zoom_offset = 0
 
+        self.prev_score = None
+
 
     def load_track_surface(self, track_name):
         if os.path.isfile("data/tracks/" + track_name + "_surface.png"):
@@ -191,6 +193,9 @@ class Render:
         for offset in points_offset:
             input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name]]
         points = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset), 2))
+        center_line_x, center_line_y = car.GetNearestCenterline(game)
+        # Add to points
+        points = np.vstack((points, np.array([center_line_x, center_line_y])))
 
         for point in points:
             target_x = point[0]
@@ -202,8 +207,13 @@ class Render:
 
             new_x = car.x + new_dist * np.cos(angle)
             new_y = car.y + new_dist * np.sin(angle)
-            pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
-            pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
+            # If its the last, draw in red
+            if point[0] == center_line_x and point[1] == center_line_y:
+                pygame.draw.circle(self.screen, (255, 0, 0), (int(new_x - camera_x), int(new_y - camera_y)), 3)
+            else:
+
+                pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
+                pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
 
     def DrawCenterlineInputs(self, game, camera_x, camera_y, car):
         car.GetNearestCenterline(game)
@@ -237,13 +247,13 @@ class Render:
         tps = game.clock.get_fps()
         actions = [f"{action:0.2f}" for action in game.environment.agents[0].action]
         state = [f"{state:0.2f}" for state in game.environment.agents[0].state]
-
+       
         state_lines = [state[i:i + 5] for i in range(0, len(state), 5)]
 
         lines = [
             f"Generation: {game.environment.generation}",
+            f"Current Score: {game.environment.agents[0].car.score}",
             f"Best lap: {game.environment.previous_best_lap}",
-            f"Best score: {game.environment.previous_best_score}",
             f"tps: {tps:.1f}",
             f"Action: [{', '.join(actions)}]",
             "State:"
