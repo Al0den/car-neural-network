@@ -22,26 +22,22 @@ class Agent:
 
     def CalculateState(self, game, ticks, calculated_points=None):
         center_line_x, center_line_y = self.car.GetNearestCenterline(game)
-        points = GetCenterlineInputs(game, self.car)
-
+        #points = GetCenterlineInputs(game, self.car)
         if calculated_points is None:
-            input_data = []
+            input_data = np.array([])
             for offset in points_offset:
-                input_data += [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name]]
-            calculated_points = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
-            calculated_points = calculated_points.reshape((len(points_offset), 2))
+                input_data = np.concatenate([input_data, [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]])
+            calculated_points = game.getPointsOffset(input_data.flatten().astype(np.int32))
 
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
-        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line] + points
-        car_pos = np.array([self.car.x, self.car.y])
-        distances = calculate_distance_vectorized(calculated_points, car_pos)
-        normalized_distances = np.maximum(-1, np.minimum(1, distances / (max_points_distance * self.car.ppm) * 1.2))
-
-        state += normalized_distances.tolist()
+        state = np.array([self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line])
+        calculated_points_input = np.minimum(1, np.maximum(-1, calculated_points / (self.car.ppm * max_points_distance)))
+        state = np.concatenate([state, calculated_points_input])
 
         if debug: 
             for inp in state:
-                if abs(inp) > 1: print("One of the inputs is out of bounds, input num: " + str(state.index(inp)))
+                if np.abs(inp) > 1: 
+                    print("One of the inputs is out of bounds, input num: " + str(np.where(state == inp)[0]))
 
         return state
     
@@ -126,6 +122,13 @@ class Agent:
         self.car.steer = 0
         self.car.died = False
         self.car.previous_points = []
+        self.car.lap_time = 0
+        self.lap_time = 0
+        self.score = 0
+        self.laps = 0
+        self.car.laps = 0
+        self.car.lap_times = 0
+        self.car.score = 0
         self.car.lap_time = 0
         if track is not None:
             self.car.track = track

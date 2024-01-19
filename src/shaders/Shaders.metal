@@ -3,13 +3,18 @@
 using namespace metal;
 
 kernel void points_offsets(const device int *input [[ buffer(0) ]], const device int *track [[ buffer(1) ]], device int *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
-    int car_x = input[id * 4];
-    int car_y = input[id * 4 + 1];
-    int direction = input[id * 4 + 2];
-    int track_id = input[id * 4 + 3];
+    int car_x = input[id * 5];
+    int car_y = input[id * 5 + 1];
+    int direction = input[id * 5 + 2];
+    int track_id = input[id * 5 + 3];
+    float ppm = (float)(input[id * 5 + 4]) / 1000; // pixels per meter (1000 = 1 meter
+
+    int x = car_x;
+    int y = car_y;
+    int distance = 0;
+
     if (track_id == -1) {
-        out[id * 2] = -1;
-        out[id * 2 + 1] = -1;
+        out[id] = 0;
         return;
     }
 
@@ -17,16 +22,12 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
     float cosinus = (float)cos((float)direction * pi/180);
     float sinus = (float)sin((float)direction * pi/180);
     
-    int distance = 0;
-    int max_distance = 200;
-    int x = car_x;
-    int y = car_y;
-                                
+    int max_distance = (int)(200 * ppm);
+              
     int point_search_jump = 25;
 
     if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
-        out[id * 2] = x;
-        out[id * 2 + 1] = y;
+        out[id] = distance;
         return;
     }
     
@@ -40,14 +41,13 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
         distance = i;
     }
     if (distance == max_distance) {
-        out[id * 2] = x;
-        out[id * 2 + 1] = y;
+        out[id] = distance;
         return;
     }
                                 
     int jump = point_search_jump / 2;
     int rep = 0;
-    while (jump > 0 && rep < 20) {
+    while (jump > 0 && rep < 30) {
         if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
             distance -= jump;
         } else {
@@ -58,8 +58,6 @@ kernel void points_offsets(const device int *input [[ buffer(0) ]], const device
         x = car_x + (int)(distance * sinus);
         y = car_y + (int)(distance * cosinus);
     }
-                                
-    out[id * 2] = x;
-    out[id * 2 + 1] = y;
+    out[id] = distance;
     return;
 }

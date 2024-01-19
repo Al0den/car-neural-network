@@ -18,12 +18,6 @@ var commandBuffer : MTLCommandBuffer?
 var computeCommandEncoder : MTLComputeCommandEncoder?
 
 @available(macOS 10.13, *)
-@_cdecl("get_points_offsets")
-public func get_points_offsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
-    return computeOffsets(input: input, out: out, count: count)
-}
-
-@available(macOS 10.13, *)
 @_cdecl("add_track")
 public func add_track(track: Int, track_data: UnsafePointer<Int32>) {
     let trackByteLength = 5000 * 5000 * MemoryLayout<Int32>.size
@@ -52,6 +46,12 @@ public func init_shaders() {
 }
 
 @available(macOS 10.13, *)
+@_cdecl("get_points_offsets")
+public func get_points_offsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
+    return computeOffsets(input: input, out: out, count: count)
+}
+
+@available(macOS 10.13, *)
 public func computeOffsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointer<Int32>, count: Int) -> Int {
     do {
         let inputBuffer = UnsafeRawPointer(input)
@@ -59,20 +59,19 @@ public func computeOffsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointe
         let commandBuffer = commandQueue.makeCommandBuffer()
         let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
       
-
         let getPointsFunction = defaultLibrary.makeFunction(name: "points_offsets")!
         let computePipelineState = try device.makeComputePipelineState(function: getPointsFunction)
         computeCommandEncoder!.setComputePipelineState(computePipelineState)
 
-        let inputByteLength = 4 * MemoryLayout<Int32>.size * count
+        let inputByteLength = 5 * MemoryLayout<Int32>.size * count
 
         let inVectorBuffer = device.makeBuffer(bytes: inputBuffer, length: inputByteLength, options: [])
 
         computeCommandEncoder!.setBuffer(inVectorBuffer, offset: 0, index: 0)
         computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
 
-        let resultRef = UnsafeMutablePointer<Int32>.allocate(capacity: count * 2)
-        let outVectorBuffer = device.makeBuffer(bytes: resultRef, length: count * 2 * MemoryLayout<Int32>.size, options: [])
+        let resultRef = UnsafeMutablePointer<Int32>.allocate(capacity: count)
+        let outVectorBuffer = device.makeBuffer(bytes: resultRef, length: count * MemoryLayout<Int32>.size, options: [])
 
         computeCommandEncoder!.setBuffer(outVectorBuffer, offset: 0, index: 2)
         
@@ -86,7 +85,7 @@ public func computeOffsets(input: UnsafePointer<Int32>, out: UnsafeMutablePointe
 
         // unsafe bitcast and assigin result pointer to output
 
-        out.initialize(from: outVectorBuffer!.contents().assumingMemoryBound(to: Int32.self), count: count * 2)
+        out.initialize(from: outVectorBuffer!.contents().assumingMemoryBound(to: Int32.self), count: count)
 
         resultRef.deallocate()
 

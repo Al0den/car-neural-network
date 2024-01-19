@@ -178,10 +178,7 @@ class Car:
         self.x += displacement * cos[(int(self.direction) % 360) * 10] * delta_t
         self.y -= displacement * sin[(int(self.direction) % 360) * 10] * delta_t
 
-        self.speed = max(0, min(max_speed, self.speed))
         self.direction %= 360
-        self.x = max(0, min(len(self.track[0]) - 1, self.x))
-        self.y = max(0, min(len(self.track) - 1, self.y))
 
         self.UpdateCorners()
 

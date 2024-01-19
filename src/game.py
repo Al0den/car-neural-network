@@ -179,8 +179,7 @@ class Game:
             print(" - Starting performance test...")
             self.totalScore = 0
             self.runs = 0
-            self.prev_update = time.time()
-            self.start_time = time.time()
+            
         elif self.player == 11:
             data = np.load("./data/per_track/" + self.track_name + "/generated_run.npy", allow_pickle=True).item()
             self.environment.agents = data['agents']
@@ -200,6 +199,9 @@ class Game:
             self.load_all_tracks()
 
         self.init_shader()
+
+        self.prev_update = time.time()
+        self.start_time = time.time()
 
     def tick(self):
         if self.player == 0:
@@ -322,15 +324,15 @@ class Game:
 
     def getPointsOffset(self, input_data):
         input_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-        output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/4) * 2))()
-        self.metal_shaders.get_points_offsets(input_ptr, output_mutable_ptr, int(len(input_data)/4))
+        output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/5)))()
+        self.metal_shaders.get_points_offsets(input_ptr, output_mutable_ptr, int(len(input_data)/5))
         output = np.array(output_mutable_ptr)
-
         del input_ptr    
         del output_mutable_ptr
         return output
 
     def train_agents_gpu(self):
+        current_batch, timestamps = [], [0] * 6
         starts, start_tracks = self.GenerateTrainingStarts()
 
         all_agents = []
@@ -340,13 +342,6 @@ class Game:
                 new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
                 new_agent.network = agent.network
                 new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
-                new_agent.lap_time = 0
-                new_agent.score = 0
-                new_agent.laps = 0
-                new_agent.car.laps = 0
-                new_agent.car.lap_times = 0
-                new_agent.car.score = 0
-                new_agent.car.lap_time = 0
                 all_agents.append(new_agent)
         for agent in self.environment.agents:
             agent.car.lap_time = 0
@@ -356,13 +351,17 @@ class Game:
         running = True
         ticks = 0
         alives = [True] * len(all_agents)
-        current_batch = []
+        
         track_potentials = {}
         best_score = 0
         best_laps = 0
         for track in self.track_names:
             track_potentials[track] = 0
+        local_scores = [0] * len(self.environment.agents)
+        local_laps = [0] * len(self.environment.agents)
+        local_lap_times = [0] * len(self.environment.agents)
         while running:
+            start_1 = time.time()
             running = False
             input_data = []
             for agent in all_agents:
@@ -371,35 +370,47 @@ class Game:
                     alives[all_agents.index(agent)] = False
                     real_agent_index = all_agents.index(agent) % len(self.environment.agents)
                     if agent.car.lap_time > 0:
-                        self.scores[real_agent_index] += 1 * score_multiplier
-                        self.laps[real_agent_index] += 1
-                        self.lap_times[real_agent_index] += agent.car.lap_time
+                        local_scores[real_agent_index] += 1 * score_multiplier
+                        local_laps[real_agent_index] += 1
+                        local_lap_times[real_agent_index] += agent.car.lap_time
                     else:
                         if track_potentials[agent.car.track_name] == 0:
                             track_potentials[agent.car.track_name] = agent.car.CalculateMaxPotential()
                         data = [agent, real_agent_index, track_potentials[agent.car.track_name], agent.car.track_name]
                         current_batch.append(data)
                 for offset in points_offset:
-                    if agent.car.died: input_data += [-1, -1, -1, -1]
-                    else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[agent.car.track_name]]
+                    if agent.car.died: input_data += [-1, -1, -1, -1, -1]
+                    else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+            stamp_1 = time.time()
             remaining_alive = len([agent for agent in all_agents if not agent.car.died])
             if ticks % 10 == 0:
                 best_score = max(self.scores)
                 best_laps = max(self.laps)
-            print(f"Still: {remaining_alive} agents left, on tick: {ticks}, laps: {best_laps}, score: {best_score/ (score_multiplier * self.map_tries) * 100:0.2f}%          \r", end='', flush=True)
+            stamp_2 = time.time()
+            rounded_stamps = [f"{stamp:.1f}" for stamp in timestamps]
+            print(f"Still: {remaining_alive} agents left, on tick: {ticks}, laps: {best_laps}, score: {best_score/ (score_multiplier * self.map_tries) * 100:0.2f}%, stamps: {rounded_stamps}          \r", end='', flush=True)
             out_data = self.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
-            per_agents_points = out_data.reshape((len(all_agents), len(points_offset), 2))
+            per_agents_points = out_data.reshape((len(all_agents), len(points_offset)))
+            stamp_3 = time.time()
             for i in range(len(all_agents)):
                 all_agents[i].Tick(ticks, self, per_agents_points[i])
-            del out_data
+            stamp_4 = time.time()
+
+            del out_data, 
             ticks += 1
             batches = []
             while len(current_batch) > batch_size:
                 batches.append(current_batch[:batch_size])
                 current_batch = current_batch[batch_size:]
-            # Start thread to extend the batch without hanging main code
             
             self.agents_feed.extend(batches)
+            stamp_5 = time.time()
+
+            timestamps[0] += stamp_1 - start_1
+            timestamps[1] += stamp_2 - stamp_1
+            timestamps[2] += stamp_3 - stamp_2
+            timestamps[3] += stamp_4 - stamp_3
+            timestamps[4] += stamp_5 - stamp_4
 
         del all_agents
         if current_batch != []:
@@ -409,15 +420,15 @@ class Game:
         while len(self.agents_feed) != 0 or any(self.working):
             time.sleep(1)
             print(f" - Computing agent scores, {len(self.agents_feed) * batch_size} at least remaining                     \r", end='', flush=True)
-
+        
         for i in range(len(self.environment.agents)):
-            self.environment.agents[i].car.lap_time += self.lap_times[i]
-            self.environment.agents[i].car.laps += self.laps[i]
-            self.environment.agents[i].car.score += self.scores[i]
+            self.environment.agents[i].car.lap_time += self.lap_times[i] + local_lap_times[i]
+            self.environment.agents[i].car.laps += self.laps[i] + local_laps[i]
+            self.environment.agents[i].car.score += self.scores[i] + local_scores[i]
 
         self.environment.next_generation(self)
 
-        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}                     ")
+        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(local_laps)}                     ")
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
@@ -702,6 +713,7 @@ class Game:
             pass
     def performanceTest(self):
         tick_time = 0
+        self.debug = True
         for track_name in self.track_names:
             track = self.tracks[track_name]
             pos, direction = random.choice(self.start_positions[track_name])
@@ -714,7 +726,7 @@ class Game:
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):
-                    agent.Tick(i, self, [(2,1)] * len(points_offset))
+                    agent.Tick(i, self, np.array([np.random.uniform(0, 200)] * len(points_offset)))
             tick_time += time.time() - start_time
         score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score

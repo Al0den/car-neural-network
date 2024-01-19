@@ -191,8 +191,17 @@ class Render:
     def DrawPointsInput(self, car, camera_x, camera_y, game, prev_points=None):
         input_data = []
         for offset in points_offset:
-            input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name]]
-        points = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset), 2))
+            input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name], int(1000 * car.ppm)]
+        points_distance = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset))).tolist()
+
+        points = []
+        for i, distance in enumerate(points_distance):
+            distance = distance 
+            angle_offset = points_offset[i]
+            angle = (car.direction + 90 + angle_offset) % 360
+            x = car.x + distance * np.sin(np.radians(angle))
+            y = car.y + distance * np.cos(np.radians(angle))
+            points.append((x, y))
         center_line_x, center_line_y = car.GetNearestCenterline(game)
         # Add to points
         points = np.vstack((points, np.array([center_line_x, center_line_y])))
