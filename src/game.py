@@ -59,6 +59,7 @@ class Game:
             self.load_single_track()
         else:
             self.load_all_tracks()
+
         self.track_results = {}
         if self.player in [1, 2]:
             for track in self.track_names:
@@ -288,12 +289,15 @@ class Game:
         for i in range(len(processes)):
             print(f" - Starting process {i+1}/{len(processes)}         \r", end='', flush=True)
             processes[i].start()
-        print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total, on {len(self.track_names)} tracks")
+        print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * map_tries} agents in total, on {len(self.track_names)} tracks")
     
     def create_process(self, agents_feed, waiting_for_agents, main_lock, scores, laps, working, p_id):
         local_scores = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         updated = False
+        for agent in self.environment.agents:
+            agent.car.track = []
+            agent.track = []
 
         while self.running.value:
             try:
@@ -384,8 +388,8 @@ class Game:
             stamp_1 = time.time()
             remaining_alive = len([agent for agent in all_agents if not agent.car.died])
             if ticks % 10 == 0:
-                best_score = max(self.scores)
-                best_laps = max(self.laps)
+                best_score = max([self.scores[i] + local_scores[i] for i in range(len(self.environment.agents))])
+                best_laps = max([self.laps[i] + local_laps[i] for i in range(len(self.environment.agents))])
             stamp_2 = time.time()
             rounded_stamps = [f"{stamp:.1f}" for stamp in timestamps]
             print(f"Still: {remaining_alive} agents left, on tick: {ticks}, laps: {best_laps}, score: {best_score/ (score_multiplier * self.map_tries) * 100:0.2f}%, stamps: {rounded_stamps}          \r", end='', flush=True)
@@ -434,6 +438,10 @@ class Game:
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
+            agent = self.environment.agents[i]
+            agent.car.score = 0
+            agent.car.laps = 0
+            agent.car.lap_time = 0
 
         gc.collect()
     

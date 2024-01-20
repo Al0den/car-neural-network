@@ -39,7 +39,6 @@ class Environment:
                 agent.car.lap_time = 999999999999999999
 
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
-          
         if ranked_agents[0].car.laps >= game.map_tries:
             self.previous_best_lap = max([agent.car.laps for agent in self.agents])
         else:
@@ -269,7 +268,10 @@ class Environment:
         if not os.path.isfile(path):
             with open(path, "w") as file:
                 file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, Number of Neurons, Best Agent Evolution, Mutation Rates Used\n")
-        best_lap_time = self.previous_best_lap
+        if max([agent.car.laps for agent in ranked_agents]) >= game.map_tries:
+            best_lap_time = min([agent.car.lap_time for agent in ranked_agents])
+        else:
+            best_lap_time = 0
         best_score = self.previous_best_score/ (game.map_tries)
         best_agent_evolution = "".join(ranked_agents[0].evolution)
         best_agent_rates = "/".join([str(rate) for rate in ranked_agents[0].mutation_rates])
