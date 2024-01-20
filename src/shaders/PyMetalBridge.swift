@@ -19,8 +19,8 @@ var computeCommandEncoder : MTLComputeCommandEncoder?
 
 @available(macOS 10.13, *)
 @_cdecl("add_track")
-public func add_track(track: Int, track_data: UnsafePointer<Int32>) {
-    let trackByteLength = 5000 * 5000 * MemoryLayout<Int32>.size
+public func add_track(track: Int, track_data: UnsafePointer<UInt8>) {
+    let trackByteLength = 5000 * 5000 * MemoryLayout<UInt8>.size
     let trackBuffer = UnsafeRawPointer (track_data)
     let trackVectorBuffer = device.makeBuffer(bytes: trackBuffer, length: trackByteLength, options: [])
     trackVectorBuffers[track] = trackVectorBuffer
@@ -29,7 +29,7 @@ public func add_track(track: Int, track_data: UnsafePointer<Int32>) {
 @available(macOS 10.13, *)
 @_cdecl("concatenate_tracks")
 public func concatenate_tracks() {
-    allTracksBuffer = device.makeBuffer(length: 5000 * 5000 * MemoryLayout<Int32>.size * trackVectorBuffers.count, options: [])
+    allTracksBuffer = device.makeBuffer(length: 5000 * 5000 * MemoryLayout<UInt8>.size * trackVectorBuffers.count, options: [])
     var offset = 0
     for index in 0...(trackVectorBuffers.count - 1) {
         let buffer = trackVectorBuffers[index]

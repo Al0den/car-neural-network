@@ -742,8 +742,8 @@ class Game:
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
 
     def AddTrackBuffer(self, track_index, track_data):
-        track_data = track_data.flatten().astype(np.int32)
-        track_data = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        track_data = track_data.flatten().astype(np.uint8)
+        track_data = track_data.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
         self.metal_shaders.add_track(track_index, track_data)
   
         del track_data
@@ -761,7 +761,7 @@ class Game:
 
         self.metal_shaders.add_track.argtypes = [
             ctypes.c_int,
-            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_uint8),
         ]
 
         self.metal_shaders.concatenate_tracks.argtypes = []
@@ -783,5 +783,4 @@ class Game:
             increment += 1
         self.metal_shaders.concatenate_tracks()
         
-
         return
