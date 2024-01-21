@@ -192,7 +192,7 @@ class Render:
         input_data = []
         for offset in points_offset:
             input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name], int(1000 * car.ppm)]
-        points_distance = game.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset))).tolist()
+        points_distance = game.Metal.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset))).tolist()
 
         points = []
         for i, distance in enumerate(points_distance):

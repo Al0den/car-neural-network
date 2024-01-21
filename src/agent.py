@@ -27,7 +27,7 @@ class Agent:
             input_data = np.array([])
             for offset in points_offset:
                 input_data = np.concatenate([input_data, [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]])
-            calculated_points = game.getPointsOffset(input_data.flatten().astype(np.int32))
+            calculated_points = game.Metal.getPointsOffset(input_data.flatten().astype(np.int32))
 
         distance_to_center_line = calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)
         state = np.array([self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line])

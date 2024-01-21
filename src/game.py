@@ -4,7 +4,6 @@ import numpy as np
 import random
 import time
 import json
-import ctypes
 
 from multiprocessing import Process, Array, Manager, Value
 
@@ -22,6 +21,7 @@ from settings import *
 from precomputed import offsets, directions
 from smoothen import main as smoothen
 from metal import Metal
+from corners import get_corners
 
 class Game:
     def __init__(self, game_options):
@@ -194,13 +194,12 @@ class Game:
                 assert(agent.car.track[agent.car.y, agent.car.x] == 10)
 
         if self.player in [1, 2, 3]:
-            self.center_lines = {}
             self.initialise_process()
             print(" - Reloading tracks...")
             self.load_all_tracks()
-
-        self.Metal = Metal(self.tracks)
-        self.track_index = self.Metal.getTrackIndexes()
+        if self.player in [0, 5]:
+            self.Metal = Metal(self.tracks)
+            self.track_index = self.Metal.getTrackIndexes()
 
         self.prev_update = time.time()
         self.start_time = time.time()
@@ -352,14 +351,16 @@ class Game:
             for track in self.track_names:
                 max_potentials[track] = 0
             for i in range(len(agents)):
-                if max_potentials[agents[i].car.track_name] == 0:
-                    max_potentials[agents[i].car.track_name] = agents[i].car.CalculateMaxPotential()
-                score = agents[i].car.CalculateScore(max_potentials[agents[i].car.track_name])
-                if agent.car.lap_time > 0:
+                
+                if agents[i].car.lap_time > 0:
                     local_scores[indexes[i]] += 1 * score_multiplier
                     local_laps[indexes[i]] += 1
                     local_lap_times[indexes[i]] += agent.car.lap_time
                 else:
+                    if max_potentials[agents[i].car.track_name] == 0:
+                        max_potentials[agents[i].car.track_name] = agents[i].car.CalculateMaxPotential()
+                
+                    score = agents[i].car.CalculateScore(max_potentials[agents[i].car.track_name])
                     local_scores[indexes[i]] += score * score_multiplier
 
     def train_agents_gpu(self):
@@ -367,12 +368,13 @@ class Game:
 
         all_agents = []
         for i in range(self.map_tries):
-            for agent in self.environment.agents:
+            for k in range(len(self.environment.agents)):
+                agent = self.environment.agents[k]
                 start_track = start_tracks[i]
                 new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
                 new_agent.network = agent.network
                 new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
-                all_agents.append(new_agent)
+                all_agents.append([new_agent, k])
         for agent in self.environment.agents:
             agent.car.lap_time = 0
             agent.car.laps = 0
@@ -380,14 +382,14 @@ class Game:
 
         self.batches = [[] for _ in range(self.options['cores'])]
         for i, agent in enumerate(all_agents):
-            real_agent_index = i % len(self.environment.agents)
-            self.batches[real_agent_index % self.options['cores']].append([agent, real_agent_index])
+            agent, real_agent_index = agent
+            self.batches[i % self.options['cores']].append([agent, real_agent_index])
 
         self.agents_feed.extend(self.batches)
         while not any(self.working):
             time.sleep(0.5)
             print(" - Waiting for agents to start...         \r", end='', flush=True)
-            
+
         while any(self.working) or len(self.agents_feed) != 0:
             time.sleep(0.5)
             print(" - Waiting for agents to finish...         \r", end='', flush=True)
@@ -415,16 +417,16 @@ class Game:
     def load_single_track(self):
         self.tracks = {}
         self.start_positions = {}
-        self.center_lines ={}
         self.real_starts = {}
+        self.corners = {}
         track_name = self.options['track_name']
         data = self.load_track(track_name)
 
         self.tracks[track_name] = np.array(data['track'])
         self.track = self.tracks[track_name]
-        self.center_lines[track_name] = data['center_line']
         self.start_positions[track_name] = data['start_positions']
         self.real_starts[track_name] = data['real_start']
+        self.corners[track_name] = data['corners']
 
         self.track = random.choice(list(self.tracks.values()))
         self.track_name = [name for name, track in self.tracks.items() if track is self.track][0]
@@ -494,8 +496,8 @@ class Game:
         self.tracks = {}
         if self.shared_tracks is None:
             self.shared_tracks = Manager().dict()
-        self.center_lines = {}
         self.real_starts = {}
+        self.corners = {}
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
                 print(f" - Loading track: {file[:-4]}         \r", end='', flush=True)
@@ -510,7 +512,8 @@ class Game:
                 if self.player in [1,2,3]:
                     self.shared_tracks[file[:-4]] = self.tracks[file[:-4]]
                 self.track = self.tracks[file[:-4]]
-                self.center_lines[file[:-4]] = data['center_line']
+                
+                self.corners[file[:-4]] = data['corners']
                 self.start_positions[file[:-4]] = data['start_positions']
                 self.real_starts[file[:-4]] = data['real_start']
         
@@ -591,13 +594,12 @@ class Game:
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
-            center_line = self.init_center_line()
             assert(real_start != None)
-
+            corners = get_corners(self.track)
             data = {
                 "track": self.track,
                 "start_positions": starts,
-                "center_line": center_line,
+                "corners": corners,
                 "real_start": real_start
             }
             
@@ -641,30 +643,6 @@ class Game:
             for j in range(len(thinned_centerline[0])):
                 if thinned_centerline[i][j] == 10:
                     self.track[i][j] = 10
-
-    def init_center_line(self):
-        obtained_center_line = {}
-        car = Car(self.track, (0,0), 0, self.track_name)
-        track_pos = []
-        if self.player == 5: return
-        track_pos = np.argwhere(self.track == 10).tolist()
-        done = 0
-        for pos in track_pos:
-            print(f" - Calculating center line inputs: {(done/len(track_pos) * 100):0.1f}%", end="\r")
-            done += 1
-            car.y = int(pos[0])
-            car.x = int(pos[1])
-            for i in range(8):
-                car.direction = i * 45
-                index = f"{int(car.y)}{int(car.x)}{int(i * 45)}"
-                offset = offsets[directions.tolist().index(i*45)]
-                if self.track[car.y + offset[1], car.x + offset[0]] == 10:
-                    try:
-                        obtained_center_line[index] = car.CalculateCenterlineInputs(int(car.x), int(car.y), i * 45)
-                    except Exception as e:
-                        if self.debug: print("Error calculating center line input" + str(e))
-                        pass
-        return obtained_center_line
     
     def load_best_agent(self, path):
         best_agent = 0
