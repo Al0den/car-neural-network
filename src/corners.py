@@ -49,9 +49,6 @@ def get_corners(track, threshold=15, data_size=75):
         backward = get_point_further(x, y, valid_directions[1])
         per_point_data[y, x] = distance_to_line((x, y), forward, backward)
 
-    # Convert points to a NumPy array
-    points_array = np.array(points)
-
     # For every pixel in track_pixels, set its value to the value of its nearest point in per_point_data within a maximum distance of 80
     max_distance = 10
     i = 0
@@ -117,7 +114,6 @@ def get_corners(track, threshold=15, data_size=75):
                 min_value = value
                 min_point = point
         kept_corners.append(min_point)
-
     return kept_corners, corners, final_data
 
 if __name__ == "__main__":

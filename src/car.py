@@ -33,8 +33,10 @@ class Car:
         self.front_left, self.front_right, self.back_left, self.back_right = [0, 0], [0, 0], [0, 0], [0, 0]
         self.acceleration, self.brake, self.speed, self.steer = 0, 0, 0, 0
         self.lap_times, self.lap_time = [], 0
+        self.center_line_direction = None
         self.checkpoints_seen, self.checkpoints = [], []
         self.previous_points = np.array([None] * len(points_offset))
+        self.future_corners = []
 
         self.UpdateCorners()
 
@@ -72,11 +74,15 @@ class Car:
                     seen = True
             if seen == False:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
+        # Get Distance to first corner in future corners
+        if len(self.future_corners) > 0:
+            next_corner_dist = calculate_distance(self.future_corners[0], (self.x, self.y))
+            if next_corner_dist < 25:
+                self.future_corners.pop(0)
         return True
     
     def Kill(self):
         self.died = True
-        # Get nearest pixel == 10 in self.track
         self.finish_x, self.finish_y = self.GetNearestCenterline()
 
         self.x = self.start_x
@@ -388,3 +394,21 @@ class Car:
     
     def validIndex(self, x, y):
         return y < len(self.track) and y >= 0 and x < len(self.track[0]) and x >= 0
+    
+    def setFutureCorners(self, corners):
+        ordered_corners = []
+        
+        current_x, current_y = self.previous_center_line
+        current_dir = self.direction
+
+        while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            if not potential_offsets: break
+            current_offset = potential_offsets[0]
+            current_x += current_offset[0]
+            current_y += current_offset[1]
+            current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
+            if (current_x, current_y) in corners:
+                ordered_corners.append((current_x, current_y))
+        self.future_corners = ordered_corners
+        return ordered_corners

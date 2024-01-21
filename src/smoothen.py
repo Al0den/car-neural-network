@@ -4,7 +4,7 @@ import pygame
 
 from utils import calculate_distance
 
-def main(track):
+def smoothen(track):
     data = np.load(f"./data/tracks/{track}.npy", allow_pickle=True).item()
     track_matrix = data['track']
     center_mat = np.zeros((track_matrix.shape[1], track_matrix.shape[0], 3))
@@ -82,6 +82,10 @@ def main(track):
                 track_surface.set_at((j, i), gray)
         elif track_matrix[i][j] > 99:
             track_surface.set_at((j, i), gray)
+    corners = data['corners']
+    for corner in corners:
+        # Draw circle
+        pygame.draw.circle(track_surface, (255, 0, 0), (corner[0], corner[1]), 3)
 
     data['track'] = final_mat
     pygame.image.save(track_surface, "./data/tracks/" + track + "_surface.png")
@@ -89,4 +93,4 @@ def main(track):
 
 if __name__=="__main__":
     track = input("Track to smoothen: ")
-    main(track)
+    smoothen(track)

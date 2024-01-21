@@ -26,6 +26,8 @@ def HumanMethod(game, game_options, pygame):
         game.car.start_direction = start_dir
         game.car.died = False
         game.restart = False
+        game.car.GetNearestCenterline(game)
+        game.car.setFutureCorners(game.corners[game.track_name])
 
 def SpecificMapMethod(game, pygame, game_options):
     update_visual(game, pygame)

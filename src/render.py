@@ -252,6 +252,16 @@ class Render:
             prev_x = new_x
             prev_y = new_y
 
+    def DrawLineToNextCorner(self, camera_x, camera_y, car):
+        if car.future_corners is None or len(car.future_corners) == 0: return
+        next_corner = car.future_corners[0]
+        distance_to_corner = calculate_distance((car.x, car.y), (next_corner[0], next_corner[1]))
+        angle_to_corner = np.degrees(np.arctan2(next_corner[1] - car.y, next_corner[0] - car.x))
+        distance_to_corner = distance_to_corner * self.zoom_factor
+        new_x = car.x + distance_to_corner * np.cos(np.radians(angle_to_corner))
+        new_y = car.y + distance_to_corner * np.sin(np.radians(angle_to_corner))
+        pygame.draw.line(self.screen, (255, 0, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
+
     def use_agent_debug(self, game):
         tps = game.clock.get_fps()
         actions = [f"{action:0.2f}" for action in game.environment.agents[0].action]
@@ -382,8 +392,9 @@ class Render:
         if game.debug or not game.visual:
             self.debug(game)
             self.DrawPointsInput(centered_car, camera_x + offset_x, camera_y + offset_y, game)
+            self.DrawLineToNextCorner(camera_x + offset_x, camera_y + offset_y, centered_car)
             #self.DrawCenterlineInputs(game, camera_x + offset_x, camera_y + offset_y, centered_car)
-
+        
         self.handle_slider(game)
         pygame.display.update()
 

@@ -18,8 +18,7 @@ from car import Car
 from utils import is_color_within_margin, calculate_distance, get_new_starts, get_nearest_centerline
 from agent import Agent
 from settings import *
-from precomputed import offsets, directions
-from smoothen import main as smoothen
+from smoothen import smoothen
 from metal import Metal
 from corners import get_corners
 
@@ -70,6 +69,7 @@ class Game:
         
         if self.player == 0:
             self.car = Car(self.track, self.start_pos, self.start_dir, self.track_name)
+            self.car.setFutureCorners(self.corners[self.track_name])
         elif self.player == 2:
             self.environment.load_agents(self)
             self.player = 1
@@ -90,12 +90,7 @@ class Game:
             self.extract_csv("./data/train/log.csv")
             agent.car.track = self.track
             agent.car.track_name = self.track_name
-            agent.car.x = self.real_starts[self.track_name][0][1]
-            agent.car.start_x = self.real_starts[self.track_name][0][1]
-            agent.car.y = self.real_starts[self.track_name][0][0]
-            agent.car.start_y = self.real_starts[self.track_name][0][0]
-            agent.car.direction = self.config['start_dir'].get(self.track_name)
-            agent.car.start_direction = self.config['start_dir'].get(self.track_name)
+            agent.car.setFutureCorners(self.corners[self.track_name])
 
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
@@ -512,7 +507,7 @@ class Game:
                 if self.player in [1,2,3]:
                     self.shared_tracks[file[:-4]] = self.tracks[file[:-4]]
                 self.track = self.tracks[file[:-4]]
-                
+
                 self.corners[file[:-4]] = data['corners']
                 self.start_positions[file[:-4]] = data['start_positions']
                 self.real_starts[file[:-4]] = data['real_start']
@@ -595,7 +590,7 @@ class Game:
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
             assert(real_start != None)
-            corners = get_corners(self.track)
+            corners, _, _ = get_corners(self.track)
             data = {
                 "track": self.track,
                 "start_positions": starts,
@@ -604,7 +599,6 @@ class Game:
             }
             
             np.save("./data/tracks/" + track_name, data)
-
             print(" - Smoothening track")
             smoothen(track_name)
 
