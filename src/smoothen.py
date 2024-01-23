@@ -2,9 +2,10 @@ import numpy as np
 import json
 import pygame
 
-from utils import calculate_distance
+from utils import calculate_distance, angle_distance
 
 def smoothen(track):
+    print("Smoothening track " + track)
     data = np.load(f"./data/tracks/{track}.npy", allow_pickle=True).item()
     track_matrix = data['track']
     center_mat = np.zeros((track_matrix.shape[1], track_matrix.shape[0], 3))
@@ -87,6 +88,43 @@ def smoothen(track):
         # Draw circle
         pygame.draw.circle(track_surface, (255, 0, 0), (corner[0], corner[1]), 3)
 
+    center_line = np.where(track_matrix == 10)
+    index = int(np.random.uniform(0, len(center_line[0])))
+    start_y, start_x = center_line[0][index], center_line[1][index]
+    
+    current_length = 0
+    drawing_line = True
+
+    x, y = start_x, start_y
+    direction = 0
+    offsets = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    for offset in offsets:
+        if track_matrix[y + offset[0], x + offset[1]] == 10:
+            direction = np.degrees(np.arctan2(-offset[0], offset[1]))
+            break
+    
+    started = False
+    seen = 0
+    ppm = config_data['pixel_per_meter'].get(track)
+    while (start_y, start_x) != (y, x) or not started:
+        started = True
+        print(f"{seen} / {len(center_line[0])}")
+        potential_offsets = [offset for offset in offsets if track_matrix[y + offset[0], x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), direction) <= 70]
+        if len(potential_offsets) == 0:
+            break
+        offset = potential_offsets[np.random.randint(0, len(potential_offsets))]
+        x, y = x + offset[1], y + offset[0]
+        seen += 1
+        direction = np.degrees(np.arctan2(-offset[0], offset[1]))
+        if drawing_line:
+            track_surface.set_at((x, y), (255, 255, 255))
+        current_length += 1
+        if current_length >= 3 * ppm and drawing_line:
+            drawing_line = False
+            current_length = 0
+        elif current_length >= 10 * ppm and not drawing_line:
+            drawing_line = True
+            current_length = 0
     data['track'] = final_mat
     pygame.image.save(track_surface, "./data/tracks/" + track + "_surface.png")
     np.save(f"./data/tracks/{track}.npy", data)

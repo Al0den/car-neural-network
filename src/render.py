@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 import os
 
-from utils import calculate_distance, GetCenterlineInputs, copy_car
+from utils import calculate_distance, GetCenterlineInputs, copy_car, angle_range_180
 from settings import *
 from agent import Agent
 from car import Car
@@ -224,34 +224,6 @@ class Render:
                 pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
                 pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
 
-    def DrawCenterlineInputs(self, game, camera_x, camera_y, car):
-        car.GetNearestCenterline(game)
-        points = GetCenterlineInputs(game, car)
-        first = True
-
-        prev_x = car.x
-        prev_y = car.y
-
-        for point in points:
-            target_x = point[0]
-            target_y = point[1]
-            distance = calculate_distance((car.x, car.y), (target_x, target_y))
-            new_dist = distance * self.zoom_factor
-
-            angle = np.arctan2(target_y - car.y, target_x - car.x)
-
-            new_x = car.x + new_dist * np.cos(angle)
-            new_y = car.y + new_dist * np.sin(angle)
-
-            if first:
-                pygame.draw.circle(self.screen, (255, 0, 0), (new_x - camera_x, new_y - camera_y), 3)
-                first = False
-            else:
-                pygame.draw.line(self.screen, (255, 0, 0), ((new_x - camera_x), (new_y - camera_y)), ((prev_x - camera_x), (prev_y - camera_y)))
-                pygame.draw.circle(self.screen, (255, 128, 0), ((new_x - camera_x), (new_y - camera_y)), 3)
-            prev_x = new_x
-            prev_y = new_y
-
     def DrawLineToNextCorner(self, camera_x, camera_y, car):
         if car.future_corners is None or len(car.future_corners) == 0: return
         next_corner = car.future_corners[0]
@@ -260,8 +232,21 @@ class Render:
         distance_to_corner = distance_to_corner * self.zoom_factor
         new_x = car.x + distance_to_corner * np.cos(np.radians(angle_to_corner))
         new_y = car.y + distance_to_corner * np.sin(np.radians(angle_to_corner))
-        pygame.draw.line(self.screen, (255, 0, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
-
+        if angle_range_180(next_corner[2] - car.direction) > 0:
+            pygame.draw.line(self.screen, (255, 0, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
+        else:
+            pygame.draw.line(self.screen, (0, 255, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
+        if len(car.future_corners) == 1: return
+        next_corner = car.future_corners[1]
+        distance_to_corner = calculate_distance((car.x, car.y), (next_corner[0], next_corner[1]))
+        angle_to_corner = np.degrees(np.arctan2(next_corner[1] - car.y, next_corner[0] - car.x))
+        distance_to_corner = distance_to_corner * self.zoom_factor
+        new_x = car.x + distance_to_corner * np.cos(np.radians(angle_to_corner))
+        new_y = car.y + distance_to_corner * np.sin(np.radians(angle_to_corner))
+        if angle_range_180(next_corner[2] - car.future_corners[0][2]) > 0:
+            pygame.draw.line(self.screen, (180, 0, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
+        else:
+            pygame.draw.line(self.screen, (0, 180, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
     def use_agent_debug(self, game):
         tps = game.clock.get_fps()
         actions = [f"{action:0.2f}" for action in game.environment.agents[0].action]
@@ -393,7 +378,6 @@ class Render:
             self.debug(game)
             self.DrawPointsInput(centered_car, camera_x + offset_x, camera_y + offset_y, game)
             self.DrawLineToNextCorner(camera_x + offset_x, camera_y + offset_y, centered_car)
-            #self.DrawCenterlineInputs(game, camera_x + offset_x, camera_y + offset_y, centered_car)
         
         self.handle_slider(game)
         pygame.display.update()

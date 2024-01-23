@@ -1,12 +1,12 @@
 import numpy as np
 
-points_offset = [0, 2, -2, 6, -6, 15, -15, 30, -30, 45, -45, 60, -60, 80, -80, 90, -90]
+points_offset = [0, 4, -4,  15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 5
+state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.3
-num_hidden_layers = 3
+num_hidden_layers = 2
 action_space_size = 2
 activation_function = np.tanh
 map_tries = 15
@@ -15,8 +15,6 @@ batch_size = 50
 
 real_starts_num = 3
 assert(real_starts_num <= map_tries)
-
-travel_distances_centerlines = [0, 8, 19, 31, 44, 60, 90, 160, 230, 300]
 
 max_points_distance = 200 
 max_center_line_distance = 20
@@ -69,7 +67,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.25
+mutation_strenght = 0.2
 
 max_ticks_before_kill = 10000
 min_speed = 5

@@ -3,7 +3,7 @@ import numpy as np
 import random
 import json
 
-from utils import calculate_distance, next_speed, angle_distance, new_brake_speed, angle_range_180
+from utils import calculate_distance, next_speed, angle_distance, new_brake_speed, angle_range_180, is_point_on_right
 from precomputed import sin, cos, offsets, directions
 from settings import *
 
@@ -76,8 +76,9 @@ class Car:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
         # Get Distance to first corner in future corners
         if len(self.future_corners) > 0:
-            next_corner_dist = calculate_distance(self.future_corners[0], (self.x, self.y))
-            if next_corner_dist < 25:
+            corner_x, corner_y, _ = self.future_corners[0]
+            next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
+            if next_corner_dist < 10 * self.ppm:
                 self.future_corners.pop(0)
         return True
     
@@ -149,6 +150,20 @@ class Car:
         self.CheckForAction(brake_change, power_change, steer_change)
     
     def CheckForAction(self, brake, power, steer):
+        if brake == False:
+            if(self.brake > 0):
+                self.brake -= delta_t * 3
+                self.brake = max(0, self.brake)
+            elif self.brake < 0:
+                self.brake += delta_t * 3
+                self.brake = min(0, self.brake)
+        if power == False:
+            if(self.acceleration > 0):
+                self.acceleration -= delta_t * 3
+                self.acceleration = max(0, self.acceleration)
+            elif self.acceleration < 0:
+                self.acceleration += delta_t * 3
+                self.acceleration = min(0, self.acceleration)
         if steer == False:
             if(self.steer > 0):
                 self.steer -= delta_t * 3
@@ -307,49 +322,6 @@ class Car:
         
         return direction, offset
     
-    def CalculateCenterlineInputs(self, x, y, initial_direction=None):
-        distances = travel_distances_centerlines
-        if not initial_direction or initial_direction == 9999:
-            initial_direction = self.direction
-            direction, offset = self.CalculateNextCenterlineDirection(x, y, initial_direction)
-        else:
-            direction = initial_direction
-            offset = offsets[directions.tolist().index(direction)]
-        if len(offset) == 0:
-            return [(self.x, self.y)] * len(distances)
-        points = []
-        assert(self.track[int(y), int(x)] == 10)
-
-        distances_copy = distances.copy()
-        for i in range(int(max(distances) * self.ppm * 2)):
-            if distances_copy == []: break
-            if distances_copy != [] and i / self.ppm > min(distances_copy):
-                distances_copy.pop(0)
-                points.append((int(x), int(y)))
-            x += offset[0]
-            y += offset[1]
-            possible_offsets = [
-                potential_offset
-                for potential_offset in offsets.tolist()
-                if angle_distance(direction, directions[offsets.tolist().index(potential_offset)]) <= 90
-            ]
-            for potential_offset in possible_offsets:
-                if self.track[int(y + potential_offset[1]), int(x + potential_offset[0])] == 10:
-                    offset = potential_offset
-                    index = np.where((offsets == offset).all(axis=1))[0]
-                    direction = directions[index]
-        prev_angle = initial_direction
-        results = []
-
-        for i in range(len(points)):
-            if i == 0: continue
-            angle = np.degrees(np.arctan2(-points[i][1] + points[i-1][1], points[i][0] - points[i-1][0]))
-            angle_diff = angle_range_180(angle - prev_angle)
-            prev_angle = angle
-            results.append(max(-1, min(1, angle_diff / 90)))
-
-        return results
-    
     def CalculateScore(self, max_potential=None):
         current_x = self.start_x
         current_y = self.start_y
@@ -395,11 +367,31 @@ class Car:
     def validIndex(self, x, y):
         return y < len(self.track) and y >= 0 and x < len(self.track[0]) and x >= 0
     
+    def get_point_further(self, x, y, direction, max_dist, track):
+        current_x, current_y = x, y
+        current_dir = direction
+        for i in range(max_dist):
+            valid_offsets = [offset for offset in offsets if track[current_y + offset[1], current_x + offset[0]] == 10 and angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 60]
+            if not valid_offsets:
+                print("Lost")
+                break
+            chosen_offset = valid_offsets[0]
+            chosen_angle = np.degrees(np.arctan2(-chosen_offset[1], chosen_offset[0]))
+            
+            # Update current position and direction
+            current_dir = chosen_angle
+            current_x += chosen_offset[0]
+            current_y += chosen_offset[1]
+
+        return current_x, current_y, current_dir 
+
     def setFutureCorners(self, corners):
         ordered_corners = []
         
         current_x, current_y = self.previous_center_line
         current_dir = self.direction
+
+        prev_directions = [self.direction] * 10
 
         while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
@@ -407,8 +399,11 @@ class Car:
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
-            current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
+            new_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
+            current_dir = new_dir
             if (current_x, current_y) in corners:
-                ordered_corners.append((current_x, current_y))
+                ordered_corners.append((current_x, current_y, new_dir))
+            prev_directions.append(new_dir)
+            prev_directions.pop(0)
         self.future_corners = ordered_corners
         return ordered_corners

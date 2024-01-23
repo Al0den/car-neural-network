@@ -230,3 +230,13 @@ def get_nearest_centerline(track, x, y):
         distance += 1
     print("Could find the nearest track, aborting")
     sys.exit()
+
+def is_point_on_right(x1, y1, x2, y2, px, py):
+    vector_line = np.array([x2 - x1, y2 - y1])
+    vector_point = np.array([px - x1, py - y1])
+    
+    # Calculate the cross product
+    cross_product = np.cross(vector_line, vector_point)
+    
+    # If cross product is positive, point is on the right; if negative, on the left
+    return cross_product > 0

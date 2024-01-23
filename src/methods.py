@@ -43,6 +43,7 @@ def SpecificMapMethod(game, pygame, game_options):
         best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
         agent.car.speed = game.config['quali_start_speed'].get(game.track_name)
+        agent.car.setFutureCorners(game.corners[game.track_name])
 
         game.environment.agents[0] = agent
         game.environment.generation = best_agent
@@ -55,6 +56,17 @@ def ContinuousMethod(game, game_options, pygame):
     update_visual(game, pygame)
     update_speed(game, pygame)
     continuous_commands(game, pygame)
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_f] and game.last_keys_update + 0.3 < datetime.now().timestamp():
+        if game.environment.agents[0].car.future_corners == []: return
+        x, y, _ = game.environment.agents[0].car.future_corners.pop(0)
+        game.environment.agents[0].car.x = x
+        game.environment.agents[0].car.y = y
+        game.environment.agents[0].car.GetNearestCenterline(game)
+        game.environment.agents[0].car.direction = game.environment.agents[0].car.center_line_direction
+        game.last_keys_update = datetime.now().timestamp()
+
     if not game.environment.agents[0].car.died: return
 
     print(f" - Completed: {game.environment.agents[0].car.CalculateScore() * 100:0.2f}%")
@@ -70,6 +82,7 @@ def ContinuousMethod(game, game_options, pygame):
     game.environment.generation = best_agent
     agent.track = game.track
     agent.car.track = game.track
+    agent.car.setFutureCorners(game.corners[game.track_name])
 
     game.ticks = 0
 
@@ -125,6 +138,7 @@ def update_visual(game, pygame):
             print(" * Toggling debug mode")
             game.debug = not game.debug
             game.last_keys_update = datetime.now().timestamp()
+    
 
 def continuous_commands(game, pygame):
     keys = pygame.key.get_pressed()

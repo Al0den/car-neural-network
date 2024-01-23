@@ -84,6 +84,7 @@ class Game:
             self.environment.agents[0] = agent
             
             self.environment.agents[0].car.speed = self.config['quali_start_speed'].get(self.track_name)
+            self.environment.agents[0].car.setFutureCorners(self.corners[self.track_name])
             
         elif self.player == 5:
             best_agent, agent = self.load_best_agent("./data/train/trained")
@@ -191,8 +192,11 @@ class Game:
         if self.player in [1, 2, 3]:
             self.initialise_process()
             print(" - Reloading tracks...")
-            self.load_all_tracks()
-        if self.player in [0, 5]:
+            if self.player == 3:
+                self.load_single_track()
+            else:
+                self.load_all_tracks()
+        if self.player in [0, 4, 5]:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
 
@@ -271,7 +275,7 @@ class Game:
         self.agents_feed = Manager().list()
         self.waiting_for_agents = Value('b', False)
         self.main_lock = Manager().Lock()
-        self.lap_times = np.array([0] * num_agents)
+        self.lap_times = Array('i', [0] * num_agents)
         self.laps = Array('i', [0] * num_agents)
         self.scores = Array('d', [0] * num_agents)
         self.working = Array('b', [False] * num_agents)
@@ -362,13 +366,20 @@ class Game:
         starts, start_tracks = self.GenerateTrainingStarts()
 
         all_agents = []
+        print("Creating agents...        \r", end='', flush=True)
         for i in range(self.map_tries):
+            all_corners = []
             for k in range(len(self.environment.agents)):
                 agent = self.environment.agents[k]
                 start_track = start_tracks[i]
                 new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
                 new_agent.network = agent.network
                 new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
+                if all_corners == []:
+                    new_agent.car.setFutureCorners(self.corners[start_track])
+                    all_corners = new_agent.car.future_corners
+                else:
+                    new_agent.car.future_corners = all_corners
                 all_agents.append([new_agent, k])
         for agent in self.environment.agents:
             agent.car.lap_time = 0
@@ -396,16 +407,13 @@ class Game:
 
         self.environment.next_generation(self)
 
-        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}                    ")
-
+        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")
+        
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
             agent = self.environment.agents[i]
-            agent.car.score = 0
-            agent.car.laps = 0
-            agent.car.lap_time = 0
 
         gc.collect()
     
@@ -440,10 +448,7 @@ class Game:
             self.start_pos[1] = self.real_starts[self.track_name][0][1]
             self.start_dir = self.real_starts[self.track_name][1]
 
-        if self.player == 3:
-            self.map_tries = 1
-            self.tracks = {}
-            self.tracks[self.track_name] = self.track
+        if self.player == 3: self.map_tries = 1
 
         print(f" * Loaded track: {track_name}")
 

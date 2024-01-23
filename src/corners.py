@@ -17,10 +17,10 @@ def get_corners(track, threshold=15, data_size=75):
         x2, y2 = line_end
         return np.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) / np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
 
-    def get_point_further(x, y, direction):
+    def get_point_further(x, y, direction, max_dist=data_size):
         current_x, current_y = x, y
         current_dir = direction
-        for i in range(data_size):
+        for i in range(max_dist):
             valid_offsets = [offset for offset in offsets if track[current_y + offset[1], current_x + offset[0]] == 10 and angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 60]
             if not valid_offsets:
                 break
@@ -114,6 +114,9 @@ def get_corners(track, threshold=15, data_size=75):
                 min_value = value
                 min_point = point
         kept_corners.append(min_point)
+
+    # For every corner, iterate through the next 10 track == 10 to figure out if its a turning right or turning left corner
+    
     return kept_corners, corners, final_data
 
 if __name__ == "__main__":

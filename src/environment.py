@@ -35,15 +35,12 @@ class Environment:
         self.start_pos, self.start_dir = random.choice(game.start_positions[game.track_name])
 
         for agent in self.agents:
-            if agent.car.laps != game.map_tries:
+            if agent.car.laps != game.map_tries or agent.car.lap_time == 0:
                 agent.car.lap_time = 999999999999999999
 
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
-        if ranked_agents[0].car.laps >= game.map_tries:
-            self.previous_best_lap = max([agent.car.laps for agent in self.agents])
-        else:
-            self.previous_best_lap = 0
 
+        self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
     
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.01) + 1)]
@@ -94,9 +91,6 @@ class Environment:
                 child.mutation_rates = child.mutation_rates + ["-"]
             new_agents.append(child)
 
-        #if self.player in [1, 2]:
-        #    self.UpdateTrackResults(game)
-
         if game.player != 3:
             self.log_data(ranked_agents, game)
             self.save_agents(game)
@@ -115,58 +109,6 @@ class Environment:
         self.generation += 1
         self.alive = len(self.agents)
 
-    def TestAgent(self, best_agent, game):
-        results = []
-        game.waiting_for_agents.value = True
-        i = 0
-        to_append = []
-        for track_name in game.real_start_tracks:
-            agent = Agent(self.options, game.tracks[track_name], game.real_starts[track_name][0], game.real_starts[track_name][1], track_name)
-            assert(agent.car.track[agent.car.y, agent.car.x] == 10)
-            agent.network = copy_network(best_agent.network)
-            self.agents[i] = agent
-            data = (i, 0, self.agents[i], track_name, game.real_starts[track_name])
-            game.scores[i] = 0
-            to_append.append(data)
-            i += 1
-        game.agents_feed.extend(to_append)
-        game.waiting_for_agents.value = False
-
-        start_time = time.time()
-        while len(game.agents_feed) != 0 or any(game.working) or (time.time() - start_time) < 2:
-            time.sleep(0.1)
-        
-        for i in range(len(game.real_start_tracks)):
-            results.append((game.scores[i], game.real_start_tracks[i]))
-            if game.scores[i] == 1 * score_multiplier:
-                game.laps[i] -= 1
-        return results
-
-    def UpdateTrackResults(self, game):
-        results = self.TestAgent(self.agents[0], game)
-        fails = 0
-        for i in range(len(results)):
-            score, track = results[i]
-            if score == 1 * score_multiplier:
-                game.track_results[track] += 1.2
-            else:
-                game.track_results[track] -= 0.8
-                fails += 1
-        for track in game.track_results:
-            game.track_results[track] -= 0.1 + fails/(len(results) * 2)
-        self.SaveTrackResults(game)
-
-    def SaveTrackResults(self, game):
-        track_names = sorted(game.tracks.keys())
-        if not os.path.isfile("./data/train/track_results.csv"):
-            with open("./data/train/track_results.csv", "w") as file:
-                tracks = "Generation, " + ", ".join([track_name for track_name in track_names])
-                file.write(tracks + "\n")
-                file.write(str(self.generation) + ", " + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
-        with open("./data/train/track_results.csv", "a") as file:
-            gen = f"{self.generation}, "
-            file.write(gen + ", ".join([str(round(game.track_results[track_name], 1)) for track_name in track_names]) + "\n")
-    
     def linear_weighted_selection(self, ranked_agents):
         num_agents = len(ranked_agents)
         
