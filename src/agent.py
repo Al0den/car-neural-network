@@ -24,15 +24,16 @@ class Agent:
 
     def CalculateState(self, game, ticks, calculated_points=None):
         center_line_x, center_line_y = self.car.GetNearestCenterline(game)
-        #points = GetCenterlineInputs(game, self.car)
+
         if calculated_points is None:
-            input_data = np.array([])
+            input_data = []
             for offset in points_offset:
-                input_data = np.concatenate([input_data, [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]])
+                input_data += [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
+            input_data = np.array(input_data)
             calculated_points = game.Metal.getPointsOffset(input_data.flatten().astype(np.int32))
 
         distance_to_center_line = min(1, max(-1, calculate_distance((center_line_x, center_line_y), (self.car.x, self.car.y)) * self.car.center_line_direction / (self.car.ppm * max_center_line_distance)))
-        state = np.array([self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line])
+        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, distance_to_center_line]
         if self.car.future_corners == []:
             next_corner_distance = 0
             relative_angle = 0
@@ -42,7 +43,7 @@ class Agent:
             next_corner_distance = min(1, calculate_distance((next_corner_x, next_corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
             relative_angle = angle_range_180(self.car.direction - next_corner_dir)
             left_or_right = 1 if relative_angle > 0 else -1 if relative_angle < 0 else 0
-        state = np.concatenate([state, [next_corner_distance, abs(relative_angle) / 180, left_or_right]])
+        state += [next_corner_distance, abs(relative_angle) / 180, left_or_right]
 
         if len(self.car.future_corners) > 1:
             next_corner_x, next_corner_y, next_corner_dir = self.car.future_corners[1]
@@ -54,11 +55,11 @@ class Agent:
             next_corner_distance = 0
             relative_angle = 0
             left_or_right = 0
-        state = np.concatenate([state, [next_corner_distance, abs(relative_angle) / 180, left_or_right]])
+        state += [next_corner_distance, abs(relative_angle) / 180, left_or_right]
 
         calculated_points_input = np.minimum(1, np.maximum(-1, calculated_points / (self.car.ppm * max_points_distance)))
-        state = np.concatenate([state, calculated_points_input])
-
+        state += calculated_points_input.tolist()
+    
         if game.debug: 
             for inp in state:
                 if np.abs(inp) > 1: 

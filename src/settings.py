@@ -13,7 +13,7 @@ map_tries = 15
 
 batch_size = 50
 
-real_starts_num = 3
+real_starts_num = 5
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -69,7 +69,7 @@ score_multiplier = 10000
 
 mutation_strenght = 0.2
 
-max_ticks_before_kill = 10000
+max_ticks_before_kill = 20000
 min_speed = 5
 base_score_per_checkpoint = 0
 

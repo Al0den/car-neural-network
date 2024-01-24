@@ -39,11 +39,11 @@ class Environment:
                 agent.car.lap_time = 999999999999999999
 
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
-
         self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
+        if self.previous_best_lap == 999999999999999999: self.previous_best_lap = 0
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
     
-        best_agents = ranked_agents[:(int(len(ranked_agents) * 0.01) + 1)]
+        best_agents = ranked_agents[:(int(len(ranked_agents) * 0.02) + 1)]
         new_agents = []
         for father in best_agents:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
@@ -210,15 +210,12 @@ class Environment:
         if not os.path.isfile(path):
             with open(path, "w") as file:
                 file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, Number of Neurons, Best Agent Evolution, Mutation Rates Used\n")
-        if max([agent.car.laps for agent in ranked_agents]) >= game.map_tries:
-            best_lap_time = min([agent.car.lap_time for agent in ranked_agents])
-        else:
-            best_lap_time = 0
+        best_lap_time = self.previous_best_lap
         best_score = self.previous_best_score/ (game.map_tries)
         best_agent_evolution = "".join(ranked_agents[0].evolution)
         best_agent_rates = "/".join([str(rate) for rate in ranked_agents[0].mutation_rates])
         generation = self.generation
-        laps = ranked_agents[0].car.laps
+        laps = max([agent.car.laps for agent in ranked_agents])
         average_score = np.average([agent.car.score for agent in ranked_agents]) / game.map_tries
         average_lap = np.average([agent.car.laps for agent in ranked_agents])
 

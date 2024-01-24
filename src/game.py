@@ -5,7 +5,7 @@ import random
 import time
 import json
 
-from multiprocessing import Process, Array, Manager, Value
+from multiprocessing import Process, Array, Manager, Value, RawArray
 
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
@@ -278,11 +278,12 @@ class Game:
         self.lap_times = Array('i', [0] * num_agents)
         self.laps = Array('i', [0] * num_agents)
         self.scores = Array('d', [0] * num_agents)
-        self.working = Array('b', [False] * num_agents)
+        self.working = Array('b', [False] * num_agents, lock=False)
+        self.log_data = Array('i', [0] * num_processes * 5, lock=False)
         self.secondary_lock = Manager().Lock()
 
         for i in range(num_processes):
-            process = Process(target=self.create_process, args=(self.agents_feed, self.waiting_for_agents, self.main_lock, self.scores, self.laps, self.lap_times, self.working, i))
+            process = Process(target=self.create_process, args=(self.agents_feed, self.waiting_for_agents, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock))
             processes.append(process)
         
         for i in range(len(processes)):
@@ -290,11 +291,10 @@ class Game:
             processes[i].start()
         print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * map_tries} agents in total, on {len(self.track_names)} tracks")
     
-    def create_process(self, agents_feed, waiting_for_agents, main_lock, scores, laps, lap_times, working, p_id):
+    def create_process(self, agents_feed, waiting_for_agents, log_data, scores, laps, lap_times, working, p_id, main_lock):
         local_scores = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         local_lap_times = [0] * len(self.environment.agents)
-        updated = False
         for agent in self.environment.agents:
             agent.car.track = []
             agent.track = []
@@ -309,33 +309,20 @@ class Game:
                 input_feed = agents_feed.pop(0)
                 working[p_id] = True
             except:
-                if updated:
-                    for i in range(len(self.environment.agents)):
-                        scores[i] += local_scores[i]
-                        laps[i] += local_laps[i]
-                        lap_times[i] += local_lap_times[i]
-
-                        local_scores[i] = 0
-                        local_laps[i] = 0
-                        local_lap_times[i] = 0
-                    updated = False
-                    working[p_id] = False
-                time.sleep(1)
+                time.sleep(0.5)
                 continue
 
-            updated = True
-            
-            # agents, index
             agents = [data[0] for data in input_feed]
             indexes = [data[1] for data in input_feed]
 
-            running = True
+            alive = len(agents)
             ticks = 0
-            while running:
-                running = False
+
+            while alive > 0:
+                alive = 0
                 input_data = []
                 for agent in agents:
-                    if not agent.car.died: running = True
+                    if not agent.car.died: alive += 1
                     for offset in points_offset:
                         if agent.car.died: input_data += [-1, -1, -1, -1, -1]
                         else: input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
@@ -345,12 +332,15 @@ class Game:
                     agents[i].Tick(ticks, self, per_agents_points[i])
                 del out_data
                 ticks += 1
+
+                # Log data to log_data Array
+                log_data[p_id * 5] = ticks
+                log_data[p_id * 5 + 1] = alive
             
             max_potentials = {}
             for track in self.track_names:
                 max_potentials[track] = 0
             for i in range(len(agents)):
-                
                 if agents[i].car.lap_time > 0:
                     local_scores[indexes[i]] += 1 * score_multiplier
                     local_laps[indexes[i]] += 1
@@ -362,29 +352,40 @@ class Game:
                     score = agents[i].car.CalculateScore(max_potentials[agents[i].car.track_name])
                     local_scores[indexes[i]] += score * score_multiplier
 
+            with main_lock:
+                for i in range(len(self.environment.agents)):
+                    scores[i] += local_scores[i]
+                    laps[i] += local_laps[i]
+                    lap_times[i] += local_lap_times[i]
+                    local_scores[i] = 0
+                    local_laps[i] = 0
+                    local_lap_times[i] = 0
+            working[p_id] = False
+
     def train_agents_gpu(self):
         starts, start_tracks = self.GenerateTrainingStarts()
 
         all_agents = []
+    
         print("Creating agents...        \r", end='', flush=True)
         for i in range(self.map_tries):
             all_corners = []
             for k in range(len(self.environment.agents)):
+                print(f" - Creating agents | {i * len(self.environment.agents) + k + 1}/{self.map_tries * len(self.environment.agents)}        \r", end='', flush=True)
                 agent = self.environment.agents[k]
                 start_track = start_tracks[i]
                 new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
                 new_agent.network = agent.network
                 new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
+                if self.player == 3: new_agent.car.speed = self.config['quali_start_speed'].get(start_track)
                 if all_corners == []:
                     new_agent.car.setFutureCorners(self.corners[start_track])
                     all_corners = new_agent.car.future_corners
                 else:
                     new_agent.car.future_corners = all_corners
                 all_agents.append([new_agent, k])
-        for agent in self.environment.agents:
-            agent.car.lap_time = 0
-            agent.car.laps = 0
-            agent.car.score = 0
+        # Randomly shuffle the agents
+        random.shuffle(all_agents)
 
         self.batches = [[] for _ in range(self.options['cores'])]
         for i, agent in enumerate(all_agents):
@@ -392,18 +393,40 @@ class Game:
             self.batches[i % self.options['cores']].append([agent, real_agent_index])
 
         self.agents_feed.extend(self.batches)
-        while not any(self.working):
-            time.sleep(0.5)
-            print(" - Waiting for agents to start...         \r", end='', flush=True)
-
-        while any(self.working) or len(self.agents_feed) != 0:
-            time.sleep(0.5)
-            print(" - Waiting for agents to finish...         \r", end='', flush=True)
+        while sum(self.working[:]) < self.options['cores']:
+            time.sleep(0.1)
+            print(f" - Waiting for agents to start | Started: {sum(self.working[:])}         \r", end='', flush=True)
+        start = time.time()
+        prev_time = time.time()
+        tpa_sum = 0
+        tpa_pass = 0
+        prev_ticks = 0
+        while any(self.working):
+            time.sleep(0.1)
+            alive_agents = 0
+            ticks = 0
+            min_ticks = 0
+            max_alive = 0
+            for i in range(int(len(self.log_data[:])/5)):
+                ticks += self.log_data[i*5]
+                alive_agents += self.log_data[i*5 + 1]
+                if min_ticks == 0 or min_ticks > self.log_data[i*5]: min_ticks = self.log_data[i*5]
+                if max_alive < self.log_data[i*5 + 1]: max_alive = self.log_data[i*5 + 1]
+            ticks /= len(self.log_data)/5
+            tpa_sum += (ticks - prev_ticks)/ max(0.01, (time.time() - prev_time)) * alive_agents / max(1, sum(self.working[:]))
+            tpa_pass += 1
+            tpa = tpa_sum / tpa_pass
+            prev_time = time.time()
+            prev_ticks = ticks
+            time_spent = time.time() - start
+            human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))
+            print(f" - Agents Training | Alive: {alive_agents}, Max Alive: {max_alive} Average Tick: {int(ticks)}, Minimum Tick: {min_ticks}, TPA: {int(tpa)} | {human_formatted}        \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time += self.lap_times[i]
             self.environment.agents[i].car.laps += self.laps[i]
             self.environment.agents[i].car.score += self.scores[i] 
+            
 
         self.environment.next_generation(self)
 
@@ -413,7 +436,6 @@ class Game:
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
-            agent = self.environment.agents[i]
 
         gc.collect()
     

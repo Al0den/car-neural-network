@@ -28,7 +28,7 @@ class Car:
         self.previous_center_line = (self.x, self.y)
         self.finish_x = self.x
         self.finish_y = self.y
-        self.score = 0
+        self.score, self.laps = 0, 0
 
         self.front_left, self.front_right, self.back_left, self.back_right = [0, 0], [0, 0], [0, 0], [0, 0]
         self.acceleration, self.brake, self.speed, self.steer = 0, 0, 0, 0
@@ -133,18 +133,18 @@ class Car:
         self.CheckForAction(brake, power, steer)
         
     def ApplyAgentInputs(self, action):
-        power, steer = action[0], action[1]
+        power, steer = action
         steer_change, brake_change, power_change = False, False, False
         if power > 0.8:
             self.Accelerate()
             power_change = True
-        if power < -0.8:
+        elif power < -0.8:
             self.Decelerate()
             brake_change = True
         if steer > 0.8:
             self.UpdateSteer(1)
             steer_change = True
-        if steer < -0.8:
+        elif steer < -0.8:
             self.UpdateSteer(-1)
             steer_change = True
         self.CheckForAction(brake_change, power_change, steer_change)
@@ -204,8 +204,6 @@ class Car:
         self.UpdateCorners()
 
     def UpdateCorners(self):
-        
-        # Ugly formulas for corners positions, but they work
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
         angle = np.arctan(half_small_side / half_big_side)
@@ -265,35 +263,34 @@ class Car:
         return self.previous_points
     
     def CenterlinePosition(self, x, y):
-        if self.validIndex(x, y) and self.track[int(y), int(x)] == 10:
-            return int(x), int(y)
+        if self.track[y, x] == 10:
+            return x, y
         return None
 
     def GetNearestCenterline(self, game=None):
         if self.died: return self.previous_center_line
-        if self.track[int(self.y), int(self.x)] == 10:
-            self.previous_center_line = (int(self.x), int(self.y))
+        normalised_x, normalised_y = int(self.x), int(self.y)
+        if self.track[normalised_y, normalised_x] == 10:
+            self.previous_center_line = (normalised_x, normalised_y)
             self.center_line_direction = 0
-            return int(self.x), int(self.y)
-        
+            return (normalised_x, normalised_y)
+        remaining_directions = [1, -1, 0, 0.5, -0.5, 1.5, -1.5]
         for i in range(int(max_center_line_distance * self.ppm + 10)):
-            for direction in [1, -1, 0, 2, 0.5, -0.5, 1.5, -1.5]:
+            for direction in remaining_directions:
                 angle = int(self.direction + direction * 90) % 360
-                x = self.x + i * cos[int(angle * 10)] * 2
-                y = self.y - i * sin[int(angle * 10)] * 2
+                x = int(self.x + i * cos[int(angle * 10)] * 2)
+                y = int(self.y - i * sin[int(angle * 10)] * 2)
                 
-                center_pos = self.CenterlinePosition(x, y)
-                if center_pos is not None:
-                    self.previous_center_line = center_pos
+                if self.track[y, x] == 10:
+                    self.previous_center_line = (x, y)
                     self.center_line_direction = direction
-                    return center_pos
+                    return (x, y)
                 for offset in offsets:
-                    new_x, new_y = x + offset[0], y + offset[1]
-                    center_pos = self.CenterlinePosition(new_x, new_y)
-                    if center_pos is not None:
-                        self.previous_center_line = center_pos
+                    new_x, new_y = int(x + offset[0]), int(y + offset[1])
+                    if self.track[new_y, new_x] == 10:
+                        self.previous_center_line = (new_x, new_y)
                         self.center_line_direction = direction
-                        return center_pos
+                        return new_x, new_y
         
         if game is not None and game.debug:
             print(f"Didnt find center line, using previous. Ticknum: {game.ticks}")
@@ -363,9 +360,6 @@ class Car:
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
         return max(1, seen)
-    
-    def validIndex(self, x, y):
-        return y < len(self.track) and y >= 0 and x < len(self.track[0]) and x >= 0
     
     def get_point_further(self, x, y, direction, max_dist, track):
         current_x, current_y = x, y
