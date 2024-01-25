@@ -424,14 +424,13 @@ class Game:
             prev_ticks = ticks
             time_spent = time.time() - start
             human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))
-            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{alive_agents/(len(self.log_data)/5)}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{ticks} TPA: {int(tpa)} | {human_formatted}        \r", end='', flush=True)
+            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{int(alive_agents/(len(self.log_data)/5))}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{int(ticks)} TPA: {int(tpa)} | {human_formatted}        \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time += self.lap_times[i]
             self.environment.agents[i].car.laps += self.laps[i]
             self.environment.agents[i].car.score += self.scores[i] 
             
-
         self.environment.next_generation(self)
 
         print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")

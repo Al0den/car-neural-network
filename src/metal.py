@@ -11,8 +11,8 @@ class Metal:
         return self.track_index
 
     def getPointsOffset(self, input_data):
-        input_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-        output_mutable_ptr = (ctypes.c_int32 * (int(len(input_data)/5)))()
+        input_ptr = (input_data.astype(np.short)).ctypes.data_as(ctypes.POINTER(ctypes.c_short))
+        output_mutable_ptr = (ctypes.c_short * (int(len(input_data)/5)))()
         self.shader.get_points_offsets(input_ptr, output_mutable_ptr, int(len(input_data)/5))
         output = np.array(output_mutable_ptr)
         del input_ptr    
@@ -39,8 +39,8 @@ class Metal:
 
     def init_argtypes(self):
         self.shader.get_points_offsets.argtypes = [
-            ctypes.POINTER(ctypes.c_int32),
-            ctypes.POINTER(ctypes.c_int32), 
+            ctypes.POINTER(ctypes.c_short),
+            ctypes.POINTER(ctypes.c_short), 
             ctypes.c_int
         ]
 
