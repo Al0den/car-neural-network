@@ -406,12 +406,16 @@ class Game:
             alive_agents = 0
             ticks = 0
             min_ticks = 0
+            max_ticks = 0
             max_alive = 0
+            min_alive = 0
             for i in range(int(len(self.log_data[:])/5)):
                 ticks += self.log_data[i*5]
                 alive_agents += self.log_data[i*5 + 1]
                 if min_ticks == 0 or min_ticks > self.log_data[i*5]: min_ticks = self.log_data[i*5]
                 if max_alive < self.log_data[i*5 + 1]: max_alive = self.log_data[i*5 + 1]
+                if min_alive == 0 or min_alive > self.log_data[i*5 + 1]: min_alive = self.log_data[i*5 + 1]
+                if max_ticks < self.log_data[i*5]: max_ticks = self.log_data[i*5]
             ticks /= len(self.log_data)/5
             tpa_sum += (ticks - prev_ticks)/ max(0.01, (time.time() - prev_time)) * alive_agents / max(1, sum(self.working[:]))
             tpa_pass += 1
@@ -420,7 +424,7 @@ class Game:
             prev_ticks = ticks
             time_spent = time.time() - start
             human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))
-            print(f" - Agents Training | Alive: {alive_agents}, Max Alive: {max_alive} Average Tick: {int(ticks)}, Minimum Tick: {min_ticks}, TPA: {int(tpa)} | {human_formatted}        \r", end='', flush=True)
+            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{alive_agents/(len(self.log_data)/5)}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{ticks} TPA: {int(tpa)} | {human_formatted}        \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time += self.lap_times[i]
