@@ -36,13 +36,14 @@ class Environment:
 
         for agent in self.agents:
             if agent.car.laps != game.map_tries or agent.car.lap_time == 0:
-                agent.car.lap_time = 999999999999999999
+                agent.car.lap_time = max_int
 
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
+
         self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
-        if self.previous_best_lap == 999999999999999999: self.previous_best_lap = 0
         self.previous_best_score = max([agent.car.score for agent in ranked_agents])
-    
+        if self.previous_best_lap == max_int: self.previous_best_lap = 0
+        
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.02) + 1)]
         new_agents = []
         for father in best_agents:
@@ -102,7 +103,6 @@ class Environment:
 
         self.add_previous_best(ranked_agents[0], game)
 
-        # Mix up agents to prevent getting best agents in first indices
         random.shuffle(new_agents)
 
         self.agents = np.array(new_agents)

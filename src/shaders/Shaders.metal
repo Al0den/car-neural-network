@@ -61,3 +61,16 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
     out[id] = distance;
     return;
 }
+
+kernel void dot_product(const device int *input [[ buffer(0) ]], const device float *weights [[ buffer(1) ]], device float *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
+    int input_size = input[1];
+    int a_start_index = input[id * 2 + 2];
+    int b_start_index = input[id * 2 + 3];
+
+    float sum = 0;
+    for (int i = 0; i < input_size; i++) {
+        sum += weights[a_start_index + i] * weights[b_start_index + i];
+    }
+    out[id] = sum;
+    return;
+}

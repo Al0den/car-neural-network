@@ -4,16 +4,15 @@ points_offset = [0, 4, -4,  15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 11
+state_space_size = len(points_offset) + 10
 first_layer_size_coeff = 1.3
-num_hidden_layers = 2
+num_hidden_layers = 3
 action_space_size = 2
-activation_function = np.tanh
-map_tries = 15
+map_tries = 10
 
 batch_size = 50
 
-real_starts_num = 5
+real_starts_num = 3
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -81,4 +80,7 @@ default_height = 780
 slider_width = 200
 slider_height = 20
 slider_padding = 10  # Padding from the right and bottom edges
+
+
+max_int = 2147483647
 

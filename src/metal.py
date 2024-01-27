@@ -18,6 +18,20 @@ class Metal:
         del input_ptr    
         del output_mutable_ptr
         return output
+    
+    def dot_product(self, input_info, input_data, products):
+        input_info = np.array(input_info, dtype=np.int32)
+        input_data = np.array(input_data, dtype=np.float32)
+
+        input_info_ptr = input_info.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        input_data_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+        output = np.zeros(products, dtype=np.float32)
+        output_ptr = output.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+
+        self.shader.dot_product(input_info_ptr, input_data_ptr, output_ptr, products)
+
+        return output
 
     def AddTrackBuffer(self, track_index, track_data):
         track_data = track_data.flatten().astype(np.uint8)
@@ -48,5 +62,13 @@ class Metal:
             ctypes.c_int,
             ctypes.POINTER(ctypes.c_uint8),
         ]
+
+        self.shader.dot_product.argtypes = [
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.POINTER(ctypes.c_float),
+            ctypes.c_int,
+        ]
+
 
         self.shader.concatenate_tracks.argtypes = []

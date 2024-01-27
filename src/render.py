@@ -148,6 +148,12 @@ class Render:
             blit_x = car_center_x - scaled_car_image.get_width() // 2
             blit_y = car_center_y - scaled_car_image.get_height() // 2
 
+            blit_distance = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (car_center_x , car_center_y))
+            blit_angle = np.arctan2(self.screen.get_height()/2 - car_center_y, self.screen.get_width()/ 2 - car_center_x)
+            blit_x = blit_x + blit_distance * np.cos(blit_angle)
+            blit_y = blit_y + blit_distance * np.sin(blit_angle)
+
+
             self.screen.blit(scaled_car_image, (blit_x, blit_y))
             
     def draw_acceleration(self, acceleration, braking, x, y, width, height):
@@ -283,6 +289,7 @@ class Render:
         agent = Agent(game.options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
 
         agent.car = new_car
+        agent.car.future_corners = game.car.future_corners
         agent.Tick(game.ticks, game)
         agent.car.GetNearestCenterline(game)
 
@@ -371,7 +378,7 @@ class Render:
         if game.player != 0:
             for agent in game.environment.agents:
                 if agent.car == centered_car: continue
-                self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, True)
+                self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, False)
         self.info(centered_car, game)
 
         if game.debug or not game.visual:

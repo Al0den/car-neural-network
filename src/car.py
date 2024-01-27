@@ -1,9 +1,8 @@
 import pygame
 import numpy as np
-import random
 import json
 
-from utils import calculate_distance, next_speed, angle_distance, new_brake_speed, angle_range_180, is_point_on_right
+from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
 from precomputed import sin, cos, offsets, directions
 from settings import *
 
@@ -26,6 +25,7 @@ class Car:
         self.start_y = self.y
         self.start_direction  = self.direction
         self.previous_center_line = (self.x, self.y)
+        self.center_line_dist = 0
         self.finish_x = self.x
         self.finish_y = self.y
         self.score, self.laps = 0, 0
@@ -49,18 +49,22 @@ class Car:
         return self.CheckCollisions(game.ticks)
 
     def CheckCollisions(self, ticks):
-        toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
-        count = 0
+        if self.track[int(self.y), int(self.x)] == 0:
+            self.GetNearestCenterline()
+            self.UpdateCorners()
+            toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
+            count = 0
 
-        for point in toCheck:
-            if self.track[int(point[1]), int(point[0])] == 0: count += 1
-            else: break
+            for point in toCheck:
+                if self.track[int(point[1]), int(point[0])] == 0: count += 1
+                else: break
 
-        if count > 3 and not god:
-            self.Kill()
-            return False
+            if count > 3 and not god:
+                self.Kill()
+                return False
 
-        if self.track[int(self.front_left[1]), int(self.front_left[0])] == 3 or self.track[int(self.front_right[1]), int(self.front_right[0])] == 3:
+        if self.track[int(self.y), int(self.x)] == 3:
+            self.GetNearestCenterline()
             self.lap_time = ticks
             if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                 self.lap_time = 0
@@ -93,6 +97,8 @@ class Car:
         self.acceleration = 0
         self.brake = 0
         self.steer = 0
+
+        self.UpdateCorners()
 
     def Accelerate(self):
         self.acceleration += acceleration_increment
@@ -201,9 +207,9 @@ class Car:
 
         self.direction %= 360
 
-        self.UpdateCorners()
 
     def UpdateCorners(self):
+
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
         angle = np.arctan(half_small_side / half_big_side)
@@ -273,23 +279,26 @@ class Car:
         if self.track[normalised_y, normalised_x] == 10:
             self.previous_center_line = (normalised_x, normalised_y)
             self.center_line_direction = 0
+            self.center_line_dist = 0
             return (normalised_x, normalised_y)
-        remaining_directions = [1, -1, 0, 0.5, -0.5, 1.5, -1.5]
+        remaining_directions = [1, -1, 0, 2]
         for i in range(int(max_center_line_distance * self.ppm + 10)):
             for direction in remaining_directions:
                 angle = int(self.direction + direction * 90) % 360
                 x = int(self.x + i * cos[int(angle * 10)] * 2)
                 y = int(self.y - i * sin[int(angle * 10)] * 2)
-                
+               
                 if self.track[y, x] == 10:
                     self.previous_center_line = (x, y)
                     self.center_line_direction = direction
+                    self.center_line_dist = i
                     return (x, y)
                 for offset in offsets:
                     new_x, new_y = int(x + offset[0]), int(y + offset[1])
                     if self.track[new_y, new_x] == 10:
                         self.previous_center_line = (new_x, new_y)
                         self.center_line_direction = direction
+                        self.center_line_dist = i
                         return new_x, new_y
         
         if game is not None and game.debug:

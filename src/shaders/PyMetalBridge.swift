@@ -52,6 +52,68 @@ public func get_points_offsets(input: UnsafePointer<Int16>, out: UnsafeMutablePo
 }
 
 @available(macOS 10.13, *)
+@_cdecl("dot_product")
+public func dot_product(input: UnsafePointer<Int32>, weights: UnsafePointer<Float32>, out: UnsafeMutablePointer<Float32>, count: Int) -> Int {
+    return computeDotProduct(input: input, weights: weights, out: out, count: count)
+}
+
+@available(macOS 10.13, *)
+public func computeDotProduct(input: UnsafePointer<Int32>, weights: UnsafePointer<Float32>, out: UnsafeMutablePointer<Float32>, count: Int) -> Int {
+    do {
+        let num_weights = Int(input[0])
+
+        let inputBuffer = UnsafeRawPointer(input)
+        let weightsBuffer = UnsafeRawPointer(weights)
+
+        let commandBuffer = commandQueue.makeCommandBuffer()
+        let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
+
+        let dotProductFunction = defaultLibrary.makeFunction(name: "dot_product")!
+        do {
+            let computePipelineState = try device.makeComputePipelineState(function: dotProductFunction)
+            computeCommandEncoder!.setComputePipelineState(computePipelineState)
+        } catch {
+            fatalError("Error creating compute pipeline state: \(error)")
+        }
+
+
+        let inputByteLength = 10 * MemoryLayout<Int32>.size * count + 2
+        let weightsByteLength = num_weights * MemoryLayout<Float32>.size
+        
+        let inVectorBuffer = device.makeBuffer(bytes: inputBuffer, length: inputByteLength, options: [])
+        let weightsVectorBuffer = device.makeBuffer(bytes: weightsBuffer, length: weightsByteLength, options: [])
+
+        computeCommandEncoder!.setBuffer(inVectorBuffer, offset: 0, index: 0)
+        computeCommandEncoder!.setBuffer(weightsVectorBuffer, offset: 0, index: 1)
+
+        let resultRef = UnsafeMutablePointer<Float32>.allocate(capacity: count)
+        let outVectorBuffer = device.makeBuffer(bytes: resultRef, length: count * MemoryLayout<Float32>.size, options: [])
+
+        computeCommandEncoder!.setBuffer(outVectorBuffer, offset: 0, index: 2)
+
+        let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
+        let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
+
+        computeCommandEncoder!.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+        computeCommandEncoder!.endEncoding()
+        commandBuffer!.commit()
+        commandBuffer!.waitUntilCompleted()
+
+        // unsafe bitcast and assigin result pointer to output
+
+        out.initialize(from: outVectorBuffer!.contents().assumingMemoryBound(to: Float32.self), count: count)
+
+        resultRef.deallocate()
+
+        inVectorBuffer!.setPurgeableState(.empty)
+        weightsVectorBuffer!.setPurgeableState(.empty)
+        outVectorBuffer!.setPurgeableState(.empty)
+
+        return 0
+    }
+}
+
+@available(macOS 10.13, *)
 public func computeOffsets(input: UnsafePointer<Int16>, out: UnsafeMutablePointer<Int16>, count: Int) -> Int {
     do {
         let inputBuffer = UnsafeRawPointer(input)
