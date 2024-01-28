@@ -39,11 +39,6 @@ public func concatenate_tracks() {
         buffer?.setPurgeableState(.empty)
     }
 }
-@available(macOS 10.13, *)
-@_cdecl("init_shaders")
-public func init_shaders() {
-
-}
 
 @available(macOS 10.13, *)
 @_cdecl("get_points_offsets")

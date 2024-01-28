@@ -338,7 +338,7 @@ class Game:
                 if agents[i].car.lap_time > 0:
                     local_scores[indexes[i]] += 1 * score_multiplier
                     local_laps[indexes[i]] += 1
-                    local_lap_times[indexes[i]] += agent.car.lap_time
+                    local_lap_times[indexes[i]] += agents[i].car.lap_time
                 else:
                     if max_potentials[agents[i].car.track_name] == 0:
                         max_potentials[agents[i].car.track_name] = agents[i].car.CalculateMaxPotential()

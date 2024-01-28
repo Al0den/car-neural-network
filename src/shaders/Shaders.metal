@@ -9,27 +9,21 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
     short track_id = input[id * 5 + 3];
     float ppm = (float)(input[id * 5 + 4]) / 1000; // pixels per meter (1000 = 1 meter
 
+    if (track[track_id * 5000 * 5000 + car_y * 5000 + car_x] == 0) {
+        return;
+    }
+
     short x = car_x;
     short y = car_y;
     short distance = 0;
 
-    if (track_id == -1) {
-        out[id] = 0;
-        return;
-    }
-
-    float pi = 3.1415;
-    float cosinus = (float)cos((float)direction * pi/180);
-    float sinus = (float)sin((float)direction * pi/180);
+    float angleInRadians = (float)direction * (M_PI_F / 180.0f);
+    float cosinus;
+    float sinus = sincos(angleInRadians, cosinus);
     
     int max_distance = (int)(200 * ppm);
               
     int point_search_jump = 25;
-
-    if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
-        out[id] = distance;
-        return;
-    }
     
     for (int i = 0; i < max_distance; i += point_search_jump) {
         x = car_x + (int)(i * sinus);
@@ -40,24 +34,24 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
         }
         distance = i;
     }
+
     if (distance == max_distance) {
         out[id] = distance;
         return;
     }
                                 
     int jump = point_search_jump / 2;
-    int rep = 0;
-    while (jump > 0 && rep < 30) {
+    while (jump > 0) {
         if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
             distance -= jump;
         } else {
             distance += jump;
         }
         jump *= 0.5;
-        rep++;
         x = car_x + (int)(distance * sinus);
         y = car_y + (int)(distance * cosinus);
     }
+
     out[id] = distance;
     return;
 }

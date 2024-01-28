@@ -26,3 +26,4 @@ utils/*
 *data_extraction*
 src/libPyMetalBridge.dylib.dSYM/Contents/Resources/Relocations/aarch64/libPyMetalBridge.dylib.yml
 src/libPyMetalBridge.dylib.dSYM/Contents/Resources/DWARF/libPyMetalBridge.dylib
+test_dot_product.py

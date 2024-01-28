@@ -1,12 +1,10 @@
 #!/bin/bash
+read -p "Cores: " user_input
 
 while true; do
     killall python
 
     osascript -e 'tell application "Terminal" to close every window'
-    
-    read -p "Cores: " user_input
-    
     osascript -e "tell application \"Terminal\" to do script \"cd Desktop/projects/Car && echo \\\"2\n$user_input\n\\\" | python src/main.py\""
     
     sleep 2
