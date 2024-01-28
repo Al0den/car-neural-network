@@ -185,7 +185,7 @@ class Game:
                 self.load_single_track()
             else:
                 self.load_all_tracks()
-        if self.player in [0, 4, 5, 8, 10]:
+        if self.player in [0, 4, 5, 8]:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
 
@@ -298,7 +298,7 @@ class Game:
 
         while self.running.value:
             try:
-                input_feed = agents_feed.pop(0)
+                input_feed = agents_feed.pop()
                 working[p_id] = True
             except:
                 time.sleep(0.5)
@@ -323,6 +323,8 @@ class Game:
                 for i in range(len(agents)):
                     agents[i].Tick(ticks, self, per_agents_points[i])
                 del out_data
+                del input_data
+                del per_agents_points
                 ticks += 1
 
                 # Log data to log_data Array
@@ -355,6 +357,7 @@ class Game:
                     local_laps[i] = 0
                     local_lap_times[i] = 0
             working[p_id] = False
+            gc.collect()
 
     def train_agents_gpu(self):
         starts, start_tracks = self.GenerateTrainingStarts()
@@ -387,10 +390,15 @@ class Game:
             agent, real_agent_index = agent
             self.batches[i % self.options['cores']].append([agent, real_agent_index])
 
-        self.agents_feed.extend(self.batches)
+        with self.main_lock:
+            self.agents_feed.extend(self.batches)
+
         while sum(self.working[:]) < self.options['cores']:
             time.sleep(0.1)
             print(f" - Waiting for agents to start | Started: {sum(self.working[:])}         \r", end='', flush=True)
+
+        # Clear the self.agents_feed list if it is empty
+        
         start = time.time()
         prev_time = time.time()
         tpa_sum = 0

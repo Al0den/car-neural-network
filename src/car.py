@@ -49,7 +49,8 @@ class Car:
         return self.CheckCollisions(game.ticks)
 
     def CheckCollisions(self, ticks):
-        if self.track[int(self.y), int(self.x)] == 0:
+        track_val = self.track[int(self.y), int(self.x)]
+        if track_val == 0:
             self.GetNearestCenterline()
             self.UpdateCorners()
             toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
@@ -62,16 +63,14 @@ class Car:
             if count > 3 and not god:
                 self.Kill()
                 return False
-
-        if self.track[int(self.y), int(self.x)] == 3:
+        elif track_val == 3:
             self.GetNearestCenterline()
             self.lap_time = ticks
             if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                 self.lap_time = 0
             self.Kill()
             return False
-        
-        elif self.track[int(self.y), int(self.x)] == 2:
+        elif track_val == 2:
             seen = False
             for checkpoint in self.checkpoints_seen:
                 if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
