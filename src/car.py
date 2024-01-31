@@ -183,7 +183,7 @@ class Car:
         
     def UpdateCar(self):     
         wheel_angle = self.steer * 14 
-        speed_factor = max(1.0 - self.speed / (max_speed), 0.1)
+        speed_factor = max(1.0 - pow(int(self.speed) / (max_speed), 0.5), 0.1)
 
         wheel_angle *= speed_factor
         if wheel_angle != 0: turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
@@ -286,7 +286,7 @@ class Car:
                 angle = int(self.direction + direction * 90) % 360
                 x = int(self.x + i * cos[int(angle * 10)] * 2)
                 y = int(self.y - i * sin[int(angle * 10)] * 2)
-               
+                if x < 1 or y < 1 or x >= len(self.track[0]) - 1 or y >= len(self.track) - 1: continue
                 if self.track[y, x] == 10:
                     self.previous_center_line = (x, y)
                     self.center_line_direction = direction
@@ -294,6 +294,7 @@ class Car:
                     return (x, y)
                 for offset in offsets:
                     new_x, new_y = int(x + offset[0]), int(y + offset[1])
+                    
                     if self.track[new_y, new_x] == 10:
                         self.previous_center_line = (new_x, new_y)
                         self.center_line_direction = direction

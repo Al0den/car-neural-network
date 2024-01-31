@@ -240,7 +240,7 @@ class Environment:
             agent.network = network
             self.agents.append(agent)
 
-        for _ in range(int((specialised_training_multiple - 1)* len(self.agents)) - 1):
+        for _ in range(int((specialised_training_multiple - 1)* len(self.agents))):
             if method == "specialised": continue
             agent = np.random.choice(self.agents)
             self.agents.append(agent)

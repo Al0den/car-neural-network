@@ -9,7 +9,7 @@ while true; do
     
     sleep 2
 
-    osascript -e 'tell application "Terminal" to tell window 1 to set size to {1000, 500}'
+    osascript -e 'tell application "Terminal" to tell window 1 to set size to {1200, 500}'
 
-    sleep 3600
+    sleep 1200
 done

@@ -9,6 +9,9 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
     short track_id = input[id * 5 + 3];
     float ppm = (float)(input[id * 5 + 4]) / 1000; // pixels per meter (1000 = 1 meter
 
+    if (car_x == -1) {
+        return;
+    }
     if (track[track_id * 5000 * 5000 + car_y * 5000 + car_x] == 0) {
         return;
     }
@@ -39,15 +42,9 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
         out[id] = distance;
         return;
     }
-                                
-    int jump = point_search_jump / 2;
-    while (jump > 0) {
-        if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
-            distance -= jump;
-        } else {
-            distance += jump;
-        }
-        jump *= 0.5;
+
+    while (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
+        distance -= 1;
         x = car_x + (int)(distance * sinus);
         y = car_y + (int)(distance * cosinus);
     }
