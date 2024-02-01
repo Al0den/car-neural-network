@@ -111,6 +111,7 @@ public func computeDotProduct(input: UnsafePointer<Int32>, weights: UnsafePointe
 @available(macOS 10.13, *)
 public func computeOffsets(input: UnsafePointer<Int16>, out: UnsafeMutablePointer<Int16>, count: Int) -> Int {
     do {
+
         let inputBuffer = UnsafeRawPointer(input)
 
         let commandBuffer = commandQueue.makeCommandBuffer()
@@ -134,13 +135,12 @@ public func computeOffsets(input: UnsafePointer<Int16>, out: UnsafeMutablePointe
         
         let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
         let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
-
+        
         computeCommandEncoder!.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
         computeCommandEncoder!.endEncoding()
         commandBuffer!.commit()
-        commandBuffer!.waitUntilCompleted()
 
-        // unsafe bitcast and assigin result pointer to output
+        commandBuffer!.waitUntilCompleted()
 
         out.initialize(from: outVectorBuffer!.contents().assumingMemoryBound(to: Int16.self), count: count)
 

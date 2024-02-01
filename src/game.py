@@ -314,7 +314,7 @@ class Game:
             tick_tpa = 0
             
             while alive > 0:
-                input_data = np.array([0] * 5 * len(agents) * len(points_offset)).astype(np.int32)
+                input_data = np.array([0] * 5 * len(agents) * len(points_offset)).astype(np.short)
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
                 for i in range(len(agents)):
@@ -326,8 +326,6 @@ class Game:
                         else:
                             offset = points_offset[j]
                             input_data[index:index+5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
-
-                            #input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
                 tpa_stamp = time.time()
                 out_data = MetalInstance.getPointsOffset(input_data)
                 metal_stamp = time.time()
