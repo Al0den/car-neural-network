@@ -2,7 +2,7 @@
 #include <metal_stdlib>
 using namespace metal;
 
-kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device short *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
+kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device short *out [[ buffer(2) ]], const device short *offsets [[ buffer(3) ]], uint id [[ thread_position_in_grid ]]) {
     short car_x = input[id * 5];
     short car_y = input[id * 5 + 1];
     short direction = input[id * 5 + 2];

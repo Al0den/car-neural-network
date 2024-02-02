@@ -195,10 +195,10 @@ class Render:
         pygame.draw.line(self.screen, (255, 255, 255), (x + width / 2, y), (x + width / 2, y + height))
 
     def DrawPointsInput(self, car, camera_x, camera_y, game, prev_points=None):
-        input_data = []
-        for offset in points_offset:
-            input_data += [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name], int(1000 * car.ppm)]
-        points_distance = game.Metal.getPointsOffset(np.array(input_data).flatten().astype(np.int32)).reshape((len(points_offset))).tolist()
+        for i, offset in enumerate(points_offset):
+            game.Metal.inVectorBuffer[i*5:i*5+5] = [int(car.x), int(car.y), int(car.direction + 90 + offset) % 360, game.track_index[car.track_name], int(1000 * car.ppm)]
+        game.Metal.getPointsOffset(len(points_offset))
+        points_distance = game.Metal.outVectorBuffer[:len(points_offset)]
 
         points = []
         for i, distance in enumerate(points_distance):

@@ -188,6 +188,7 @@ class Game:
         if self.player in [0, 4, 5, 7, 8]:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
+            self.Metal.init_shaders(len(points_offset) * 5 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
 
         self.prev_update = time.time()
         self.start_time = time.time()
@@ -288,13 +289,12 @@ class Game:
         local_scores = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         local_lap_times = [0] * len(self.environment.agents)
-        for agent in self.environment.agents:
-            agent.car.track = []
-            agent.track = []
 
         MetalInstance = Metal(self.tracks)
         track_index = MetalInstance.getTrackIndexes()
         self.tracks = []
+        for agent in self.environment.agents:
+            agent.car.track = []
 
         while True:
             try:
@@ -307,47 +307,52 @@ class Game:
             agents = [data[0] for data in input_feed]
             indexes = [data[1] for data in input_feed]
 
+            for agent in agents:
+                agent.car.lap_time = 0
+                agent.car.score = 0
+                agent.car.laps = 0
+
             alive = len(agents)
             ticks = 0
             input_tpa = 0
             metal_tpa = 0
             tick_tpa = 0
-            
+
+            MetalInstance.init_shaders(len(agents) * len(points_offset) * 5, len(agents) * len(points_offset), points_offset)
+            real_points_offsets = np.array([offset + 90 for offset in points_offset])
             while alive > 0:
-                input_data = np.array([0] * 5 * len(agents) * len(points_offset)).astype(np.short)
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
                 for i in range(len(agents)):
                     agent = agents[i]
                     for j in range(len(points_offset)):
-                        index = i * len(points_offset) * 5 + j * 5
+                        index = i * len(real_points_offsets) * 5 + j * 5
                         if agent.car.died:
-                            input_data[index:index+5] = [-1, -1, -1, -1, -1]
+                            MetalInstance.inVectorBuffer[index] = -1
                         else:
-                            offset = points_offset[j]
-                            input_data[index:index+5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+                            offset = real_points_offsets[j]
+                            MetalInstance.inVectorBuffer[index:index+5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
                 tpa_stamp = time.time()
-                out_data = MetalInstance.getPointsOffset(input_data)
+                MetalInstance.getPointsOffset(len(agents) * len(points_offset))
+               
                 metal_stamp = time.time()
-                per_agents_points = out_data.reshape((len(agents), len(points_offset)))
+                per_agents_points = MetalInstance.outVectorBuffer.reshape((len(agents), len(points_offset)))
                 for i in range(len(agents)):
                     agents[i].Tick(ticks, self, per_agents_points[i])
                 tick_stamp = time.time()
-                del out_data
-                del input_data
                 del per_agents_points
                 ticks += 1
 
-                metal_tpa += alive / (metal_stamp - tpa_stamp)
-                tick_tpa += alive / (tick_stamp - metal_stamp)
-                input_tpa += alive / (tpa_stamp - start_time)
+                metal_tpa += alive * (metal_stamp - tpa_stamp)
+                tick_tpa += alive * (tick_stamp - metal_stamp)
+                input_tpa += alive * (tpa_stamp - start_time)
 
                 # Log data to log_data Array
                 log_data[p_id * 5] = ticks
                 log_data[p_id * 5 + 1] = alive
-                log_data[p_id * 5 + 2] = int(input_tpa / ticks)
-                log_data[p_id * 5 + 3] = int(metal_tpa / ticks)
-                log_data[p_id * 5 + 4] = int(tick_tpa / ticks)
+                log_data[p_id * 5 + 2] = int(input_tpa)
+                log_data[p_id * 5 + 3] = int(metal_tpa)
+                log_data[p_id * 5 + 4] = int(tick_tpa)
             
             max_potentials = {}
             for track in self.track_names:
@@ -394,11 +399,11 @@ class Game:
                 new_agent.car.UpdateCorners()
                 
                 if self.player == 3: new_agent.car.speed = self.config['quali_start_speed'].get(start_track)
-                if all_corners == []:
+                if k == 0:
                     new_agent.car.setFutureCorners(self.corners[start_track])
                     all_corners = new_agent.car.future_corners
                 else:
-                    new_agent.car.future_corners = all_corners
+                    new_agent.car.future_corners = np.array(all_corners, copy=True).tolist()
                 all_agents.append([new_agent, k])
      
         random.shuffle(all_agents)
@@ -414,21 +419,17 @@ class Game:
         while sum(self.working[:]) < self.options['cores']:
             time.sleep(0.1)
             print(f" - Waiting for agents to start | Started: {sum(self.working[:])}, Left: {len(self.agents_feed)}         \r", end='', flush=True)
-
-        # Clear the self.agents_feed list if it is empty
         
         start = time.time()
+
+        prev_ticks = 0
+        update_delay = 0.1
+        tps_window_size = 20  # Adjust the window size as needed
+        tps_values = [0] * tps_window_size
+
         while any(self.working):
-            time.sleep(0.1)
-            alive_agents = 0
-            ticks = 0
-            min_ticks = 0
-            max_ticks = 0
-            max_alive = 0
-            min_alive = 0
-            tot_input = 0
-            tot_metal = 0
-            tot_tick = 0
+            time.sleep(update_delay)
+            alive_agents, ticks, min_ticks, max_ticks, max_alive, min_alive, tot_input, tot_metal, tot_tick = 0, 0, 0, 0, 0, 0, 0, 0, 0
             for i in range(int(len(self.log_data[:])/5)):
                 ticks += self.log_data[i*5]
                 alive_agents += self.log_data[i*5 + 1]
@@ -439,14 +440,26 @@ class Game:
                 if max_alive < self.log_data[i*5 + 1]: max_alive = self.log_data[i*5 + 1]
                 if min_alive == 0 or min_alive > self.log_data[i*5 + 1]: min_alive = self.log_data[i*5 + 1]
                 if max_ticks < self.log_data[i*5]: max_ticks = self.log_data[i*5]
+            tot_ticks = ticks
             ticks /= len(self.log_data)/5
             time_spent = time.time() - start
             human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))
             metal_percentage = round(tot_metal / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
             input_percentage = round(tot_input / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
             tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
-            calculated_tpa = int((tot_input + tot_metal + tot_tick)/(1000 * self.options['cores']))
-            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{int(alive_agents/(len(self.log_data)/5))}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{int(ticks)}, TPA: {calculated_tpa}k, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%  | {human_formatted}        \r", end='', flush=True)
+            if sum(self.working[:]) != 0:
+                tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / sum(self.working[:])
+
+                # Update the moving average of TPS
+                tps_values.pop(0)
+                tps_values.append(tps)
+                smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+
+                prev_ticks = tot_ticks
+            else:
+                smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+        
+            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{int(alive_agents/(len(self.log_data)/5))}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{int(ticks)}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {smoothed_tps}  | {human_formatted}        \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time += self.lap_times[i]
@@ -510,15 +523,8 @@ class Game:
             return starts, start_tracks
     
         count = 0
-        maxi = max([abs(self.track_results[track]) for track in self.track_results])
-
-        for track in self.track_results:
-            weights.append(round(pow(-self.track_results[track] + maxi + 1, 0.75), 3))
-            tracks.append(track)
-
         while len(chosen_tracks) < real_starts_num and count < 10000:
-            # Choose a track at random based on the score
-            track = random.choices(tracks, weights)[0]
+            track = random.choice(list(self.tracks.keys()))
             if track not in chosen_tracks:
                 start_tracks.append(track)
                 start_x = self.real_starts[track][0][0]
@@ -527,7 +533,7 @@ class Game:
                 chosen_tracks.append(track)
             count += 1
         self.real_start_tracks = chosen_tracks
-        # Complete with random starts
+        
         while len(starts) < self.map_tries:
             track = random.choice(list(self.tracks.keys()))
             start_tracks.append(track)
@@ -536,6 +542,7 @@ class Game:
             
         for i in range(len(start_tracks)):
             assert(self.tracks[start_tracks[i]][starts[i][0][0], starts[i][0][1]] == 10)
+
         return starts, start_tracks
 
     def load_all_tracks(self, shared=False):

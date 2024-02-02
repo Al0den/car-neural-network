@@ -66,7 +66,7 @@ score_multiplier = 10000
 
 mutation_strenght = 0.2
 
-max_ticks_before_kill = 20000
+max_ticks_before_kill = 25000
 min_speed = 5
 base_score_per_checkpoint = 0
 

@@ -28,15 +28,14 @@ class Agent:
 
     def CalculateState(self, game, ticks, calculated_points=None):
         if calculated_points is None:
-            input_data = []
-            for offset in points_offset:
-                input_data += [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
-            input_data = np.array(input_data)
-            calculated_points = game.Metal.getPointsOffset(input_data.flatten().astype(np.int32))
+            for i, offset in enumerate(points_offset):
+                game.Metal.inVectorBuffer[i*5:i*5+5] = [int(self.car.x), int(self.car.y), int(self.car.direction + 90 + offset) % 360, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
+            game.Metal.getPointsOffset(len(points_offset))
+            calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
         
         state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
 
-        if self.car.future_corners == []: state += [0,0,0]
+        if len(self.car.future_corners) == 0: state += [0,0,0]
         else: state += self.ProcessCorner(self.car.future_corners[0])
 
         if len(self.car.future_corners) <= 1: state += [0,0,0]

@@ -10,28 +10,14 @@ class Metal:
     def getTrackIndexes(self):
         return self.track_index
 
-    def getPointsOffset(self, input_data):
-        input_ptr = (input_data.astype(np.short)).ctypes.data_as(ctypes.POINTER(ctypes.c_short))
-        output_mutable_ptr = (ctypes.c_short * (int(len(input_data)/5)))()
-        self.shader.get_points_offsets(input_ptr, output_mutable_ptr, int(len(input_data)/5))
-        output = np.array(output_mutable_ptr)
-        del input_ptr    
-        del output_mutable_ptr
-        return output
+    def getPointsOffset(self, input_num):
+        self.shader.get_points_offsets(input_num)
     
-    def dot_product(self, input_info, input_data, products):
-        input_info = np.array(input_info, dtype=np.int32)
-        input_data = np.array(input_data, dtype=np.float32)
-
-        input_info_ptr = input_info.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
-        input_data_ptr = input_data.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-
-        output = np.zeros(products, dtype=np.float32)
-        output_ptr = output.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-
-        self.shader.dot_product(input_info_ptr, input_data_ptr, output_ptr, products)
-
-        return output
+    def showBuffer(self, count):
+        self.shader.show_buffer(count)
+    
+    def getPointsOffsetTest(self, input_num):
+        return self.shader.get_points_offsets_test(input_num)
 
     def AddTrackBuffer(self, track_index, track_data):
         track_data = track_data.flatten().astype(np.uint8)
@@ -39,6 +25,22 @@ class Metal:
         self.shader.add_track(track_index, track_data)
   
         del track_data
+
+    def init_shaders(self, inVectorBufferCount, outVectorBufferCount, offsets):
+        pointer = self.shader.init_input_buffer(inVectorBufferCount)
+        numpy_array_in = np.ctypeslib.as_array(pointer, shape=(inVectorBufferCount,))
+        self.inVectorBuffer = numpy_array_in
+
+        pointer = self.shader.init_output_buffer(outVectorBufferCount)
+        numpy_array_out = np.ctypeslib.as_array(pointer, shape=(outVectorBufferCount,))
+        self.outVectorBuffer = numpy_array_out
+
+        pointer = self.shader.init_offsets_buffer(len(offsets))
+        numpy_array_offsets = np.ctypeslib.as_array(pointer, shape=(len(offsets),))
+        self.offsetsBuffer = numpy_array_offsets
+
+        for i in range(len(offsets)):
+            self.offsetsBuffer[i] = offsets[i]
 
     def init_tracks(self, tracks):
         self.track_index = {}    
@@ -52,23 +54,23 @@ class Metal:
         self.shader.concatenate_tracks()
 
     def init_argtypes(self):
-        self.shader.get_points_offsets.argtypes = [
-            ctypes.POINTER(ctypes.c_short),
-            ctypes.POINTER(ctypes.c_short), 
-            ctypes.c_int
-        ]
+        self.shader.get_points_offsets.argtypes = [ ctypes.c_int ]
+        self.shader.get_points_offsets_test.argtypes = [ ctypes.c_int ]
 
         self.shader.add_track.argtypes = [
             ctypes.c_int,
             ctypes.POINTER(ctypes.c_uint8),
         ]
 
-        self.shader.dot_product.argtypes = [
-            ctypes.POINTER(ctypes.c_int32),
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.POINTER(ctypes.c_float),
-            ctypes.c_int,
+        self.shader.init_input_buffer.argtypes = [ ctypes.c_int64 ]
+        self.shader.init_output_buffer.argtypes = [ ctypes.c_int64 ]
+        self.shader.init_offsets_buffer.argtypes = [ ctypes.c_int64 ]
+
+        self.shader.show_buffer.argtypes = [
+            ctypes.c_int64
         ]
 
-
+        self.shader.init_input_buffer.restype = ctypes.POINTER(ctypes.c_int16)
+        self.shader.init_output_buffer.restype = ctypes.POINTER(ctypes.c_int16)
+        self.shader.init_offsets_buffer.restype = ctypes.POINTER(ctypes.c_int16)
         self.shader.concatenate_tracks.argtypes = []
