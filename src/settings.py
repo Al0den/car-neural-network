@@ -1,5 +1,3 @@
-import numpy as np
-
 points_offset = [0, 4, -4,  15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
 
 # - Neural network settings

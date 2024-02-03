@@ -62,6 +62,7 @@ public func computeOffsets(count: Int) -> Int {
         computeCommandEncoder!.setBuffer(inBuffer, offset: 0, index: 0)
         computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
         computeCommandEncoder!.setBuffer(outBuffer, offset: 0, index: 2)
+        computeCommandEncoder!.setBuffer(offsetsBuffer, offset: 0, index: 3)
         
         let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
         let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
@@ -123,48 +124,7 @@ public func init_offsets_buffer(count: Int) -> UnsafeMutablePointer<Int16> {
 @available(macOS 10.13, *)
 @_cdecl("show_buffer")
 public func show_buffer(count: Int) {
-    let pointer = inBuffer!.contents().bindMemory(to: Int16.self, capacity: count)
+    let pointer = offsetsBuffer!.contents().bindMemory(to: Int16.self, capacity: count)
     for i in 0...count { print(pointer[i], terminator: " ") }
     print()
 }
-
-@available(macOS 10.13, *)
-@_cdecl("get_points_offsets_test")
-public func get_points_offsets_test(count: Int) -> Int {
-    return computeOffsetsTest(count: count)
-}
-
-@available(macOS 10.13, *)
-public func computeOffsetsTest(count: Int) -> Int {
-    do {
-        let commandBuffer = commandQueue.makeCommandBuffer()
-        let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
-      
-        let getPointsFunction = defaultLibrary.makeFunction(name: "points_offsets")!
-        let computePipelineState = try device.makeComputePipelineState(function: getPointsFunction)
-        computeCommandEncoder!.setComputePipelineState(computePipelineState)
-
-        computeCommandEncoder!.setBuffer(inBuffer, offset: 0, index: 0)
-        computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
-        computeCommandEncoder!.setBuffer(outBuffer, offset: 0, index: 2)
-        computeCommandEncoder!.setBuffer(offsetsBuffer, offset: 0, index: 3)
-        
-        let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
-        let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
-
-        let encodeTime = DispatchTime.now().uptimeNanoseconds
-        
-        computeCommandEncoder!.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
-        computeCommandEncoder!.endEncoding()
-        commandBuffer!.commit()
-        commandBuffer!.waitUntilCompleted()
-
-        let gpuTime = DispatchTime.now().uptimeNanoseconds
-
-        return Int(gpuTime - encodeTime)
-    } catch {
-        print("\(error)")
-        return -1
-    }
-}
-

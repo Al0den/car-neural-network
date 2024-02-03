@@ -185,6 +185,7 @@ class Game:
                 self.load_single_track()
             else:
                 self.load_all_tracks()
+
         if self.player in [0, 4, 5, 7, 8]:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
@@ -318,20 +319,16 @@ class Game:
             metal_tpa = 0
             tick_tpa = 0
 
-            MetalInstance.init_shaders(len(agents) * len(points_offset) * 5, len(agents) * len(points_offset), points_offset)
-            real_points_offsets = np.array([offset + 90 for offset in points_offset])
+            MetalInstance.init_shaders(len(agents) * 5, len(agents) * len(points_offset), points_offset)
+
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
                 for i in range(len(agents)):
                     agent = agents[i]
-                    for j in range(len(points_offset)):
-                        index = i * len(real_points_offsets) * 5 + j * 5
-                        if agent.car.died:
-                            MetalInstance.inVectorBuffer[index] = -1
-                        else:
-                            offset = real_points_offsets[j]
-                            MetalInstance.inVectorBuffer[index:index+5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset) % 360, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+                    index = i * 5
+                    MetalInstance.inVectorBuffer[index:index + 5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction), track_index[agent.car.track_name], int(agent.car.ppm) * 1000]
+                    
                 tpa_stamp = time.time()
                 MetalInstance.getPointsOffset(len(agents) * len(points_offset))
                
@@ -443,7 +440,7 @@ class Game:
             tot_ticks = ticks
             ticks /= len(self.log_data)/5
             time_spent = time.time() - start
-            human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))
+            human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))[3:]
             metal_percentage = round(tot_metal / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
             input_percentage = round(tot_input / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
             tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)

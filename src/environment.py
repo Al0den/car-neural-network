@@ -29,7 +29,6 @@ class Environment:
 
     def next_generation(self, game):
         game.track_name = random.choice(list(game.tracks.keys()))
-        print()
         game.track = game.tracks[game.track_name]
 
         self.track = game.track

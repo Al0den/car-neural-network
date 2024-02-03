@@ -15,9 +15,6 @@ class Metal:
     
     def showBuffer(self, count):
         self.shader.show_buffer(count)
-    
-    def getPointsOffsetTest(self, input_num):
-        return self.shader.get_points_offsets_test(input_num)
 
     def AddTrackBuffer(self, track_index, track_data):
         track_data = track_data.flatten().astype(np.uint8)
@@ -55,7 +52,6 @@ class Metal:
 
     def init_argtypes(self):
         self.shader.get_points_offsets.argtypes = [ ctypes.c_int ]
-        self.shader.get_points_offsets_test.argtypes = [ ctypes.c_int ]
 
         self.shader.add_track.argtypes = [
             ctypes.c_int,
