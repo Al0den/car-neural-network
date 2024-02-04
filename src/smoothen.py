@@ -83,7 +83,9 @@ def smoothen(track):
                 track_surface.set_at((j, i), gray)
         elif track_matrix[i][j] > 99:
             track_surface.set_at((j, i), gray)
-    corners = data['corners']
+    corners_raw = data['corners']
+    corners = [corner_raw[0] for corner_raw in corners_raw]
+    
     for corner in corners:
         # Draw circle
         pygame.draw.circle(track_surface, (255, 0, 0), (corner[0], corner[1]), 3)
@@ -109,9 +111,14 @@ def smoothen(track):
     while (start_y, start_x) != (y, x) or not started:
         started = True
         print(f"{seen} / {len(center_line[0])}")
-        potential_offsets = [offset for offset in offsets if track_matrix[y + offset[0], x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), direction) <= 70]
+        potential_offsets = [offset for offset in offsets if track_matrix[y + offset[0], x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), direction) <= 110]
         if len(potential_offsets) == 0:
+            two_wide = [(0,2), (0,-2), (2,0), (-2,0), (2,2), (2,-2), (-2,2), (-2,-2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
+            potential_offsets = [offset for offset in two_wide if track_matrix[y + offset[0], x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), direction) <= 110]
+        if len(potential_offsets) == 0:
+            print("No potential offsets")
             break
+        
         offset = potential_offsets[np.random.randint(0, len(potential_offsets))]
         x, y = x + offset[1], y + offset[0]
         seen += 1

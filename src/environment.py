@@ -1,7 +1,6 @@
 import numpy as np
 import random
 import os
-import time
 
 from agent import Agent
 from utils import copy_network
@@ -145,7 +144,6 @@ class Environment:
             'hidden_layer_size': self.options['hidden_layer_size'],
             'num_hidden_layers': self.options['num_hidden_layers'],
             'generation': self.generation,
-            'track_results': game.track_results
         }
         np.save(path, data, allow_pickle=True)
 
@@ -165,7 +163,6 @@ class Environment:
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
-        game.track_results = data['track_results']
 
         for agent in self.agents:
             agent.car.speed = 0

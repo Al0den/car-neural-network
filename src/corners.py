@@ -1,7 +1,10 @@
 import numpy as np
+import json
 
-def get_corners(track, threshold=15, data_size=75):
+def get_corners(track, track_name, threshold=30, data_size=50):
     points = np.where(track == 10)
+    with open('./src/config.json', 'r') as json_file:
+        config_data = json.load(json_file) 
 
     offsets = [(1, 0), (0, 1), (-1, 0), (0, -1), (1, 1), (-1, 1), (-1, -1), (1, -1)]
 
@@ -15,14 +18,20 @@ def get_corners(track, threshold=15, data_size=75):
         x, y = point
         x1, y1 = line_start
         x2, y2 = line_end
-        return np.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) / np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
+        return np.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) / np.sqrt((y2 - y1)**2 + (x2 - x1)**2 + 0.01)
 
-    def get_point_further(x, y, direction, max_dist=data_size):
+    def get_point_further(x, y, direction):
         current_x, current_y = x, y
         current_dir = direction
+        ppm = config_data['pixel_per_meter'].get(track_name)
+        max_dist = int(data_size * ppm)
         for i in range(max_dist):
-            valid_offsets = [offset for offset in offsets if track[current_y + offset[1], current_x + offset[0]] == 10 and angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 60]
-            if not valid_offsets:
+            valid_offsets = [offset for offset in offsets if track[current_y + offset[1], current_x + offset[0]] == 10 and angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110]
+            if len(valid_offsets) == 0:
+                two_wide = [(0,2), (0,-2), (2,0), (-2,0), (2,2), (2,-2), (-2,2), (-2,-2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
+                valid_offsets = [offset for offset in two_wide if track[current_y + offset[0], current_x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), current_dir) <= 110]
+            if len(valid_offsets) == 0:
+                print("No potential offsets")
                 break
             chosen_offset = valid_offsets[0]
             chosen_angle = np.degrees(np.arctan2(-chosen_offset[1], chosen_offset[0]))
@@ -123,7 +132,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     track_name = input("Track name: ")
     track = np.load(f"./data/tracks/{track_name}.npy", allow_pickle=True).item()['track']
-    corners, all_corners, final_data = get_corners(track)
+    corners, all_corners, final_data = get_corners(track, track_name)
     x = [i[0] for i in corners]
     y = [i[1] for i in corners]
     all_x = all_corners[1]

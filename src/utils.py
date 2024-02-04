@@ -11,9 +11,6 @@ from settings import *
 def calculate_distance(coords1, coords2):
     return np.sqrt(pow(coords1[0] - coords2[0], 2) +pow(coords1[1] - coords2[1], 2))
 
-def calculate_distance_vectorized(coords1, coords2):
-    return np.sqrt(np.sum((coords1 - coords2) ** 2, axis=-1))
-
 def is_color_within_margin(color, target_color, margin):
     return all(abs(a - b) <= margin for a, b in zip(color, target_color))
 
@@ -72,22 +69,6 @@ def angle_range_180(angle):
         angle += 360
     return angle
 
-def GetCenterlineInputs(game, car):
-    start_x, start_y = car.previous_center_line[0], car.previous_center_line[1]
-    start_dir, _ = car.CalculateNextCenterlineDirection(start_x, start_y, car.direction)
-    if car.track[int(start_y), int(start_x)] != 10:
-        if game.debug: print("Not on a centerline, doing a full calculation")
-        return car.CalculateCenterlineInputs(start_x, start_y, start_dir)
-    else:
-        try:
-            index = f"{int(start_y)}{int(start_x)}{int(start_dir)}"
-            return game.center_lines[car.track_name][index]
-        except KeyError:
-            if game.debug: print("Errored out, trying to recalculate new value")
-            new_data = car.CalculateCenterlineInputs(start_x, start_y, start_dir)
-            game.center_lines[car.track_name][index] = new_data
-            return new_data
-
 def print_progress(total, agent, progress,width, eta=None):
     bar_width = int(width * progress)
     eta_str = f"ETA: {eta}" if eta is not None else ""
@@ -126,18 +107,6 @@ def copy_car(car, new_car):
     new_car.score = car.score
     new_car.died = car.died
     return new_car
-
-def copy_agent(agent, new_agent):
-    new_agent.car = copy_car(agent.car, new_agent.car)
-    new_agent.network = copy_network(agent.network)
-    new_agent.evolution = agent.evolution
-    new_agent.mutation_rates = agent.mutation_rates
-    new_agent.state = agent.state
-    new_agent.action = agent.action
-    new_agent.attempted = agent.attempted
-    new_agent.mutation_strengh = agent.mutation_strengh
-    new_agent.last_update = agent.last_update
-    return new_agent
 
 def interpolate_color(index):
     if index < 0 or index > 1:
@@ -230,13 +199,3 @@ def get_nearest_centerline(track, x, y):
         distance += 1
     print("Could find the nearest track, aborting")
     sys.exit()
-
-def is_point_on_right(x1, y1, x2, y2, px, py):
-    vector_line = np.array([x2 - x1, y2 - y1])
-    vector_point = np.array([px - x1, py - y1])
-    
-    # Calculate the cross product
-    cross_product = np.cross(vector_line, vector_point)
-    
-    # If cross product is positive, point is on the right; if negative, on the left
-    return cross_product > 0

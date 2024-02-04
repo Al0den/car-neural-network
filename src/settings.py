@@ -2,7 +2,7 @@ points_offset = [0, 4, -4,  15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 10
+state_space_size = len(points_offset) + 16
 first_layer_size_coeff = 1.3
 num_hidden_layers = 3
 action_space_size = 2
@@ -21,7 +21,7 @@ point_search_jump = 10.0
 perft_ticks = 5
 perft_duration = 20
 center_line_hash_size = 100000
-specialised_training_multiple = 3
+specialised_training_multiple = 5
 compile_shaders = False
 
 # - Game settings
@@ -34,6 +34,11 @@ min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
 safety_ticks = 60
 base_game_speed = 60
+
+# - Live Data Parameters
+prev_ticks = 0
+update_delay = 0.1
+tps_window_size = 20  # Adjust the window size as needed
 
 # - Simulation settings
 car_length = 5.23

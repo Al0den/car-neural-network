@@ -44,6 +44,14 @@ public func concatenate_tracks() {
 }
 
 @available(macOS 10.13, *)
+@_cdecl("get_track_pointer")
+public func get_track_pointer(track: Int) -> UnsafeMutablePointer<UInt8> {
+    let offsetInBytes = track * 5000 * 5000 * MemoryLayout<UInt8>.size
+    let pointer = allTracksBuffer?.contents().advanced(by: offsetInBytes).bindMemory(to: UInt8.self, capacity: 5000 * 5000)
+    return pointer!
+}
+
+@available(macOS 10.13, *)
 @_cdecl("get_points_offsets")
 public func get_points_offsets(count: Int) -> Int {
     return computeOffsets(count: count)

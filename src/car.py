@@ -79,7 +79,7 @@ class Car:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
         # Get Distance to first corner in future corners
         if len(self.future_corners) > 0:
-            corner_x, corner_y, _ = self.future_corners[0]
+            corner_x, corner_y, _, _ = self.future_corners[0]
             next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
             if next_corner_dist < 10 * self.ppm:
                 self.future_corners.pop(0)
@@ -388,7 +388,9 @@ class Car:
 
         return current_x, current_y, current_dir 
 
-    def setFutureCorners(self, corners):
+    def setFutureCorners(self, corners_data):
+        corners = [corner[0] for corner in corners_data]
+        corners_amplitude = [corner[1] for corner in corners_data]
         ordered_corners = []
         
         current_x, current_y = self.previous_center_line
@@ -398,14 +400,19 @@ class Car:
 
         while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
-            if not potential_offsets: break
+            if len(potential_offsets) == 0:
+                two_wide = [(0,2), (0,-2), (2,0), (-2,0), (2,2), (2,-2), (-2,2), (-2,-2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
+                potential_offsets = [offset for offset in two_wide if self.track[current_y + offset[0], current_x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), current_dir) <= 110]
+            if len(potential_offsets) == 0:
+                break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
             new_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             current_dir = new_dir
             if (current_x, current_y) in corners:
-                ordered_corners.append((current_x, current_y, new_dir))
+                amplitude = corners_amplitude[corners.index((current_x, current_y))]
+                ordered_corners.append((current_x, current_y, new_dir, amplitude))
             prev_directions.append(new_dir)
             prev_directions.pop(0)
         self.future_corners = ordered_corners

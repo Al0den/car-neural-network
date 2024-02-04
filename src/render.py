@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 import os
 
-from utils import calculate_distance, GetCenterlineInputs, copy_car, angle_range_180
+from utils import calculate_distance, copy_car, angle_range_180
 from settings import *
 from agent import Agent
 from car import Car
@@ -296,11 +296,25 @@ class Render:
         state = [f"{state:0.2f}" for state in agent.state]
 
         state_lines = [state[i:i + 5] for i in range(0, len(state), 5)]
-
+        if len(agent.car.future_corners) == 0:
+            next_corner_dir = 0
+            next_corner_ampl = 0
+            next_corner_dif = 0
+            corner_x = agent.car.x
+            corner_y = agent.car.y
+        else:
+            corner_x, corner_y, next_corner_dir, next_corner_ampl = agent.car.future_corners[0]
+            next_corner_dif = angle_range_180(next_corner_dir - agent.car.direction)
+            next_corner_dir = "Left" if next_corner_dif > 0 else "Right" if next_corner_dif < 0 else "F"
+        
         lines = [
             f"Action: [{', '.join(actions)}]",
             f"tps: {game.clock.get_fps():.1f}",
+            f"Next corner Amplitude: {next_corner_ampl:.1f}",
+            f"Next corner Direction: {next_corner_dir}",
+            f"Next corner Distance: {calculate_distance((agent.car.x, agent.car.y), (corner_x, corner_y)):.1f}",
             "State:"
+            
         ]
 
         for line in state_lines:

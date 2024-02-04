@@ -4,12 +4,13 @@ import numpy as np
 import random
 import time
 import json
-
-from multiprocessing import Process, Array, Manager, Value, RawArray
+import threading
 
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
 from skimage.morphology import skeletonize
+from multiprocessing import Process, Array, Manager, Value
+
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -48,22 +49,17 @@ class Game:
         self.last_keys_update = 0 # - Time since last key click, Display parameter
         self.track_name = game_options['track_name'] # - Track name
 
-        self.retries = []
-
         self.shared_tracks = None
 
-        with open("./src/config.json") as f:
-            self.config = json.load(f)
+        with open("./src/config.json") as f: self.config = json.load(f)
 
-        if self.player in [0, 3, 4, 7, 9]:
-            self.load_single_track()
-        else:
-            self.load_all_tracks()
+        if self.player in [0, 3, 4, 7, 9]: self.load_single_track()
+        else: self.load_all_tracks()
 
-        self.track_results = {}
-        if self.player in [1, 2]:
-            for track in self.track_names:
-                self.track_results[track] = 0
+        self.generating_corners = False
+        self.generated_corners = []
+        self.generated_starts = []
+        self.generated_start_tracks = []
         
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
         
@@ -108,14 +104,7 @@ class Game:
                 agent = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                 agent.network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(best_agent) + ".npy", allow_pickle=True).item()['network']
             agent.car.speed = self.config['quali_start_speed'].get(self.track_name)
-            start_x = self.real_starts[self.track_name][0][1]
-            start_y = self.real_starts[self.track_name][0][0]
-            agent.car.x = start_x
-            agent.car.start_x = start_x
-            agent.car.y = start_y
-            agent.car.start_y = start_y
-            agent.car.direction = self.real_starts[self.track_name][1]
-            agent.car.start_direction = self.real_starts[self.track_name][1]
+            agent.car.setFutureCorners(self.corners[self.track_name])
 
             self.best_agent = best_agent
             self.environment.agents[0] = agent
@@ -223,11 +212,10 @@ class Game:
             self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 8:
-            input_data = []
-            for agent in self.environment.agents:
-                for offset in points_offset:
-                    input_data += [int(agent.car.x), int(agent.car.y), int(agent.car.direction + offset + 90) % 360, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
-            out_data = self.Metal.getPointsOffset(np.array(input_data).flatten().astype(np.int32))
+            for i in range(len(self.environment.agents)):
+                agent = self.environment.agents[i]
+                self.Metal.inVectorBuffer[i*5:i*5 + 5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction), self.track_index[agent.car.track_name], int(agent.car.ppm) * 1000]
+            out_data = self.Metal.getPointsOffset()
             per_agents_points = out_data.reshape((len(self.environment.agents), len(points_offset)))
             for i in range(len(self.environment.agents)):
                 self.environment.agents[i].Tick(self.ticks, self, per_agents_points[i])
@@ -293,9 +281,11 @@ class Game:
 
         MetalInstance = Metal(self.tracks)
         track_index = MetalInstance.getTrackIndexes()
-        self.tracks = []
-        for agent in self.environment.agents:
-            agent.car.track = []
+        self.tracks = {}
+
+        for track_name in self.track_names:
+            track_id = track_index[track_name]
+            self.tracks[track_name] = MetalInstance.GetTrackFromBuffer(track_id)
 
         while True:
             try:
@@ -309,15 +299,10 @@ class Game:
             indexes = [data[1] for data in input_feed]
 
             for agent in agents:
-                agent.car.lap_time = 0
-                agent.car.score = 0
-                agent.car.laps = 0
+                agent.car.track = self.tracks[agent.car.track_name]
 
             alive = len(agents)
-            ticks = 0
-            input_tpa = 0
-            metal_tpa = 0
-            tick_tpa = 0
+            ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
 
             MetalInstance.init_shaders(len(agents) * 5, len(agents) * len(points_offset), points_offset)
 
@@ -336,6 +321,9 @@ class Game:
                 per_agents_points = MetalInstance.outVectorBuffer.reshape((len(agents), len(points_offset)))
                 for i in range(len(agents)):
                     agents[i].Tick(ticks, self, per_agents_points[i])
+                if self.player == 3:
+                    agents[i].car.UpdateCorners()
+                    
                 tick_stamp = time.time()
                 del per_agents_points
                 ticks += 1
@@ -380,82 +368,29 @@ class Game:
             gc.collect()
 
     def train_agents_gpu(self):
-        starts, start_tracks = self.GenerateTrainingStarts()
+        if self.generated_starts == []: self.CreateFutureStartsData()
 
-        all_agents = []
-
-        for i in range(self.map_tries):
-            all_corners = []
-            for k in range(len(self.environment.agents)):
-                print(f" - Creating agents | {i * len(self.environment.agents) + k + 1}/{self.map_tries * len(self.environment.agents)}        \r", end='', flush=True)
-                agent = self.environment.agents[k]
-                start_track = start_tracks[i]
-                new_agent = Agent(self.options['environment'], self.tracks[start_track], starts[i][0], starts[i][1], start_track)
-                new_agent.network = agent.network
-                new_agent.SetAgent(starts[i], self.tracks[start_track], start_track)
-                new_agent.car.UpdateCorners()
-                
-                if self.player == 3: new_agent.car.speed = self.config['quali_start_speed'].get(start_track)
-                if k == 0:
-                    new_agent.car.setFutureCorners(self.corners[start_track])
-                    all_corners = new_agent.car.future_corners
-                else:
-                    new_agent.car.future_corners = np.array(all_corners, copy=True).tolist()
-                all_agents.append([new_agent, k])
-     
-        random.shuffle(all_agents)
-
-        self.batches = [[] for _ in range(self.options['cores'])]
-        
-        for i, agent in enumerate(all_agents):
-            agent, real_agent_index = agent
-            self.batches[i % self.options['cores']].append([agent, real_agent_index])
-
-        self.agents_feed.extend(self.batches)
+        while self.generating_corners:
+            time.sleep(0.1)
+    
+        batches = self.CreateAgentsBatches()
+        self.agents_feed.extend(batches)
 
         while sum(self.working[:]) < self.options['cores']:
             time.sleep(0.1)
             print(f" - Waiting for agents to start | Started: {sum(self.working[:])}, Left: {len(self.agents_feed)}         \r", end='', flush=True)
         
         start = time.time()
-
-        prev_ticks = 0
-        update_delay = 0.1
-        tps_window_size = 20  # Adjust the window size as needed
         tps_values = [0] * tps_window_size
+        prev_ticks = 0
+
+        thread = threading.Thread(target=self.CreateFutureStartsData)
+        thread.start()
 
         while any(self.working):
             time.sleep(update_delay)
-            alive_agents, ticks, min_ticks, max_ticks, max_alive, min_alive, tot_input, tot_metal, tot_tick = 0, 0, 0, 0, 0, 0, 0, 0, 0
-            for i in range(int(len(self.log_data[:])/5)):
-                ticks += self.log_data[i*5]
-                alive_agents += self.log_data[i*5 + 1]
-                tot_input += self.log_data[i*5 + 2]
-                tot_metal += self.log_data[i*5 + 3]
-                tot_tick += self.log_data[i*5 + 4]
-                if min_ticks == 0 or min_ticks > self.log_data[i*5]: min_ticks = self.log_data[i*5]
-                if max_alive < self.log_data[i*5 + 1]: max_alive = self.log_data[i*5 + 1]
-                if min_alive == 0 or min_alive > self.log_data[i*5 + 1]: min_alive = self.log_data[i*5 + 1]
-                if max_ticks < self.log_data[i*5]: max_ticks = self.log_data[i*5]
-            tot_ticks = ticks
-            ticks /= len(self.log_data)/5
-            time_spent = time.time() - start
-            human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))[3:]
-            metal_percentage = round(tot_metal / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
-            input_percentage = round(tot_input / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
-            tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
-            if sum(self.working[:]) != 0:
-                tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / sum(self.working[:])
-
-                # Update the moving average of TPS
-                tps_values.pop(0)
-                tps_values.append(tps)
-                smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
-
-                prev_ticks = tot_ticks
-            else:
-                smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
-        
+            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage = self.LiveUpdateData(tps_values, start, prev_ticks)
+            prev_ticks = tot_ticks
             print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{int(alive_agents/(len(self.log_data)/5))}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{int(ticks)}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {smoothed_tps}  | {human_formatted}        \r", end='', flush=True)
 
         for i in range(len(self.environment.agents)):
@@ -464,15 +399,80 @@ class Game:
             self.environment.agents[i].car.score += self.scores[i] 
             
         self.environment.next_generation(self)
+        self.EndOfGeneration()
 
-        print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")
-        
+    def EndOfGeneration(self):
+        if self.player != 3:
+            print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")
+        if self.player == 3:
+            target_lap_time = self.config.get("quali_laps").get(self.track_name)
+            # Convert lap time in 1/60 of seconds to seconds, with ms
+            lap_time = self.environment.previous_best_lap / 60
+            delta = target_lap_time - lap_time
+            visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"
+
+            print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {visual_lap_time}, delta: {delta:.3f}s           ")                   
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
             self.laps[i] = 0
 
-        gc.collect()
+    def LiveUpdateData(self, tps_values, start, prev_ticks):
+        alive_agents, ticks, min_ticks, max_ticks, max_alive, min_alive, tot_input, tot_metal, tot_tick = 0, 0, 0, 0, 0, 0, 0, 0, 0
+        for i in range(int(len(self.log_data[:])/5)):
+            ticks += self.log_data[i*5]
+            alive_agents += self.log_data[i*5 + 1]
+            tot_input += self.log_data[i*5 + 2]
+            tot_metal += self.log_data[i*5 + 3]
+            tot_tick += self.log_data[i*5 + 4]
+            if min_ticks == 0 or min_ticks > self.log_data[i*5]: min_ticks = self.log_data[i*5]
+            if max_alive < self.log_data[i*5 + 1]: max_alive = self.log_data[i*5 + 1]
+            if min_alive == 0 or min_alive > self.log_data[i*5 + 1]: min_alive = self.log_data[i*5 + 1]
+            if max_ticks < self.log_data[i*5]: max_ticks = self.log_data[i*5]
+        tot_ticks = ticks
+        ticks /= len(self.log_data)/5
+        time_spent = time.time() - start
+        human_formatted = time.strftime("%H:%M:%S", time.gmtime(time_spent))[3:]
+        metal_percentage = round(tot_metal / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
+        input_percentage = round(tot_input / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
+        tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
+        if sum(self.working[:]) != 0:
+            tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / sum(self.working[:])
+
+            tps_values.pop(0)
+            tps_values.append(tps)
+            smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+        else:
+            smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+
+        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage
+
+    def CreateAgentsBatches(self):
+        all_agents = []
+        all_corners, starts, start_tracks = self.generated_corners, self.generated_starts, self.generated_start_tracks
+
+        for i in range(self.map_tries):
+            for k in range(len(self.environment.agents)):
+                print(f" - Creating agents | {i * len(self.environment.agents) + k + 1}/{self.map_tries * len(self.environment.agents)}        \r", end='', flush=True)
+                new_agent = Agent(self.options['environment'], self.tracks[start_tracks[i]], starts[i][0], starts[i][1], start_tracks[i])
+                new_agent.network = self.environment.agents[k].network
+                new_agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
+                
+                if self.player == 3: new_agent.car.speed = self.config['quali_start_speed'].get(start_tracks[i])
+               
+                new_agent.car.future_corners = np.array(all_corners[i], copy=True).tolist()
+
+                new_agent.car.track = []
+                all_agents.append([new_agent, k])
+        random.shuffle(all_agents)
+
+        batches = [[] for _ in range(self.options['cores'])]
+        
+        for i, agent in enumerate(all_agents):
+            agent, real_agent_index = agent
+            batches[i % self.options['cores']].append([agent, real_agent_index])
+
+        return batches
     
     def load_single_track(self):
         self.tracks = {}
@@ -509,8 +509,26 @@ class Game:
 
         print(f" * Loaded track: {track_name}")
 
+    def CreateFutureStartsData(self):
+        self.generating_corners = True
+        starts, start_tracks = self.GenerateTrainingStarts()
+        all_corners = [[] for _ in range(self.map_tries)]
+        for i in range(self.map_tries):
+            new_agent = Agent(self.options['environment'], self.tracks[start_tracks[i]], starts[i][0], starts[i][1], start_tracks[i])
+            new_agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
+            new_agent.car.UpdateCorners()
+            new_agent.car.setFutureCorners(self.corners[start_tracks[i]])
+            all_corners[i] = new_agent.car.future_corners
+        
+        self.generated_corners = all_corners
+        self.generated_starts = starts
+        self.generated_start_tracks = start_tracks
+
+        self.generating_corners = False
+
+
     def GenerateTrainingStarts(self):
-        start_tracks, starts, weights, tracks, chosen_tracks = [], [], [], [], []
+        start_tracks, starts, chosen_tracks = [], [], []
 
         if self.player == 3:
             start_tracks = [self.track_name]
@@ -542,7 +560,7 @@ class Game:
 
         return starts, start_tracks
 
-    def load_all_tracks(self, shared=False):
+    def load_all_tracks(self):
         self.start_positions = {}
         self.tracks = {}
         if self.shared_tracks is None:
@@ -640,17 +658,15 @@ class Game:
                 json.dump(config_data, json_file, indent=4)
 
             print(" - Generating new starts")
-            starts = get_new_starts(self.track, 1000)
             real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
             assert(real_start != None)
-            corners, _, _ = get_corners(self.track)
             data = {
                 "track": self.track,
-                "start_positions": starts,
-                "corners": corners,
+                "start_positions": get_new_starts(self.track, 1000),
+                "corners": self.setup_corners(),
                 "real_start": real_start
             }
             
@@ -673,6 +689,12 @@ class Game:
             import sys
             pygame.quit()
             sys.exit()
+    def setup_corners(self):
+        corners, _, data = get_corners(self.track, self.track_name, self.config.get("thresholds").get(self.track_name))
+        treated_corners = []
+        for corner in corners:
+            treated_corners.append([(corner[0], corner[1]), data[corner[1], corner[0]]])
+        return treated_corners
 
     def find_center_line(self):
         binary_image = (self.track != 0).astype(np.uint8)

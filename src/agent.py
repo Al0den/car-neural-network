@@ -4,7 +4,7 @@ from car import Car
 from utils import calculate_distance, angle_range_180
 from settings import *
 
-max_corner_distance = 300
+max_corner_distance = 500
 
 class Agent:
     def __init__(self, options, track, start_pos, start_dir, track_name=None):
@@ -20,26 +20,26 @@ class Agent:
         self.last_update = 0
 
     def ProcessCorner(self, corner):
-        corner_x, corner_y, corner_dir = corner
+        corner_x, corner_y, corner_dir, corner_ampl = corner
         distance = min(1, calculate_distance((corner_x, corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
         relative_angle = angle_range_180(self.car.direction - corner_dir)
         left_or_right = 1 if relative_angle > 0 else -1 if relative_angle < 0 else 0
-        return [distance, abs(relative_angle) / 180, left_or_right]
+        return [distance, abs(relative_angle) / 180, left_or_right, min(1, corner_ampl/100)]
 
-    def CalculateState(self, game, ticks, calculated_points=None):
+    def CalculateState(self, game, calculated_points=None):
         if calculated_points is None:
             game.Metal.inVectorBuffer[0:5] = [int(self.car.x), int(self.car.y), int(self.car.direction), game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
-           
             game.Metal.getPointsOffset(len(points_offset))
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
         
         state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
 
-        if len(self.car.future_corners) == 0: state += [0,0,0]
+        if len(self.car.future_corners) == 0: state += [0,0,0,0]
         else: state += self.ProcessCorner(self.car.future_corners[0])
-
-        if len(self.car.future_corners) <= 1: state += [0,0,0]
+        if len(self.car.future_corners) <= 1: state += [0,0,0,0]
         else: state += self.ProcessCorner(self.car.future_corners[1])
+        if len(self.car.future_corners) <= 2: state += [0,0,0,0]
+        else: state += self.ProcessCorner(self.car.future_corners[2])
 
         calculated_points_input = np.minimum(1, np.maximum(-1, calculated_points / (self.car.ppm * max_points_distance)))
         state += calculated_points_input.tolist()
@@ -55,7 +55,7 @@ class Agent:
         if self.car.died == True: return
         self.mutation_strengh = game.mutation_strength
 
-        state = self.CalculateState(game, ticks, calculated_points)
+        state = self.CalculateState(game, calculated_points)
         
         power, steer = self.CalculateNextAction(state)
 
@@ -144,6 +144,7 @@ class Agent:
         if track is not None:
             self.car.track = track
             self.car.track_name = track_name
+        self.car.UpdateCorners()
 
     
 
