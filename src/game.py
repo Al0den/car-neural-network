@@ -264,9 +264,10 @@ class Game:
         self.scores = Array('d', [0] * num_agents, lock=False)
         self.working = Array('b', [False] * num_agents, lock=False)
         self.log_data = Array('i', [0] * num_processes * 5, lock=False)
+        self.max_potentials = Array('d', [0] * self.map_tries, lock=False)
 
         for i in range(num_processes):
-            process = Process(target=self.create_process, args=(self.agents_feed, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock))
+            process = Process(target=self.create_process, args=(self.agents_feed, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock, self.max_potentials))
             processes.append(process)
         
         for i in range(len(processes)):
@@ -274,7 +275,7 @@ class Game:
             processes[i].start()
         print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total, on {len(self.track_names)} tracks")
     
-    def create_process(self, agents_feed, log_data, scores, laps, lap_times, working, p_id, main_lock):
+    def create_process(self, agents_feed, log_data, scores, laps, lap_times, working, p_id, main_lock, max_potentials):
         local_scores = [0] * len(self.environment.agents)
         local_laps = [0] * len(self.environment.agents)
         local_lap_times = [0] * len(self.environment.agents)
@@ -297,6 +298,7 @@ class Game:
 
             agents = [data[0] for data in input_feed]
             indexes = [data[1] for data in input_feed]
+            map_tries = [data[2] for data in input_feed]
 
             for agent in agents:
                 agent.car.track = self.tracks[agent.car.track_name]
@@ -338,19 +340,16 @@ class Game:
                 log_data[p_id * 5 + 2] = int(input_tpa)
                 log_data[p_id * 5 + 3] = int(metal_tpa)
                 log_data[p_id * 5 + 4] = int(tick_tpa)
-            
-            max_potentials = {}
-            for track in self.track_names:
-                max_potentials[track] = 0
+
             for i in range(len(agents)):
                 if agents[i].car.lap_time > 0:
                     local_scores[indexes[i]] += 1 * score_multiplier
                     local_laps[indexes[i]] += 1
                     local_lap_times[indexes[i]] += agents[i].car.lap_time
                 else:
-                    if max_potentials[agents[i].car.track_name] == 0:
-                        max_potentials[agents[i].car.track_name] = agents[i].car.CalculateMaxPotential()
-                    score = agents[i].car.CalculateScore(max_potentials[agents[i].car.track_name])
+                    if max_potentials[map_tries[i]] == 0:
+                        max_potentials[map_tries[i]] = agents[i].car.CalculateMaxPotential()
+                    score = agents[i].car.CalculateScore(max_potentials[map_tries[i]])
                     local_scores[indexes[i]] += score * score_multiplier
                     if score == 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
                         local_laps[indexes[i]] += 1
@@ -397,6 +396,8 @@ class Game:
             self.environment.agents[i].car.lap_time += self.lap_times[i]
             self.environment.agents[i].car.laps += self.laps[i]
             self.environment.agents[i].car.score += self.scores[i] 
+        for i in range(self.map_tries):
+            self.max_potentials[i] = 0
             
         self.environment.next_generation(self)
         self.EndOfGeneration()
@@ -463,14 +464,14 @@ class Game:
                 new_agent.car.future_corners = np.array(all_corners[i], copy=True).tolist()
 
                 new_agent.car.track = []
-                all_agents.append([new_agent, k])
+                all_agents.append([new_agent, k, i])
         random.shuffle(all_agents)
 
         batches = [[] for _ in range(self.options['cores'])]
         
         for i, agent in enumerate(all_agents):
-            agent, real_agent_index = agent
-            batches[i % self.options['cores']].append([agent, real_agent_index])
+            agent, real_agent_index, map_try_num = agent
+            batches[i % self.options['cores']].append([agent, real_agent_index, map_try_num])
 
         return batches
     

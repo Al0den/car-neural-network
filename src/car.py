@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, offsets, directions
+from precomputed import sin, cos, offsets, directions, two_wide_offsets
 from settings import *
 
 class Car:
@@ -339,7 +339,7 @@ class Car:
             return 1
         if max_potential is None:
             max_potential = self.CalculateMaxPotential(current_dir)
-        while (final_x, final_y) != (current_x, current_y) and seen < 50000:
+        while current_x != final_x and current_y != final_y and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
