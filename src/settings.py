@@ -55,7 +55,7 @@ acceleration_increment = 1/15
 steer_increment = 1/15
 
 # - Evolution settings
-mutation_rates = [0.1, 0.2]
+mutation_rates = [0.01, 0.1, 0.2]
 
 only_mutate_rate = 0.6
 cross_over_rate = 0.35

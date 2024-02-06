@@ -397,10 +397,7 @@ class Game:
 
     def IndividualAgentScore(self, agent, local_lap_times, local_laps, local_scores, max_potentials, map_try, index):
         if agent.car.lap_time > 0:
-            if max_potentials[map_try] == 0:
-                max_potentials[map_try] = agent.car.CalculateMaxPotential()
-            score = agent.car.CalculateScore(max_potentials[map_try])
-            local_scores[index] += 1 * score
+            local_scores[index] += 1 * score_multiplier
             local_laps[index] += 1
             local_lap_times[index] += agent.car.lap_time
         else:
