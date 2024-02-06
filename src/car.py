@@ -186,8 +186,8 @@ class Car:
         speed_factor = max(1.0 - pow(int(self.speed) / (max_speed), 0.5), 0.1)
 
         wheel_angle *= speed_factor
-        if wheel_angle != 0: turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle))
-        else: turning_radius = float('inf')  # Ligne droite
+        turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle)) if wheel_angle != 0 else float('inf')
+
         wheel_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
 
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
@@ -201,11 +201,11 @@ class Car:
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
 
         displacement = (self.speed / 3.6) * self.ppm
+        
         self.x += displacement * cos[(int(self.direction) % 360) * 10] * delta_t
         self.y -= displacement * sin[(int(self.direction) % 360) * 10] * delta_t
 
         self.direction %= 360
-
 
     def UpdateCorners(self):
 
@@ -339,14 +339,19 @@ class Car:
             return 1
         if max_potential is None:
             max_potential = self.CalculateMaxPotential()
+        calculated_dirs = {}
+        for offset in offsets:
+            calculated_dirs[offset[0] + 100 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
+            
         while (final_x, final_y) != (current_x, current_y) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, calculated_dirs[offset[0] + 100 * offset[1]]) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
-            current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
+            current_dir = calculated_dirs[current_offset[0] + 100 * current_offset[1]]
             seen += 1
+
         if (seen == 50000 or (seen > 8000 and len(self.checkpoints_seen) < 1)):
             return 0
 

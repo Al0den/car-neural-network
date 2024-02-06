@@ -57,6 +57,7 @@ public func get_points_offsets(count: Int) -> Int {
     return computeOffsets(count: count)
 }
 
+
 @available(macOS 10.13, *)
 public func computeOffsets(count: Int) -> Int {
     do {

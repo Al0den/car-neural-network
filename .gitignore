@@ -1,11 +1,8 @@
 main
 Info.plist
 map_loader.py
-monitor.py
-server_watch.py
+data/train/trained/*
 data/per_track/*
-data/train/*
-main.build/*
 data/tracks/*.npy
 data/tracks/*_sur*
 *.DS_Store

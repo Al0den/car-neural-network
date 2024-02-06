@@ -12,8 +12,8 @@ class Agent:
         self.InitializeNetwork(options)
         self.evolution = ["r"]
         self.mutation_rates = ["-"]
-        self.state = []
-        self.action = [0, 0]
+        self.state = np.array([0.0] * state_space_size)
+        self.action = np.array([0, 0])
 
         self.attempted = True
         self.mutation_strengh = mutation_strenght
@@ -32,41 +32,37 @@ class Agent:
             game.Metal.getPointsOffset(len(points_offset))
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
         
-        state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
+        self.state[0:4] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
+        if len(self.car.future_corners) >= 2: 
+            self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[7:10] = self.ProcessCorner(self.car.future_corners[1])
+        elif len(self.car.future_corners) == 1:
+            self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[7:10] = [0, 0, 0]
+        else:
+            self.state[4:10] = [0, 0, 0, 0, 0, 0]
 
-        if len(self.car.future_corners) == 0: state += [0,0,0]
-        else: state += self.ProcessCorner(self.car.future_corners[0])
+        self.state[10:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
 
-        calculated_points_input = np.minimum(1, np.maximum(-1, calculated_points / (self.car.ppm * max_points_distance)))
-        state += calculated_points_input.tolist()
-    
-        if game.debug: 
-            for inp in state:
-                if np.abs(inp) > 1: 
-                    print("One of the inputs is out of bounds, input num: " + str(np.where(state == inp)[0]))
-
-        return state
+        return self.state
     
     def Tick(self, ticks, game, calculated_points=None):
         if self.car.died == True: return
-        self.mutation_strengh = game.mutation_strength
 
-        state = self.CalculateState(game, calculated_points)
+        self.CalculateState(game, calculated_points)
         
-        power, steer = self.CalculateNextAction(state)
+        power, steer = self.CalculateNextAction(self.state)
 
         self.car.ApplyAgentInputs([power, steer])
         self.car.UpdateCar()
         self.car.CheckCollisions(ticks)
 
-        self.state = state
-        self.action = [power, steer]
+        self.action[0:2] = [power, steer]
 
         if ticks > safety_ticks and self.car.speed < min_speed:
             self.car.Kill()
         if ticks > max_ticks_before_kill:
             self.car.Kill()
-        return state
 
     def InitializeNetwork(self, options):
         network = []

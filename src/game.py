@@ -282,6 +282,7 @@ class Game:
 
         MetalInstance = Metal(self.tracks)
         track_index = MetalInstance.getTrackIndexes()
+
         self.tracks = {}
 
         for track_name in self.track_names:
@@ -473,6 +474,7 @@ class Game:
                 new_agent.car.future_corners = np.array(all_corners[i], copy=True).tolist()
 
                 new_agent.car.track = []
+                new_agent.mutation_strengh = self.mutation_strength
                 all_agents.append([new_agent, k, i])
         random.shuffle(all_agents)
 

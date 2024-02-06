@@ -1,12 +1,12 @@
-points_offset = [0, 45, -45, 90, -90]
+points_offset = [0, 4, -4, 10, -10, 15, -15, 30, -30, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 7
+state_space_size = len(points_offset) + 10
 first_layer_size_coeff = 1.3
 num_hidden_layers = 3
 action_space_size = 2
-map_tries = 10
+map_tries = 20
 
 real_starts_num = 6
 assert(real_starts_num <= map_tries)
@@ -55,7 +55,7 @@ acceleration_increment = 1/15
 steer_increment = 1/15
 
 # - Evolution settings
-mutation_rates = [0.01, 0.1, 0.2, 0.3]
+mutation_rates = [0.1, 0.2]
 
 only_mutate_rate = 0.6
 cross_over_rate = 0.35

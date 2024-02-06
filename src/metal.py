@@ -65,7 +65,6 @@ class Metal:
         ]
         self.shader.concatenate_tracks.argtypes = []
 
-
         self.shader.init_input_buffer.argtypes = [ ctypes.c_int64 ]
         self.shader.init_output_buffer.argtypes = [ ctypes.c_int64 ]
         self.shader.init_offsets_buffer.argtypes = [ ctypes.c_int64 ]
