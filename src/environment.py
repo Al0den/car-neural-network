@@ -40,7 +40,7 @@ class Environment:
         ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
 
         self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
-        self.previous_best_score = max([agent.car.score for agent in ranked_agents])
+        self.previous_best_score = max([round(agent.car.score) for agent in ranked_agents])
         if self.previous_best_lap == max_int: self.previous_best_lap = 0
         
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.02) + 1)]

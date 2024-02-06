@@ -276,9 +276,9 @@ class Game:
         print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total, on {len(self.track_names)} tracks")
     
     def create_process(self, agents_feed, log_data, scores, laps, lap_times, working, p_id, main_lock, max_potentials):
-        local_scores = [0] * len(self.environment.agents)
-        local_laps = [0] * len(self.environment.agents)
-        local_lap_times = [0] * len(self.environment.agents)
+        local_scores = np.array([0] * len(self.environment.agents))
+        local_laps = np.array([0] * len(self.environment.agents))
+        local_lap_times = np.array([0] * len(self.environment.agents))
 
         MetalInstance = Metal(self.tracks)
         track_index = MetalInstance.getTrackIndexes()
@@ -307,10 +307,11 @@ class Game:
             ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
 
             MetalInstance.init_shaders(len(agents) * 5, len(agents) * len(points_offset), points_offset)
-
+            
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
+
                 for i in range(len(agents)):
                     agent = agents[i]
                     index = i * 5
@@ -321,13 +322,14 @@ class Game:
                
                 metal_stamp = time.time()
                 per_agents_points = MetalInstance.outVectorBuffer.reshape((len(agents), len(points_offset)))
+
                 for i in range(len(agents)):
                     agents[i].Tick(ticks, self, per_agents_points[i])
-                if self.player == 3:
-                    agents[i].car.UpdateCorners()
+                    
+                    if self.player == 3:
+                        agents[i].car.UpdateCorners()
                     
                 tick_stamp = time.time()
-                del per_agents_points
                 ticks += 1
 
                 metal_tpa += alive * (metal_stamp - tpa_stamp)
@@ -340,37 +342,27 @@ class Game:
                 log_data[p_id * 5 + 2] = int(input_tpa)
                 log_data[p_id * 5 + 3] = int(metal_tpa)
                 log_data[p_id * 5 + 4] = int(tick_tpa)
-
+     
             for i in range(len(agents)):
-                if agents[i].car.lap_time > 0:
-                    local_scores[indexes[i]] += 1 * score_multiplier
-                    local_laps[indexes[i]] += 1
-                    local_lap_times[indexes[i]] += agents[i].car.lap_time
-                else:
-                    if max_potentials[map_tries[i]] == 0:
-                        max_potentials[map_tries[i]] = agents[i].car.CalculateMaxPotential()
-                    score = agents[i].car.CalculateScore(max_potentials[map_tries[i]])
-                    local_scores[indexes[i]] += score * score_multiplier
-                    if score == 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
-                        local_laps[indexes[i]] += 1
-                        local_lap_times[indexes[i]] += agents[i].car.lap_time
+                self.IndividualAgentScore(agents[i], local_lap_times, local_laps, local_scores, max_potentials, map_tries[i], indexes[i])
 
             with main_lock:
                 for i in range(len(self.environment.agents)):
                     scores[i] += local_scores[i]
                     laps[i] += local_laps[i]
                     lap_times[i] += local_lap_times[i]
-                    local_scores[i] = 0
-                    local_laps[i] = 0
-                    local_lap_times[i] = 0
+
+            local_scores.fill(0)
+            local_laps.fill(0)
+            local_lap_times.fill(0)
+
             working[p_id] = False
             gc.collect()
 
     def train_agents_gpu(self):
         if self.generated_starts == []: self.CreateFutureStartsData()
 
-        while self.generating_corners:
-            time.sleep(0.1)
+        while self.generating_corners: time.sleep(0.1)
     
         batches = self.CreateAgentsBatches()
         self.agents_feed.extend(batches)
@@ -396,18 +388,35 @@ class Game:
             self.environment.agents[i].car.lap_time += self.lap_times[i]
             self.environment.agents[i].car.laps += self.laps[i]
             self.environment.agents[i].car.score += self.scores[i] 
-        for i in range(self.map_tries):
-            self.max_potentials[i] = 0
+            
+        for i in range(self.map_tries): self.max_potentials[i] = 0
             
         self.environment.next_generation(self)
         self.EndOfGeneration()
+
+    def IndividualAgentScore(self, agent, local_lap_times, local_laps, local_scores, max_potentials, map_try, index):
+        if agent.car.lap_time > 0:
+            if max_potentials[map_try] == 0:
+                max_potentials[map_try] = agent.car.CalculateMaxPotential()
+            score = agent.car.CalculateScore(max_potentials[map_try])
+            local_scores[index] += 1 * score
+            local_laps[index] += 1
+            local_lap_times[index] += agent.car.lap_time
+        else:
+            if max_potentials[map_try] == 0:
+                max_potentials[map_try] = agent.car.CalculateMaxPotential()
+            score = agent.car.CalculateScore(max_potentials[map_try])
+            local_scores[index] += score * score_multiplier
+            if score == 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
+                local_laps[index] += 1
+                local_lap_times[index] += agent.car.lap_time
 
     def EndOfGeneration(self):
         if self.player != 3:
             print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
-            # Convert lap time in 1/60 of seconds to seconds, with ms
+
             lap_time = self.environment.previous_best_lap / 60
             delta = target_lap_time - lap_time
             visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"

@@ -1,12 +1,12 @@
-points_offset = [0, 4, -4,  15, -15, 30, -30, 45, -45, 60, -60, 90, -90]
+points_offset = [0, 45, -45, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 16
+state_space_size = len(points_offset) + 7
 first_layer_size_coeff = 1.3
 num_hidden_layers = 3
 action_space_size = 2
-map_tries = 20
+map_tries = 10
 
 real_starts_num = 6
 assert(real_starts_num <= map_tries)

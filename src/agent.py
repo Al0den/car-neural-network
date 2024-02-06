@@ -4,7 +4,7 @@ from car import Car
 from utils import calculate_distance, angle_range_180
 from settings import *
 
-max_corner_distance = 500
+max_corner_distance = 800
 
 class Agent:
     def __init__(self, options, track, start_pos, start_dir, track_name=None):
@@ -24,7 +24,7 @@ class Agent:
         distance = min(1, calculate_distance((corner_x, corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
         relative_angle = angle_range_180(self.car.direction - corner_dir)
         left_or_right = 1 if relative_angle > 0 else -1 if relative_angle < 0 else 0
-        return [distance, abs(relative_angle) / 180, left_or_right, min(1, corner_ampl/100)]
+        return [distance, left_or_right, min(1, corner_ampl/100)]
 
     def CalculateState(self, game, calculated_points=None):
         if calculated_points is None:
@@ -34,12 +34,8 @@ class Agent:
         
         state = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
 
-        if len(self.car.future_corners) == 0: state += [0,0,0,0]
+        if len(self.car.future_corners) == 0: state += [0,0,0]
         else: state += self.ProcessCorner(self.car.future_corners[0])
-        if len(self.car.future_corners) <= 1: state += [0,0,0,0]
-        else: state += self.ProcessCorner(self.car.future_corners[1])
-        if len(self.car.future_corners) <= 2: state += [0,0,0,0]
-        else: state += self.ProcessCorner(self.car.future_corners[2])
 
         calculated_points_input = np.minimum(1, np.maximum(-1, calculated_points / (self.car.ppm * max_points_distance)))
         state += calculated_points_input.tolist()

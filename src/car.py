@@ -140,16 +140,16 @@ class Car:
     def ApplyAgentInputs(self, action):
         power, steer = action
         steer_change, brake_change, power_change = False, False, False
-        if power > 0.8:
+        if power > 0.5:
             self.Accelerate()
             power_change = True
-        elif power < -0.8:
+        elif power < -0.5:
             self.Decelerate()
             brake_change = True
-        if steer > 0.8:
+        if steer > 0.5:
             self.UpdateSteer(1)
             steer_change = True
-        elif steer < -0.8:
+        elif steer < -0.5:
             self.UpdateSteer(-1)
             steer_change = True
         self.CheckForAction(brake_change, power_change, steer_change)
@@ -338,8 +338,8 @@ class Car:
         if self.lap_time > 0:
             return 1
         if max_potential is None:
-            max_potential = self.CalculateMaxPotential(current_dir)
-        while current_x != final_x and current_y != final_y and seen < 50000:
+            max_potential = self.CalculateMaxPotential()
+        while (final_x, final_y) != (current_x, current_y) and seen < 50000:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
@@ -359,7 +359,7 @@ class Car:
             current_dir = self.start_direction
         seen = 0
         while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: 
                 if debug: print(f"No potential offsets, track: {self.track_name}")
                 break
