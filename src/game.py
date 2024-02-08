@@ -179,7 +179,7 @@ class Game:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
             self.Metal.init_shaders(len(points_offset) * 5 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
-
+        
         self.prev_update = time.time()
         self.start_time = time.time()
 
@@ -322,13 +322,10 @@ class Game:
                 MetalInstance.getPointsOffset(len(agents) * len(points_offset))
                
                 metal_stamp = time.time()
-                per_agents_points = MetalInstance.outVectorBuffer.reshape((len(agents), len(points_offset)))
+                per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
 
                 for i in range(len(agents)):
                     agents[i].Tick(ticks, self, per_agents_points[i])
-                    
-                    if self.player == 3:
-                        agents[i].car.UpdateCorners()
                     
                 tick_stamp = time.time()
                 ticks += 1
@@ -381,9 +378,18 @@ class Game:
 
         while any(self.working):
             time.sleep(update_delay)
-            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage = self.LiveUpdateData(tps_values, start, prev_ticks)
+            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            print(f" - Agents Training | Alive: Min/Max/Avg {min_alive}/{max_alive}/{int(alive_agents/(len(self.log_data)/5))}, Ticks: Min/Max/Avg {min_ticks}/{max_ticks}/{int(ticks)}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {smoothed_tps}  | {human_formatted}        \r", end='', flush=True)
+            print(f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x  | {human_formatted}        \r", end='', flush=True)
+        
+        self.log_data = {
+            "tps": TPS,
+            "rts": RTS,
+            "metal_percentage": metal_percentage,
+            "input_percentage": input_percentage,
+            "tick_percentage": tick_percentage,
+            "time": time.time() - start
+        }
 
         for i in range(len(self.environment.agents)):
             self.environment.agents[i].car.lap_time += self.lap_times[i]
@@ -405,7 +411,7 @@ class Game:
                 max_potentials[map_try] = agent.car.CalculateMaxPotential()
             score = agent.car.CalculateScore(max_potentials[map_try])
             local_scores[index] += score * score_multiplier
-            if score == 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
+            if score >= 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
                 local_laps[index] += 1
                 local_lap_times[index] += agent.car.lap_time
 
@@ -444,6 +450,8 @@ class Game:
         metal_percentage = round(tot_metal / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
         input_percentage = round(tot_input / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
         tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
+        TPS = int(tot_ticks / (time_spent))
+        RTS = round(TPS * delta_t, 1)
         if sum(self.working[:]) != 0:
             tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / sum(self.working[:])
 
@@ -453,7 +461,7 @@ class Game:
         else:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
 
-        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage
+        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS
 
     def CreateAgentsBatches(self):
         all_agents = []
@@ -474,7 +482,7 @@ class Game:
                 new_agent.mutation_strengh = self.mutation_strength
                 all_agents.append([new_agent, k, i])
         random.shuffle(all_agents)
-
+       
         batches = [[] for _ in range(self.options['cores'])]
         
         for i, agent in enumerate(all_agents):

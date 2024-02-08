@@ -195,8 +195,9 @@ class Render:
         pygame.draw.line(self.screen, (255, 255, 255), (x + width / 2, y), (x + width / 2, y + height))
 
     def DrawPointsInput(self, car, camera_x, camera_y, game, prev_points=None):
-        game.Metal.inVectorBuffer[0:5] = [int(car.x), int(car.y), int(car.direction), game.track_index[car.track_name], int(1000 * car.ppm)]
-        game.Metal.getPointsOffset(len(points_offset))
+        if game.player not in [4]:
+            game.Metal.inVectorBuffer[0:5] = [int(car.x), int(car.y), int(car.direction), game.track_index[car.track_name], int(1000 * car.ppm)]
+            game.Metal.getPointsOffset(len(points_offset))
         points_distance = game.Metal.outVectorBuffer[:len(points_offset)]
 
         points = []
