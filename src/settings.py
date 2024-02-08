@@ -21,7 +21,7 @@ point_search_jump = 10.0
 perft_ticks = 5
 perft_duration = 20
 center_line_hash_size = 100000
-specialised_training_multiple = 5
+specialised_training_multiple = 2
 compile_shaders = False
 
 # - Game settings

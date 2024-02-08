@@ -28,7 +28,7 @@ class Agent:
 
     def CalculateState(self, game, calculated_points=None):
         if calculated_points is None:
-            game.Metal.inVectorBuffer[0:5] = [int(self.car.x), int(self.car.y), int(self.car.direction), game.track_index[self.car.track_name], int(self.car.ppm) * 1000]
+            game.Metal.inVectorBuffer[0:5] = [self.car.int_x, self.car.int_y, self.car.int_direction, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
             game.Metal.getPointsOffset(len(points_offset))
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
         

@@ -316,7 +316,7 @@ class Game:
                 for i in range(len(agents)):
                     agent = agents[i]
                     index = i * 5
-                    MetalInstance.inVectorBuffer[index:index + 5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction), track_index[agent.car.track_name], int(agent.car.ppm) * 1000]
+                    MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
                     
                 tpa_stamp = time.time()
                 MetalInstance.getPointsOffset(len(agents) * len(points_offset))
@@ -388,7 +388,7 @@ class Game:
             "metal_percentage": metal_percentage,
             "input_percentage": input_percentage,
             "tick_percentage": tick_percentage,
-            "time": time.time() - start
+            "time_spent": time.time() - start
         }
 
         for i in range(len(self.environment.agents)):

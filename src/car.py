@@ -16,10 +16,13 @@ class Car:
         self.ppm = config_data['pixel_per_meter'].get(track_name)
         
         self.x = start_pos[1]
+        self.int_x = int(self.x)
         self.y = start_pos[0]
+        self.int_y = int(self.y)
         self.direction = start_dir
+        self.int_direction = int(self.direction)
 
-        assert(self.track[int(self.y), int(self.x)] == 10)
+        assert(self.track[self.int_y, self.int_x] == 10)
 
         self.start_x = self.x
         self.start_y = self.y
@@ -49,7 +52,7 @@ class Car:
         return self.CheckCollisions(game.ticks)
 
     def CheckCollisions(self, ticks):
-        track_val = self.track[int(self.y), int(self.x)]
+        track_val = self.track[self.int_y, self.int_x]
         if track_val == 0:
             self.GetNearestCenterline()
             self.UpdateCorners()
@@ -204,8 +207,11 @@ class Car:
         
         self.x += displacement * cos[(int(self.direction) % 360) * 10] * delta_t
         self.y -= displacement * sin[(int(self.direction) % 360) * 10] * delta_t
-
         self.direction %= 360
+        
+        self.int_x = int(self.x)
+        self.int_y = int(self.y)
+        self.int_direction = int(self.direction)
 
     def UpdateCorners(self):
 
@@ -274,7 +280,7 @@ class Car:
 
     def GetNearestCenterline(self, game=None):
         if self.died: return self.previous_center_line
-        normalised_x, normalised_y = int(self.x), int(self.y)
+        normalised_x, normalised_y = self.int_x, self.int_y
         if self.track[normalised_y, normalised_x] == 10:
             self.previous_center_line = (normalised_x, normalised_y)
             self.center_line_direction = 0
