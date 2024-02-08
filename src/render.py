@@ -138,6 +138,12 @@ class Render:
             car_center_x = car.x - camera_x
             car_center_y = car.y - camera_y
 
+            distance_to_image_center = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (car_center_x, car_center_y))
+            new_distance = distance_to_image_center * self.zoom_factor
+            angle = np.arctan2(self.screen.get_height() / 2 - car_center_y, self.screen.get_width() / 2 - car_center_x)
+            new_car_center_x = self.screen.get_width() / 2 + new_distance * np.cos(angle)
+            new_car_center_y = self.screen.get_height() / 2 + new_distance * np.sin(angle)
+
             scaling_factor = self.pixel_per_meter.get(car.track_name) / (2.3 * 30) * self.zoom_factor
 
             scaled_car_image = pygame.transform.scale(car_image, (
@@ -145,14 +151,13 @@ class Render:
                 int(car_image.get_height() * scaling_factor)
             ))
 
-            blit_x = car_center_x - scaled_car_image.get_width() // 2
-            blit_y = car_center_y - scaled_car_image.get_height() // 2
+            blit_x = new_car_center_x - scaled_car_image.get_width() // 2
+            blit_y = new_car_center_y - scaled_car_image.get_height() // 2
 
-            blit_distance = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (car_center_x , car_center_y))
-            blit_angle = np.arctan2(self.screen.get_height()/2 - car_center_y, self.screen.get_width()/ 2 - car_center_x)
+            blit_distance = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (new_car_center_x , new_car_center_y))
+            blit_angle = np.arctan2(self.screen.get_height()/2 - new_car_center_y, self.screen.get_width()/ 2 - new_car_center_x)
             blit_x = blit_x + blit_distance * np.cos(blit_angle)
             blit_y = blit_y + blit_distance * np.sin(blit_angle)
-
 
             self.screen.blit(scaled_car_image, (blit_x, blit_y))
             
@@ -371,10 +376,10 @@ class Render:
         camera_y = centered_car.y - game.screen.get_height() // 2
         x_cos = np.cos(np.radians(centered_car.direction))
         y_sin = np.sin(np.radians(centered_car.direction))
-        steer_var = centered_car.steer * 4 * centered_car.speed / 180
+        steer_var = centered_car.steer * 4 * centered_car.speed / 180 / 8
 
-        acceleration_var = centered_car.acceleration * 3 * (centered_car.speed / 140 + 0.2)
-        brake_var = centered_car.brake * 3 * (centered_car.speed / 140 + 0.2)
+        acceleration_var = centered_car.acceleration * 3 * (centered_car.speed / 140 + 0.2) / 8
+        brake_var = centered_car.brake * 3 * (centered_car.speed / 140 + 0.2) / 8
 
         total_power_var = acceleration_var - brake_var
 

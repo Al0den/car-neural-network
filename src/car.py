@@ -203,15 +203,17 @@ class Car:
         drag_acceleration = drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
 
-        displacement = (self.speed / 3.6) * self.ppm
         
-        self.x += displacement * cos[(int(self.direction) % 360) * 10] * delta_t
-        self.y -= displacement * sin[(int(self.direction) % 360) * 10] * delta_t
         self.direction %= 360
+        self.int_direction = int(self.direction)
+        
+        displacement = (self.speed / 3.6) * self.ppm
+        self.x += displacement * cos[(self.int_direction) * 10] * delta_t
+        self.y -= displacement * sin[(self.int_direction) * 10] * delta_t
         
         self.int_x = int(self.x)
         self.int_y = int(self.y)
-        self.int_direction = int(self.direction)
+        
 
     def UpdateCorners(self):
 
@@ -231,48 +233,6 @@ class Car:
         self.back_right[0] = self.x + half_small_side * cos_1 + half_big_side * sin_1
         self.back_right[1] = self.y + half_big_side * cos_1 - half_small_side * sin_1
 
-    def CalculatePoint(self, offset):
-        dx = 1.0
-        angle = int(self.direction + 90 + offset) % 360
-        sinus = sin[angle * 10]
-        cosinus = cos[angle * 10]
-        eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-
-        distance_from_track = 0
-        while int(eval_x) < len(self.track[0]) and int(eval_y) < len(self.track) and self.track[int(eval_y), int(eval_x)] == 0 and distance_from_track < 50:
-            distance_from_track += 5
-            dx += 5.0
-            eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-        
-        if int(eval_x) >= len(self.track[0]) or int(eval_y) >= len(self.track):
-            return np.array([eval_x, eval_y])
-        
-        if distance_from_track == 50: return (self.x,self.y)
-
-        i = 0
-        while self.track[int(eval_y), int(eval_x)] != 0 and i < max_points_distance * self.ppm:
-            dx += point_search_jump
-            eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-            i += point_search_jump
-
-        jump = point_search_jump / 2.0
-        while jump > 1.0:
-            if self.track[int(eval_y), int(eval_x)] == 0:
-                dx -= jump
-            else:
-                dx += jump
-            eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-            jump /= 2.0
-
-        eval_x, eval_y = dx * sinus + self.x, dx * cosinus + self.y
-
-        return np.array([eval_x, eval_y])
-    
-    def GetPointsInput(self):
-        return 
-        self.previous_points = np.array([self.CalculatePoint(offset) for offset in points_offset])
-        return self.previous_points
-    
     def CenterlinePosition(self, x, y):
         if self.track[y, x] == 10:
             return x, y
@@ -289,9 +249,9 @@ class Car:
         remaining_directions = [1, -1, 0, 2]
         for i in range(int(max_center_line_distance * self.ppm + 10)):
             for direction in remaining_directions:
-                angle = int(self.direction + direction * 90) % 360
-                x = int(self.x + i * cos[int(angle * 10)] * 2)
-                y = int(self.y - i * sin[int(angle * 10)] * 2)
+                angle = (self.int_direction + direction * 90) * 10 % 3600
+                x = int(self.x + i * cos[angle] * 2)
+                y = int(self.y - i * sin[angle] * 2)
                 if x < 1 or y < 1 or x >= len(self.track[0]) - 1 or y >= len(self.track) - 1: continue
                 if self.track[y, x] == 10:
                     self.previous_center_line = (x, y)
@@ -299,7 +259,7 @@ class Car:
                     self.center_line_dist = i
                     return (x, y)
                 for offset in offsets:
-                    new_x, new_y = int(x + offset[0]), int(y + offset[1])
+                    new_x, new_y = x + offset[0], y + offset[1]
                     
                     if self.track[new_y, new_x] == 10:
                         self.previous_center_line = (new_x, new_y)
@@ -312,27 +272,6 @@ class Car:
 
         self.center_line_direction = 0
         return self.previous_center_line
-    
-    def CalculateNextCenterlineDirection(self, x, y, direction_target):
-        direction = 9999
-        error = 999
-        offset = None
-        direction_target %= 360
-        
-        for offset, direction in zip(offsets, directions):
-            x_offset, y_offset = int(x + offset[0]), int(y + offset[1])
-            track_value = self.track[y_offset, x_offset]
-            
-            if track_value == 10:
-                current_error = angle_distance(direction_target, direction)
-                if current_error < error or direction > 360:
-                    error = current_error
-                    direction = direction
-                    offset = offset
-            if error < 60:
-                break
-        
-        return direction, offset
     
     def CalculateScore(self, max_potential=None):
         current_x = self.start_x
@@ -379,25 +318,7 @@ class Car:
             current_y += current_offset[1]
             current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
             seen += 1
-        return max(1, seen)
-    
-    def get_point_further(self, x, y, direction, max_dist, track):
-        current_x, current_y = x, y
-        current_dir = direction
-        for i in range(max_dist):
-            valid_offsets = [offset for offset in offsets if track[current_y + offset[1], current_x + offset[0]] == 10 and angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 60]
-            if not valid_offsets:
-                print("Lost")
-                break
-            chosen_offset = valid_offsets[0]
-            chosen_angle = np.degrees(np.arctan2(-chosen_offset[1], chosen_offset[0]))
-            
-            # Update current position and direction
-            current_dir = chosen_angle
-            current_x += chosen_offset[0]
-            current_y += chosen_offset[1]
-
-        return current_x, current_y, current_dir 
+        return max(1, seen) 
 
     def setFutureCorners(self, corners_data):
         corners = [corner[0] for corner in corners_data]

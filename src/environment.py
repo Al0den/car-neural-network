@@ -210,9 +210,8 @@ class Environment:
         laps = max([agent.car.laps for agent in ranked_agents])
         average_score = np.average([agent.car.score for agent in ranked_agents]) / game.map_tries
         average_lap = np.average([agent.car.laps for agent in ranked_agents])
-        
 
-        log_data = game.log_data
+        log_data = game.logger_data
 
         if not os.path.isfile(path):
             with open(path, "w") as file:

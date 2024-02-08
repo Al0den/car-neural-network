@@ -114,7 +114,7 @@ class Game:
             self.environment.agents = [None] * game_options['environment']['num_agents']
             for i in range(len(self.environment.agents)):
                 self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
-                self.environment.agents[i].network = networks[i]
+                self.environment.agents[i].network = random.choice(networks)
                 self.environment.agents[i].car.speed = 0
             self.environment.agents = self.environment.agents[::-1]
         elif self.player == 9:
@@ -215,8 +215,8 @@ class Game:
             for i in range(len(self.environment.agents)):
                 agent = self.environment.agents[i]
                 self.Metal.inVectorBuffer[i*5:i*5 + 5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction), self.track_index[agent.car.track_name], int(agent.car.ppm) * 1000]
-            out_data = self.Metal.getPointsOffset()
-            per_agents_points = out_data.reshape((len(self.environment.agents), len(points_offset)))
+            self.Metal.getPointsOffset(len(self.environment.agents) * len(points_offset))
+            per_agents_points = self.Metal.outVectorBuffer.reshape((len(self.environment.agents), len(points_offset)))
             for i in range(len(self.environment.agents)):
                 self.environment.agents[i].Tick(self.ticks, self, per_agents_points[i])
             self.ticks += 1
@@ -375,20 +375,25 @@ class Game:
 
         thread = threading.Thread(target=self.CreateFutureStartsData)
         thread.start()
-
+        line_to_print = " "
         while any(self.working):
             time.sleep(update_delay)
+            
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            print(f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x  | {human_formatted}        \r", end='', flush=True)
+            print(" " * len(line_to_print), end='\r', flush=True)
+            line_to_print = f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x | {human_formatted}"
+            print(line_to_print, end='\r', flush=True)
+        print(" " * len(line_to_print), end='\r', flush=True)
         
-        self.log_data = {
+        self.logger_data = {
             "tps": TPS,
             "rts": RTS,
             "metal_percentage": metal_percentage,
             "input_percentage": input_percentage,
             "tick_percentage": tick_percentage,
-            "time_spent": time.time() - start
+            "time_spent": time.time() - start,
+            "human_format": human_formatted
         }
 
         for i in range(len(self.environment.agents)):
@@ -417,7 +422,7 @@ class Game:
 
     def EndOfGeneration(self):
         if self.player != 3:
-            print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}                    ")
+            print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}                ")
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
 
@@ -425,7 +430,8 @@ class Game:
             delta = target_lap_time - lap_time
             visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
-            print(f" - Generation: {self.environment.generation - 1}, completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {visual_lap_time}, delta: {delta:.3f}s           ")                   
+            print(f"Generation: {self.environment.generation - 1} | Lap time: {visual_lap_time}, Delta: {delta:.3f}s, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
+        
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
@@ -433,7 +439,7 @@ class Game:
 
     def LiveUpdateData(self, tps_values, start, prev_ticks):
         alive_agents, ticks, min_ticks, max_ticks, max_alive, min_alive, tot_input, tot_metal, tot_tick = 0, 0, 0, 0, 0, 0, 0, 0, 0
-        for i in range(int(len(self.log_data[:])/5)):
+        for i in range(int(len(self.log_data)/5)):
             ticks += self.log_data[i*5]
             alive_agents += self.log_data[i*5 + 1]
             tot_input += self.log_data[i*5 + 2]
@@ -587,8 +593,6 @@ class Game:
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
                 print(f" - Loading track: {file[:-4]}         \r", end='', flush=True)
-                folder_path = f"./data/per_track/{file[:-4]}/trained"
-                os.makedirs(folder_path, exist_ok=True)
 
                 if self.player == 8 and file[:-4] != self.options['track_name']: continue
                 self.track_name = file[:-4]
