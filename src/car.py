@@ -216,7 +216,6 @@ class Car:
         
 
     def UpdateCorners(self):
-
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
         angle = np.arctan(half_small_side / half_big_side)

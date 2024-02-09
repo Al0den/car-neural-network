@@ -422,7 +422,10 @@ class Game:
 
     def EndOfGeneration(self):
         if self.player != 3:
-            print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)}, lap time: {self.environment.previous_best_lap}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}                ")
+            if self.environment.previous_best_lap == 0:
+                print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)} TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
+            else:
+                print(f"Generation: {self.environment.generation - 1} | Lap time: {self.environment.previous_best_lap}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
 
