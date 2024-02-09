@@ -32,7 +32,7 @@ delta_t = 1/60
 pre_load = True
 min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
-safety_ticks = 60
+safety_ticks = 150
 base_game_speed = 60
 
 # - Live Data Parameters

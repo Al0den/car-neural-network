@@ -686,11 +686,12 @@ class Game:
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
+            corners, track_intensity= self.setup_corners()
             assert(real_start != None)
             data = {
                 "track": self.track,
-                "start_positions": get_new_starts(self.track, 1000),
-                "corners": self.setup_corners(),
+                "start_positions": get_new_starts(self.track, 1000, track_intensity),
+                "corners": corners,
                 "real_start": real_start
             }
             
@@ -718,7 +719,7 @@ class Game:
         treated_corners = []
         for corner in corners:
             treated_corners.append([(corner[0], corner[1]), data[corner[1], corner[0]]])
-        return treated_corners
+        return treated_corners, data
 
     def find_center_line(self):
         binary_image = (self.track != 0).astype(np.uint8)

@@ -39,10 +39,14 @@ def angle_distance(angle1, angle2):
     if abs(angle1 - angle2) > 180: return 360 - val
     return val
 
-def get_new_starts(track, n):
+def get_new_starts(track, n, turn_intensity):
     start_positions = []
 
     positions = np.argwhere(track == 10).tolist()
+    turn_intensity_threshold = np.mean(turn_intensity) * 10
+    print(f" - Found {len(positions)} potential starts")
+    positions = [pos for pos in positions if turn_intensity[pos[0], pos[1]] < turn_intensity_threshold]
+    print(" - Found", len(positions), "valid start positions")
     if not positions: return []
 
     for _ in range(n):
