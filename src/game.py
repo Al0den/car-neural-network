@@ -178,7 +178,7 @@ class Game:
         if self.player in [0, 4, 5, 7, 8]:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
-            self.Metal.init_shaders(len(points_offset) * 5 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
+            self.Metal.init_shaders(len(points_offset) * 10 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
         
         self.prev_update = time.time()
         self.start_time = time.time()
@@ -307,7 +307,7 @@ class Game:
             alive = len(agents)
             ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
 
-            MetalInstance.init_shaders(len(agents) * 5, len(agents) * len(points_offset), points_offset)
+            MetalInstance.init_shaders(len(agents) * 10, len(agents) * len(points_offset), points_offset)
             
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
@@ -315,7 +315,7 @@ class Game:
 
                 for i in range(len(agents)):
                     agent = agents[i]
-                    index = i * 5
+                    index = i * 10
                     MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
                     
                 tpa_stamp = time.time()
@@ -378,14 +378,14 @@ class Game:
         line_to_print = " "
         while any(self.working):
             time.sleep(update_delay)
-            
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            print(" " * len(line_to_print), end='\r', flush=True)
+            prev_size = len(line_to_print)
             line_to_print = f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x | {human_formatted}"
+            print(" " * prev_size, end='\r')
             print(line_to_print, end='\r', flush=True)
-        print(" " * len(line_to_print), end='\r', flush=True)
-        
+        print(" " * len(line_to_print), end='\r')
+         
         self.logger_data = {
             "tps": TPS,
             "rts": RTS,
@@ -425,7 +425,7 @@ class Game:
             if self.environment.previous_best_lap == 0:
                 print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)} TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
             else:
-                print(f"Generation: {self.environment.generation - 1} | Lap time: {self.environment.previous_best_lap}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
+                print(f"Generation: {self.environment.generation - 1} | Lap time: {self.environment.previous_best_lap}, Successful Cars: {self.environment.successful_agents_num}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
 
@@ -433,7 +433,7 @@ class Game:
             delta = target_lap_time - lap_time
             visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
-            print(f"Generation: {self.environment.generation - 1} | Lap time: {visual_lap_time}, Delta: {delta:.3f}s, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
+            print(f"Generation: {self.environment.generation - 1} | Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
         
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
@@ -690,7 +690,7 @@ class Game:
             assert(real_start != None)
             data = {
                 "track": self.track,
-                "start_positions": get_new_starts(self.track, 1000, track_intensity),
+                "start_positions": get_new_starts(self.track, 5000, track_intensity),
                 "corners": corners,
                 "real_start": real_start
             }

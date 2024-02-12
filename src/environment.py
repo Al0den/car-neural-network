@@ -42,6 +42,8 @@ class Environment:
         self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
         self.previous_best_score = max([round(agent.car.score) for agent in ranked_agents])
         if self.previous_best_lap == max_int: self.previous_best_lap = 0
+
+        self.successful_agents_num = sum([1 for agent in ranked_agents if agent.car.laps == game.map_tries])
         
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.02) + 1)]
         new_agents = []

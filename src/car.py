@@ -192,14 +192,13 @@ class Car:
         turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle)) if wheel_angle != 0 else float('inf')
 
         wheel_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
-
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
         # - Car speed
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
 
-        drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(wheel_angle) * 10)) * pow(self.speed, 2)
+        drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer * 14/20))) * pow(self.speed, 2)
         drag_acceleration = drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
 

@@ -46,7 +46,7 @@ class Agent:
 
         return self.state
     
-    def Tick(self, ticks, game, calculated_points=None):
+    def Tick(self, ticks, game, calculated_points=None, updateCar=True):
         if self.car.died == True: return
 
         self.CalculateState(game, calculated_points)
@@ -54,6 +54,7 @@ class Agent:
         power, steer = self.CalculateNextAction(self.state)
 
         self.car.ApplyAgentInputs([power, steer])
+
         self.car.UpdateCar()
         self.car.CheckCollisions(ticks)
 

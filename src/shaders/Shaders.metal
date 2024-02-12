@@ -11,11 +11,11 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
 
     short offset = offsets[offset_id];
 
-    short car_x = input[car_id * 5];
-    short car_y = input[car_id * 5 + 1];
-    short direction = (input[car_id * 5 + 2] + 90 + offset) % 360;
-    short track_id = input[car_id * 5 + 3];
-    float ppm = (float)(input[car_id * 5 + 4]) / 1000; // pixels per meter (1000 = 1 meter)
+    short car_x = input[car_id * 10];
+    short car_y = input[car_id * 10 + 1];
+    short direction = (input[car_id * 10 + 2] + 90 + offset) % 360;
+    short track_id = input[car_id * 10 + 3];
+    float ppm = (float)(input[car_id * 10 + 4]) / 1000; // pixels per meter (1000 = 1 meter)
 
     if (car_x == -1) {
         return;
@@ -59,6 +59,41 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
 
     out[id] = distance;
     return;
+}
+
+kernel void update_car(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device short *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
+    short car_x = input[id * 10];
+    short car_y = input[id * 10 + 1];
+    short direction = input[id * 10 + 2];
+    short track_id = input[id * 10 + 3];
+    float ppm = (float)(input[id * 10 + 4]) / 1000; // pixels per meter (1000 = 1 meter)
+    short speed = input[id * 10 + 5];
+    float steer = input[id * 10 + 6] / 1000;
+    float acceleration = input[id * 10 + 7] / 1000;
+    float brake = input[id * 10 + 8] / 1000;
+    short max_speed = input[id * 10 + 9];
+
+    float delta_t = 1/60;
+    float turn_coeff = 5;
+
+    if (car_x == -1) {
+        return;
+    }
+
+    short final_dir;
+    short final_speed;
+    short final_x;
+    short final_y;
+    
+    short wheel_angle = steer * 14;
+    short speed_factor = max(1.0 - pow(speed / max_speed, 0.5), 0.1);
+
+    wheel_angle = wheel_angle * speed_factor;
+    if (wheel_angle != 0) {
+        short turning_radius = car_length * ppm / tan(wheel_angle * M_PI / 180.0);
+        wheel_angle = 
+        final_dir = short(direction + (wheel_angle * delta_t * (speed + 20) * turn_coeff))
+    } 
 }
 
 kernel void dot_product(const device int *input [[ buffer(0) ]], const device float *weights [[ buffer(1) ]], device float *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {

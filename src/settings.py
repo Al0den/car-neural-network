@@ -4,11 +4,11 @@ points_offset = [0, 4, -4, 10, -10, 15, -15, 30, -30, 60, -60, 90, -90]
 center_line_input = True
 state_space_size = len(points_offset) + 10
 first_layer_size_coeff = 1.3
-num_hidden_layers = 2
+num_hidden_layers = 3
 action_space_size = 2
-map_tries = 20
+map_tries = 50
 
-real_starts_num = 6
+real_starts_num = 16
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -25,7 +25,7 @@ specialised_training_multiple = 2
 compile_shaders = False
 
 # - Game settings
-god = True
+god = False
 debug = False
 random_start_position = True
 delta_t = 1/60
