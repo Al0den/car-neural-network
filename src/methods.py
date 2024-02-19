@@ -16,7 +16,7 @@ def HumanMethod(game, game_options, pygame):
         game.car.Kill()
     if game.restart:
         score = game.car.CalculateScore()
-        print(f" - Completed: {score * 100:0.2f}%")
+        print(f" - Completed: {score * 100:0.2f}%, max pote: {game.car.max_pot_seen}, seen: {game.car.seen}")
         start_pos, start_dir = random.choice(game.start_positions[game.track_name])
         game.car.x = start_pos[1]
         game.car.start_x = start_pos[1]

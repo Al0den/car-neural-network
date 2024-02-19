@@ -47,6 +47,7 @@ class Environment:
         
         best_agents = ranked_agents[:(int(len(ranked_agents) * 0.02) + 1)]
         new_agents = []
+        
         for father in best_agents:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             child.network = copy_network(father.network)
@@ -59,27 +60,30 @@ class Environment:
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             father = None
             while father == None:
-                father = self.linear_weighted_selection(self.previous_agents)
+                father, father_rank = self.linear_weighted_selection(self.previous_agents)
             if father != None:
                 child.network = copy_network(father.network)
                 child.evolution = father.evolution + ["p"]
                 child.mutation_rates = father.mutation_rates + ["-"]
+                child.father_rank = father_rank
                 new_agents.append(child)
        
         while len(new_agents) < len(self.agents):
             randint = np.random.uniform(0,1)
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
             if randint > 1 - only_mutate_rate:
-                father = self.linear_weighted_selection(ranked_agents)
+                father, father_rank = self.linear_weighted_selection(ranked_agents)
                 child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
                 child.network = copy_network(father.network)
+                child.father_rank = father_rank
                 rate = self.mutate(child)
                 child.evolution = father.evolution + ["m"]
                 child.mutation_rates = father.mutation_rates + [rate]
             elif randint > 1 - (cross_over_rate + only_mutate_rate):
-                father = self.linear_weighted_selection(ranked_agents)
-                mother = self.linear_weighted_selection(ranked_agents)
+                father, father_rank = self.linear_weighted_selection(ranked_agents)
+                mother, mother_rank = self.linear_weighted_selection(ranked_agents)
                 child = self.crossover(father, mother, game)
+                child.father_rank = int((father_rank + mother_rank)/2)
                 new_rand = np.random.uniform(0,1)
                 if new_rand > 1 - mutate_cross_over_rate: # Most cross-overs are mutated
                     rate = self.mutate(child)
@@ -117,9 +121,10 @@ class Environment:
         selection_weights = [i ** agent_selection_coeff for i in selection_weights]
         indices = [i for i in range(num_agents)]
         selected_agent = random.choices(indices, weights=selection_weights)[0]
+        selected_rank = indices.index(selected_agent)
         selected_agent = ranked_agents[selected_agent]
         
-        return selected_agent
+        return selected_agent, selected_rank
     
     def SaveBestAgentResults(self, best_agent, game, path="./data/train/test_results.csv"):
         results = self.TestAgent(best_agent, game)
@@ -215,11 +220,16 @@ class Environment:
 
         log_data = game.logger_data
 
+        best_agent = ranked_agents[0]
+        last_evolution = best_agent.evolution[-1]
+        last_mutation_rate = best_agent.mutation_rates[-1]
+        father_rank = best_agent.father_rank
+
         if not os.path.isfile(path):
             with open(path, "w") as file:
-                file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, TPS, Time Spent\n")
+                file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, TPS, Time Spent, Last Mutate Rate, Last Evolution, Father Rank\n")
         with open(path, "a") as file:
-            file.write(f"{generation}, {best_score}, {average_score}, {best_lap_time}, {laps}, {average_lap}, {log_data['tps']}, {log_data['time_spent']}\n")
+            file.write(f"{generation}, {best_score}, {average_score}, {best_lap_time}, {laps}, {average_lap}, {log_data['tps']}, {log_data['time_spent']}, {last_evolution}, {last_mutation_rate}, {father_rank}\n")
 
     def load_specific_agents(self, game):
         try:

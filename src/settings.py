@@ -1,14 +1,14 @@
-points_offset = [0, 4, -4, 10, -10, 15, -15, 30, -30, 60, -60, 90, -90]
+points_offset = [0, 4, -4, 15, -15, 30, -30, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
 state_space_size = len(points_offset) + 10
-first_layer_size_coeff = 1.3
-num_hidden_layers = 3
-action_space_size = 2
-map_tries = 50
+first_layer_size_coeff = 1.2
+num_hidden_layers = 1
+action_space_size = 4
+map_tries = 20
 
-real_starts_num = 16
+real_starts_num = 5
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -18,7 +18,7 @@ first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters
 point_search_jump = 10.0
-perft_ticks = 5
+perft_ticks = 10
 perft_duration = 20
 center_line_hash_size = 100000
 specialised_training_multiple = 2
@@ -37,7 +37,7 @@ base_game_speed = 60
 
 # - Live Data Parameters
 prev_ticks = 0
-update_delay = 0.1
+update_delay = 0.02
 tps_window_size = 20  # Adjust the window size as needed
 
 # - Simulation settings
@@ -67,13 +67,13 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.2
+mutation_strenght = 0.20
 
-max_ticks_before_kill = 25000
+max_ticks_before_kill = 30000
 min_speed = 5
 base_score_per_checkpoint = 0
 
-agent_selection_coeff = 7
+agent_selection_coeff = 3
 
 # - Render Options
 default_width = 1220
@@ -81,7 +81,6 @@ default_height = 780
 slider_width = 200
 slider_height = 20
 slider_padding = 10  # Padding from the right and bottom edges
-
 
 max_int = 2147483647
 

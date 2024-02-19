@@ -36,6 +36,8 @@ class Render:
         self.visible_track = pygame.Surface((self.zoomed_width, self.zoomed_height), pygame.SRCALPHA)
         self.visible_track.set_alpha(None)
 
+        self.agent = None
+
         self.zoom_offset = 0
 
         self.prev_score = None
@@ -288,10 +290,11 @@ class Render:
             y_offset += text_surface.get_height() + 5
 
     def generate_agent_debug(self, game):
-        new_car = Car(game.car.track, game.start_pos, game.start_dir, game.track_name)
-        new_car = copy_car(game.car, new_car)
+        if not self.agent or game.track_name != self.agent.car.track_name:
+            self.agent = agent = Agent(game.options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
+        agent = self.agent
+        new_car = copy_car(game.car, agent.car)
         new_car.died = False
-        agent = Agent(game.options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
 
         agent.car = new_car
         agent.car.future_corners = game.car.future_corners

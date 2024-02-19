@@ -41,10 +41,17 @@ class Car:
         self.previous_points = np.array([None] * len(points_offset))
         self.future_corners = []
 
+        self.seen = 0
+        self.max_pot_seen = 0
+
+        self.end_pos = config_data['end_pos'].get(track_name)
+
         self.UpdateCorners()
 
         self.died = False
         self.track_max_potential = None
+
+        self.safe_from_end = False
         
     def Tick(self, game):
         self.ApplyPlayerInputs()
@@ -52,13 +59,20 @@ class Car:
         return self.CheckCollisions(game.ticks)
 
     def CheckCollisions(self, ticks):
+        # Keep the two offsets closest to 90 degrees from the car from offsets
         track_val = self.track[self.int_y, self.int_x]
+
+        if len(self.future_corners) > 0:
+            corner_x, corner_y, _, _ = self.future_corners[0]
+            next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
+            if next_corner_dist < 10 * self.ppm:
+                self.future_corners.pop(0)
+
         if track_val == 0:
             self.GetNearestCenterline()
             self.UpdateCorners()
             toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
             count = 0
-
             for point in toCheck:
                 if self.track[int(point[1]), int(point[0])] == 0: count += 1
                 else: break
@@ -66,13 +80,6 @@ class Car:
             if count > 3 and not god:
                 self.Kill()
                 return False
-        elif track_val == 3:
-            self.GetNearestCenterline()
-            self.lap_time = ticks
-            if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
-                self.lap_time = 0
-            self.Kill()
-            return False
         elif track_val == 2:
             seen = False
             for checkpoint in self.checkpoints_seen:
@@ -80,17 +87,28 @@ class Car:
                     seen = True
             if seen == False:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
-        # Get Distance to first corner in future corners
-        if len(self.future_corners) > 0:
-            corner_x, corner_y, _, _ = self.future_corners[0]
-            next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
-            if next_corner_dist < 10 * self.ppm:
-                self.future_corners.pop(0)
+        elif (not self.safe_from_end) or ticks % 100 == 0:
+            
+            if calculate_distance((self.x, self.y), self.end_pos) > 400:
+                self.safe_from_end = True
+                return True # Car is all good
+            else:
+                self.safe_from_end = False
+            res = track_val == 3 or self.track[self.int_y + 2, self.int_x + 2] == 3 or self.track[self.int_y - 2, self.int_x - 2] == 3 or self.track[self.int_y + 2, self.int_x - 2] == 3 or self.track[self.int_y - 2, self.int_x + 2] == 3
+            if res:
+                self.GetNearestCenterline()
+                self.lap_time = ticks
+                if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
+                    self.lap_time = -1
+                self.Kill()
+                return False
         return True
     
     def Kill(self):
         self.died = True
         self.finish_x, self.finish_y = self.GetNearestCenterline()
+
+        self.safe_from_end = False
 
         self.x = self.start_x
         self.y = self.start_y
@@ -141,18 +159,18 @@ class Car:
         self.CheckForAction(brake, power, steer)
         
     def ApplyAgentInputs(self, action):
-        power, steer = action
+        acc, bra, l, r = action
         steer_change, brake_change, power_change = False, False, False
-        if power > 0.5:
+        if acc > 0:
             self.Accelerate()
             power_change = True
-        elif power < -0.5:
+        elif bra > 0:
             self.Decelerate()
             brake_change = True
-        if steer > 0.5:
+        if r > 0:
             self.UpdateSteer(1)
             steer_change = True
-        elif steer < -0.5:
+        elif l > 0:
             self.UpdateSteer(-1)
             steer_change = True
         self.CheckForAction(brake_change, power_change, steer_change)
@@ -280,24 +298,26 @@ class Car:
         seen = 0
         if self.lap_time > 0:
             return 1
+        if self.lap_time == -1:
+            return 0
         if max_potential is None:
             max_potential = self.CalculateMaxPotential()
         calculated_dirs = {}
         for offset in offsets:
-            calculated_dirs[offset[0] + 100 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
+            calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
             
-        while (final_x, final_y) != (current_x, current_y) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, calculated_dirs[offset[0] + 100 * offset[1]]) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+        while ((final_x, final_y) != (current_x, current_y)) and seen < 50000:
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 130 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
-            current_dir = calculated_dirs[current_offset[0] + 100 * current_offset[1]]
+            current_dir = calculated_dirs[current_offset[0] + 1000 * current_offset[1]]
             seen += 1
 
         if (seen == 50000 or (seen > 8000 and len(self.checkpoints_seen) < 1)):
             return 0
-
+        self.seen = seen
         return min(1, seen / max_potential)
     
     def CalculateMaxPotential(self, current_dir=None):
@@ -306,16 +326,20 @@ class Car:
         if current_dir is None:
             current_dir = self.start_direction
         seen = 0
+        calculated_dirs = {}
+        for offset in offsets:
+            calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
+        assert(self.track[current_y, current_x] == 10)
         while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
-            if not potential_offsets: 
-                if debug: print(f"No potential offsets, track: {self.track_name}")
-                break
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            if potential_offsets == []: 
+                raise Exception(f"Car has no potential, seen: {seen}, track: {self.track_name}, x: {current_x}, y: {current_y}, dir: {current_dir}")
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
             current_y += current_offset[1]
-            current_dir = np.degrees(np.arctan2(-current_offset[1], current_offset[0]))
+            current_dir = calculated_dirs[current_offset[0] + 1000 * current_offset[1]]
             seen += 1
+        self.max_pot_seen = seen
         return max(1, seen) 
 
     def setFutureCorners(self, corners_data):

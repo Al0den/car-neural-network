@@ -16,6 +16,7 @@ def smoothen(track):
 
     with open('./src/config.json', 'r') as json_file:
         config_data = json.load(json_file)
+
     real_width = config_data['real_track_width'].get(track)
     ppm = config_data['pixel_per_meter'].get(track)
 
@@ -132,6 +133,19 @@ def smoothen(track):
         elif current_length >= 10 * ppm and not drawing_line:
             drawing_line = True
             current_length = 0
+
+    all_end_positions = np.argwhere(track_matrix == 3)
+    end_pos_x, end_pos_y = 0, 0
+    for end_pos in all_end_positions:
+        end_pos_x += end_pos[1]
+        end_pos_y += end_pos[0]
+    end_pos_x /= len(all_end_positions)
+    end_pos_y /= len(all_end_positions)
+
+    config_data['end_pos'][track] = (end_pos_x, end_pos_y)
+    with open('./src/config.json', 'w') as json_file:
+        json.dump(config_data, json_file)
+    
     data['track'] = final_mat
     pygame.image.save(track_surface, "./data/tracks/" + track + "_surface.png")
     np.save(f"./data/tracks/{track}.npy", data)

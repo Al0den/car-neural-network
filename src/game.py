@@ -376,15 +376,19 @@ class Game:
         thread = threading.Thread(target=self.CreateFutureStartsData)
         thread.start()
         line_to_print = " "
+        iters = 0
         while any(self.working):
             time.sleep(update_delay)
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
             prev_size = len(line_to_print)
             line_to_print = f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x | {human_formatted}"
-            print(" " * prev_size, end='\r')
+            if iters * update_delay > 1:
+                print(" " * (prev_size + 4), end='\r')
+                iters = 0
+            else: iters += 1
             print(line_to_print, end='\r', flush=True)
-        print(" " * len(line_to_print), end='\r')
+        print(" " * (len(line_to_print) + 4), end='\r')
          
         self.logger_data = {
             "tps": TPS,
@@ -411,21 +415,27 @@ class Game:
             local_scores[index] += 1 * score_multiplier
             local_laps[index] += 1
             local_lap_times[index] += agent.car.lap_time
+        elif agent.car.lap_time == -1:
+            return
         else:
             if max_potentials[map_try] == 0:
                 max_potentials[map_try] = agent.car.CalculateMaxPotential()
             score = agent.car.CalculateScore(max_potentials[map_try])
+            score = min(1, score)
             local_scores[index] += score * score_multiplier
-            if score >= 1: # Very weird, shouldnt happen (Edge case?). Seemed to fix a rare issue
-                local_laps[index] += 1
-                local_lap_times[index] += agent.car.lap_time
+            if score == 1: 
+                if abs(max_potentials[map_try] - agent.car.seen) < 100:
+                    return # Probably normal, car close to end, edge case, and car reverse excluded from -1
+                agent.car.CalculateMaxPotential()
+                print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
+                
 
     def EndOfGeneration(self):
         if self.player != 3:
             if self.environment.previous_best_lap == 0:
                 print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)} TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
             else:
-                print(f"Generation: {self.environment.generation - 1} | Lap time: {self.environment.previous_best_lap}, Successful Cars: {self.environment.successful_agents_num}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
+                print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {self.environment.previous_best_lap}, Successful Cars: {self.environment.successful_agents_num}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
 
@@ -433,7 +443,7 @@ class Game:
             delta = target_lap_time - lap_time
             visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
-            print(f"Generation: {self.environment.generation - 1} | Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
+            print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
         
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
@@ -767,6 +777,7 @@ class Game:
         for track_name in self.track_names:
             track = self.tracks[track_name]
             pos, direction = random.choice(self.start_positions[track_name])
+
             for agent in self.environment.agents:
                 agent.car.track = track
                 agent.car.track_name = track_name
@@ -774,6 +785,7 @@ class Game:
                 agent.car.y = pos[0]
                 agent.car.direction = direction
                 agent.car.UpdateCorners()
+            
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):

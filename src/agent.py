@@ -19,6 +19,8 @@ class Agent:
         self.mutation_strengh = mutation_strenght
         self.last_update = 0
 
+        self.father_rank = 0
+
     def ProcessCorner(self, corner):
         corner_x, corner_y, corner_dir, corner_ampl = corner
         distance = min(1, calculate_distance((corner_x, corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
@@ -33,14 +35,14 @@ class Agent:
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
         
         self.state[0:4] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
-        if len(self.car.future_corners) >= 2: 
+        if len(self.car.future_corners) >= 2:
             self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
             self.state[7:10] = self.ProcessCorner(self.car.future_corners[1])
         elif len(self.car.future_corners) == 1:
             self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
             self.state[7:10] = [0, 0, 0]
         else:
-            self.state[4:10] = [0, 0, 0, 0, 0, 0]
+            self.state[4:10] = [0, 0, 0, 0 ,0 ,0]
 
         self.state[10:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
 
@@ -51,14 +53,14 @@ class Agent:
 
         self.CalculateState(game, calculated_points)
         
-        power, steer = self.CalculateNextAction(self.state)
+        acc, bra, l, r = self.CalculateNextAction(self.state)
 
-        self.car.ApplyAgentInputs([power, steer])
+        self.car.ApplyAgentInputs([acc, bra, l, r])
 
         self.car.UpdateCar()
         self.car.CheckCollisions(ticks)
 
-        self.action[0:2] = [power, steer]
+        self.action[0:2] = [acc - bra, r - l]
 
         if ticks > safety_ticks and self.car.speed < min_speed:
             self.car.Kill()
@@ -101,7 +103,7 @@ class Agent:
     def CalculateNextAction(self, state):  
         current_layer_output = state
         for layer_weights in self.network:
-            current_layer_output = np.tanh(np.dot(current_layer_output, layer_weights))
+            current_layer_output = np.maximum(0, np.dot(current_layer_output, layer_weights))
         return current_layer_output
     
     def AgentDistance(self, agent2):
