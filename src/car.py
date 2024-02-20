@@ -67,41 +67,52 @@ class Car:
             next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
             if next_corner_dist < 10 * self.ppm:
                 self.future_corners.pop(0)
-
-        if track_val == 0:
-            self.GetNearestCenterline()
-            self.UpdateCorners()
-            toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
-            count = 0
-            for point in toCheck:
-                if self.track[int(point[1]), int(point[0])] == 0: count += 1
-                else: break
-
-            if count > 3 and not god:
-                self.Kill()
-                return False
-        elif track_val == 2:
-            seen = False
-            for checkpoint in self.checkpoints_seen:
-                if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
-                    seen = True
-            if seen == False:
-                self.checkpoints_seen.append((self.x, self.y, ticks))
-        elif (not self.safe_from_end) or ticks % 100 == 0:
-            
-            if calculate_distance((self.x, self.y), self.end_pos) > 400:
-                self.safe_from_end = True
-                return True # Car is all good
-            else:
-                self.safe_from_end = False
-            res = track_val == 3 or self.track[self.int_y + 2, self.int_x + 2] == 3 or self.track[self.int_y - 2, self.int_x - 2] == 3 or self.track[self.int_y + 2, self.int_x - 2] == 3 or self.track[self.int_y - 2, self.int_x + 2] == 3
-            if res:
+                
+        match track_val:
+            case 0:
                 self.GetNearestCenterline()
-                self.lap_time = ticks
-                if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
-                    self.lap_time = -1
-                self.Kill()
-                return False
+                self.UpdateCorners()
+                toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
+                count = 0
+                for point in toCheck:
+                    if self.track[int(point[1]), int(point[0])] == 0: count += 1
+                    else: break
+
+                if count > 3 and not god:
+                    self.Kill()
+                    return False
+            case 2:
+                seen = False
+                for checkpoint in self.checkpoints_seen:
+                    if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
+                        seen = True
+                if seen == False:
+                    self.checkpoints_seen.append((self.x, self.y, ticks))
+            case _:
+                if (not self.safe_from_end) or ticks % 120 == 0:
+                    if calculate_distance((self.x, self.y), self.end_pos) > 400:
+                        self.safe_from_end = True
+                        return True # Car is all good
+                    else:
+                        self.safe_from_end = False
+                    res = (
+                        track_val == 3 or
+                        self.track[self.int_y + 2, self.int_x + 2] == 3 or
+                        self.track[self.int_y - 2, self.int_x - 2] == 3 or
+                        self.track[self.int_y + 2, self.int_x - 2] == 3 or
+                        self.track[self.int_y - 2, self.int_x + 2] == 3 or
+                        self.track[self.int_y + 4, self.int_x + 4] == 3 or
+                        self.track[self.int_y + 4, self.int_x - 4] == 3 or
+                        self.track[self.int_y - 4, self.int_x + 4] == 3 or
+                        self.track[self.int_y - 4, self.int_x - 4] == 3
+                    )
+                    if res:
+                        self.GetNearestCenterline()
+                        self.lap_time = ticks
+                        if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
+                            self.lap_time = -1
+                        self.Kill()
+                        return False
         return True
     
     def Kill(self):

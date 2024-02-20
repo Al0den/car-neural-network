@@ -37,7 +37,7 @@ class Environment:
             if agent.car.laps != game.map_tries or agent.car.lap_time == 0:
                 agent.car.lap_time = max_int
 
-        ranked_agents = sorted(self.agents, key=lambda x: (x.car.score, -x.car.lap_time), reverse=True)
+        ranked_agents = sorted(self.agents, key=lambda x: (x.car.laps, x.car.score, -x.car.lap_time), reverse=True)
 
         self.previous_best_lap = min([agent.car.lap_time for agent in self.agents])
         self.previous_best_score = max([round(agent.car.score) for agent in ranked_agents])

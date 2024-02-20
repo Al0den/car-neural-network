@@ -8,7 +8,7 @@ num_hidden_layers = 1
 action_space_size = 4
 map_tries = 20
 
-real_starts_num = 5
+real_starts_num = 6
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -21,7 +21,7 @@ point_search_jump = 10.0
 perft_ticks = 10
 perft_duration = 20
 center_line_hash_size = 100000
-specialised_training_multiple = 2
+specialised_training_multiple = 5
 compile_shaders = False
 
 # - Game settings
@@ -55,7 +55,7 @@ acceleration_increment = 1/15
 steer_increment = 1/15
 
 # - Evolution settings
-mutation_rates = [0.01, 0.05, 0.1, 0.2]
+mutation_rates = [0.05, 0.1, 0.2]
 
 only_mutate_rate = 0.6
 cross_over_rate = 0.35
@@ -67,7 +67,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.20
+mutation_strenght = 0.1
 
 max_ticks_before_kill = 30000
 min_speed = 5
