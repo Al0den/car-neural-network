@@ -422,12 +422,12 @@ class Game:
                 max_potentials[map_try] = agent.car.CalculateMaxPotential()
             score = agent.car.CalculateScore(max_potentials[map_try])
             score = min(1, score)
-            local_scores[index] += score * score_multiplier
+            
             if score == 1: 
-                if abs(max_potentials[map_try] - agent.car.seen) < 100:
-                    return # Probably normal, car close to end, edge case, and car reverse excluded from -1
-                agent.car.CalculateMaxPotential()
-                print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
+                if debug: print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
+                # Car went backwards, dont save its score
+                return
+            local_scores[index] += score * score_multiplier
                 
 
     def EndOfGeneration(self):
@@ -472,7 +472,7 @@ class Game:
         TPS = int(tot_ticks / (time_spent))
         RTS = round(TPS * delta_t, 1)
         if sum(self.working[:]) != 0:
-            tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / sum(self.working[:])
+            tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / (sum(self.working[:]) + 0.0001)
 
             tps_values.pop(0)
             tps_values.append(tps)

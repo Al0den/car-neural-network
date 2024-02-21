@@ -67,7 +67,7 @@ class Car:
             next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
             if next_corner_dist < 10 * self.ppm:
                 self.future_corners.pop(0)
-                
+
         match track_val:
             case 0:
                 self.GetNearestCenterline()
@@ -104,7 +104,11 @@ class Car:
                         self.track[self.int_y + 4, self.int_x + 4] == 3 or
                         self.track[self.int_y + 4, self.int_x - 4] == 3 or
                         self.track[self.int_y - 4, self.int_x + 4] == 3 or
-                        self.track[self.int_y - 4, self.int_x - 4] == 3
+                        self.track[self.int_y - 4, self.int_x - 4] == 3 or
+                        self.track[self.int_y + 6, self.int_x + 6] == 3 or
+                        self.track[self.int_y + 6, self.int_x - 6] == 3 or
+                        self.track[self.int_y - 6, self.int_x + 6] == 3 or
+                        self.track[self.int_y - 6, self.int_x - 6] == 3
                     )
                     if res:
                         self.GetNearestCenterline()
