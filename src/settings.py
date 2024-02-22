@@ -55,7 +55,7 @@ acceleration_increment = 1/15
 steer_increment = 1/15
 
 # - Evolution settings
-mutation_rates = [0.05, 0.1, 0.2]
+mutation_rates = [0.02, 0.05, 0.1, 0.2]
 
 only_mutate_rate = 0.6
 cross_over_rate = 0.35
@@ -67,7 +67,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.1
+mutation_strenght = 0.05
 
 max_ticks_before_kill = 30000
 min_speed = 5

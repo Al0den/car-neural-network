@@ -14,6 +14,9 @@ class Car:
         with open('./src/config.json', 'r') as json_file:
             config_data = json.load(json_file)
         self.ppm = config_data['pixel_per_meter'].get(track_name)
+
+        self.c_length = car_length * self.ppm
+        self.c_width = car_width * self.ppm
         
         self.x = start_pos[1]
         self.int_x = int(self.x)
@@ -218,13 +221,12 @@ class Car:
             self.steer = -1
         
     def UpdateCar(self):     
-        wheel_angle = self.steer * 14 
         speed_factor = max(1.0 - pow(int(self.speed) / (max_speed), 0.5), 0.1)
 
-        wheel_angle *= speed_factor
-        turning_radius = car_length * self.ppm / np.tan(np.radians(wheel_angle)) if wheel_angle != 0 else float('inf')
+        wheel_angle = speed_factor * self.steer * 14
+        turning_radius = self.c_length / np.tan(np.radians(wheel_angle)) if wheel_angle != 0 else float('inf')
 
-        wheel_angle = np.arctan(car_length * self.ppm / (turning_radius - car_width * self.ppm / 2))
+        wheel_angle = np.arctan(self.c_length / (turning_radius - self.c_width / 2))
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
         # - Car speed
@@ -233,8 +235,7 @@ class Car:
 
         drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer * 14/20))) * pow(self.speed, 2)
         drag_acceleration = drag_force / car_mass
-        self.speed -= drag_acceleration * delta_t * (1-self.acceleration) * (1-self.brake)
-
+        self.speed -= drag_acceleration * delta_t * (1-self.acceleration)
         
         self.direction %= 360
         self.int_direction = int(self.direction)

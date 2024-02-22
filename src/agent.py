@@ -68,7 +68,6 @@ class Agent:
             self.car.Kill()
 
     def InitializeNetwork(self, options):
-        network = []
         state_size = options['state_space_size']
         hidden_layer_size = options['hidden_layer_size']
         action_size = options['action_space_size']
@@ -83,13 +82,10 @@ class Agent:
             for i in range(num_hidden_layers):
                 current_hidden_size = (state_size * first_layer_size_coeff) - step * (i + 1)
                 layer_sizes.append(int(current_hidden_size))
-            layer_sizes.insert(1, hidden_layer_size) 
+            layer_sizes.insert(1, hidden_layer_size)
             layer_sizes.append(action_size)
 
-        for i in range(len(layer_sizes) - 1):
-            network.append(np.random.uniform(-1, 1, size=(layer_sizes[i], layer_sizes[i + 1])))
-
-        self.network = network
+        self.network = [np.random.uniform(-1, 1, size=(layer_sizes[i], layer_sizes[i + 1])) for i in range(len(layer_sizes) - 1)]
 
     def Mutate(self, rate):
         for layer in self.network:
