@@ -148,8 +148,12 @@ def continuous_commands(game, pygame):
             game.last_keys_update = datetime.now().timestamp()
         
 def AgentsRaceMethod(game, game_options, pygame):
+    update_speed(game, pygame)
     keys = pygame.key.get_pressed()
     if game.last_keys_update + 0.3 < datetime.now().timestamp():
+        if keys[pygame.K_r]:
+            for agent in game.environment.agents:
+                agent.car.Kill()
         if keys[pygame.K_v]:
             game.visual = not game.visual
             game.last_keys_update = datetime.now().timestamp()
@@ -158,15 +162,41 @@ def AgentsRaceMethod(game, game_options, pygame):
             game.last_keys_update = datetime.now().timestamp()
         if keys[pygame.K_s]:
             game.environment.agents.append(game.environment.agents.pop(0))
+            game.car_numbers.append(game.car_numbers.pop(0))
+            while game.environment.agents[0].car.died:
+                game.environment.agents.append(game.environment.agents.pop(0))
+                game.car_numbers.append(game.car_numbers.pop(0))
             game.last_keys_update = datetime.now().timestamp()
         if keys[pygame.K_w]:
             game.environment.agents.insert(0, game.environment.agents.pop())
+            game.car_numbers.insert(0, game.car_numbers.pop())
+            while game.environment.agents[0].car.died:
+                game.environment.agents.insert(0, game.environment.agents.pop())
+                game.car_numbers.insert(0, game.car_numbers.pop())
             game.last_keys_update = datetime.now().timestamp()
     if all([agent.car.died for agent in game.environment.agents]):
-        for agent in game.environment.agents:
-            agent.car.Kill()
-            agent.car.died = False
-            game.ticks = 0
+        if game.s_or_g_choice == "g":
+            start_pos, start_dir = random.choice(game.start_positions[game.track_name])
+            corners = None
+            for agent in game.environment.agents:
+                agent.car.Kill()
+                agent.car.died = False
+                game.ticks = 0
+                agent.car.x = start_pos[1]
+                agent.car.y = start_pos[0]
+                agent.car.direction = start_dir
+                if corners == None: corners = agent.car.setFutureCorners(game.corners[game.track_name])
+                else: agent.car.future_corners = np.copy(corners).tolist()
+
+        else:
+            corners = None
+            for i in range(len(game.environment.agents)):
+                temp_agent = Agent(game_options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
+                temp_agent.network = game.environment.agents[i].network
+                temp_agent.car.speed = game.config['quali_start_speed'].get(game.track_name)
+                if corners == None: corners = temp_agent.car.setFutureCorners(game.corners[game.track_name])
+                else: temp_agent.car.future_corners = np.copy(corners).tolist()
+                game.environment.agents[i] = temp_agent
 
 def load_csv_data(path, game):
     try:

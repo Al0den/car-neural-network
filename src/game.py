@@ -110,13 +110,51 @@ class Game:
             self.environment.agents[0] = agent
             
         elif self.player == 8:
-            networks = np.load("./data/train/agents.npy", allow_pickle=True).item()['networks']
-            self.environment.agents = [None] * game_options['environment']['num_agents']
-            for i in range(len(self.environment.agents)):
-                self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
-                self.environment.agents[i].network = random.choice(networks)
-                self.environment.agents[i].car.speed = 0
-            self.environment.agents = self.environment.agents[::-1]
+            s_or_g = input("Load specific (s) or general (g) agents?: ")
+            self.s_or_g_choice = s_or_g
+            if s_or_g == "g":
+                networks = np.load("./data/train/agents.npy", allow_pickle=True).item()['networks']
+                generation = np.load("./data/train/agents.npy", allow_pickle=True).item()['generation']
+                self.environment.agents = [None] * game_options['environment']['num_agents']
+                corners = None
+                for i in range(len(self.environment.agents)):
+                    self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
+                    self.environment.agents[i].network = random.choice(networks)
+                    self.environment.agents[i].car.speed = 0
+                    if corners == None:
+                        corners = self.environment.agents[i].car.setFutureCorners(self.corners[self.track_name])
+                    else:
+                        self.environment.agents[i].car.future_corners = np.copy(corners).tolist()
+
+                self.environment.agents = self.environment.agents[::-1]
+                self.car_numbers = [generation] * len(self.environment.agents)
+            else:
+                agent_nums = []
+                lap_times = []
+                with open(f"./data/per_track/{self.track_name}/log.csv", "r") as f:
+                    lines = f.readlines()
+                    # Remove line 1 and 2
+                    lines = lines[2:]
+                    for line in lines:
+                        if line.split(",")[3] not in lap_times:
+                            lap_times.append(line.split(",")[3])
+                            agent_nums.append(int(line.split(",")[0]))
+                agent_nums.reverse()
+                if agent_nums == []: self.exit("Not enough agents available, exiting...")
+                # Only keep the game_options['envirocnment']['num_agents'] best agents
+                agent_nums = agent_nums[:game_options['environment']['num_agents']]
+                self.environment.agents = [None] * len(agent_nums)
+                self.car_numbers = [0] * len(agent_nums)
+                corners = None
+                for i in range(len(agent_nums)):
+                    self.car_numbers[i] = agent_nums[i]
+                    self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
+                    self.environment.agents[i].network = np.load(f"./data/per_track/{self.track_name}/trained/best_agent_{agent_nums[i]}.npy", allow_pickle=True).item()['network']
+                    self.environment.agents[i].car.speed = self.config['quali_start_speed'].get(self.track_name)
+                    if corners == None:
+                        corners = self.environment.agents[i].car.setFutureCorners(self.corners[self.track_name])
+                    else:
+                        self.environment.agents[i].car.future_corners = np.copy(corners).tolist()
         elif self.player == 9:
             self.generated_data = []
             available, lap_times, possible_agent_number, possible_agent_laps = [], [], [], []
@@ -212,9 +250,15 @@ class Game:
             self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
         elif self.player == 8:
+            count = 0
+            while self.environment.agents[0].car.died and count < 100:
+                self.environment.agents.append(self.environment.agents.pop(0))
+                self.car_numbers.append(self.car_numbers.pop(0))
             for i in range(len(self.environment.agents)):
                 agent = self.environment.agents[i]
-                self.Metal.inVectorBuffer[i*5:i*5 + 5] = [int(agent.car.x), int(agent.car.y), int(agent.car.direction), self.track_index[agent.car.track_name], int(agent.car.ppm) * 1000]
+                index = i * 10
+                self.Metal.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+              
             self.Metal.getPointsOffset(len(self.environment.agents) * len(points_offset))
             per_agents_points = self.Metal.outVectorBuffer.reshape((len(self.environment.agents), len(points_offset)))
             for i in range(len(self.environment.agents)):
@@ -710,20 +754,9 @@ class Game:
             smoothen(track_name)
 
             print(f" - Generated track: {track_name}")
-            if self.player == 0:
-                self.running.value = False
-                import pygame
-                import sys
-                pygame.quit()
-                sys.exit()
-            else:
-                return self.load_track(track_name)
-        else:
-            print("Not able to find track with this name")
-            import pygame
-            import sys
-            pygame.quit()
-            sys.exit()
+            if self.player == 0: self.exit() # Useful when generating all tracks
+            else: return self.load_track(track_name)
+        else: self.exit("Not able to find track with this name")
     def setup_corners(self):
         corners, _, data = get_corners(self.track, self.track_name, self.config.get("thresholds").get(self.track_name))
         treated_corners = []
@@ -795,3 +828,10 @@ class Game:
         self.totalScore += score
         self.runs += 1
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
+    def exit(self, message="Exiting..."):
+        print(message)
+        self.running.value = False
+        import pygame
+        import sys
+        pygame.quit()
+        sys.exit()

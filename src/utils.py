@@ -191,6 +191,7 @@ def InitialiseDisplay(game, game_options, pygame):
     game.clock = clock
     pygame.display.set_caption("Car Game")
     last_render = time.time()
+
     return clock, last_render
 
 

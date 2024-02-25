@@ -91,77 +91,66 @@ class Render:
     def debug(self, game):
         if game.player == 0: self.generate_agent_debug(game)
         else: self.use_agent_debug(game)
-    def DrawCar(self, car, camera_x, camera_y, color, track, displayCar=False):
+    def DrawCar(self, car, camera_x, camera_y, color, track, displayCar=False, carNum=0):
+        if car.died == True: return
+        screen_center_X = self.screen.get_width() // 2
+        screen_center_Y = self.screen.get_height() // 2
+
+        car_center_x = car.x - camera_x
+        car_center_y = car.y - camera_y
+
+        distance_to_center_x = car_center_x - screen_center_X
+        distance_to_center_y = car_center_y - screen_center_Y
+
+        new_dist_car = calculate_distance((car_center_x, car_center_y), (screen_center_X, screen_center_Y)) * self.zoom_factor
+        new_angle_car = np.arctan2(distance_to_center_y, distance_to_center_x)
+
+        new_car_x = screen_center_X + new_dist_car * np.cos(new_angle_car)
+        new_car_y = screen_center_Y + new_dist_car * np.sin(new_angle_car)
+
         if displayCar:
             corners = [car.front_left, car.front_right, car.back_right, car.back_left]
+            car.UpdateCorners()
+            c_data = []
             for i in range(len(corners)):
-                car_distance = calculate_distance((car.x, car.y), (corners[i][0], corners[i][1]))
-                new_dist = car_distance * self.zoom_factor
-                angle = np.arctan2(corners[i][1] - car.y, corners[i][0] - car.x)
+                corner_x = corners[i][0] - camera_x
+                corner_y = corners[i][1] - camera_y
+ 
+                distance_to_center_x = corner_x - screen_center_X
+                distance_to_center_y = corner_y - screen_center_Y
 
-                new_x = car.x + new_dist * np.cos(angle)
-                new_y = car.y + new_dist * np.sin(angle)
-                adjusted_x = int(new_x - camera_x)
-                adjusted_y = int(new_y - camera_y)
+                car_distance = calculate_distance((screen_center_X, screen_center_Y), (corner_x, corner_y))
+                new_dist = car_distance * self.zoom_factor
+                angle = np.arctan2(distance_to_center_y, distance_to_center_x)
+
+                new_x = screen_center_X + new_dist * np.cos(angle)
+                new_y = screen_center_Y + new_dist * np.sin(angle)
+
+                c_data.append([new_x, new_y])
 
                 if track[int(corners[i][1]), int(corners[i][0])] == 0:
-                    pygame.draw.circle(self.screen, (255, 0, 0), (adjusted_x, adjusted_y), 4)
+                    pygame.draw.circle(self.screen, (255, 0, 0), (new_x, new_y), 4)
                 else:
-                    pygame.draw.circle(self.screen, color, (adjusted_x, adjusted_y), 4)
-            # Draw lines between the corners, doing similar math to get adjusted coordinates
+                    pygame.draw.circle(self.screen, color, (new_x, new_y), 4)
+                    
             for i in range(len(corners)):
-                car_distance = calculate_distance((car.x, car.y), (corners[i][0], corners[i][1]))
-                new_dist = car_distance * self.zoom_factor
-                angle = np.arctan2(corners[i][1] - car.y, corners[i][0] - car.x)
+                c1_data = c_data[i]
+                if i == len(corners) - 1: c2_data = c_data[0]
+                else: c2_data = c_data[i+1]
 
-                new_x = car.x + new_dist * np.cos(angle)
-                new_y = car.y + new_dist * np.sin(angle)
-                adjusted_x = int(new_x - camera_x)
-                adjusted_y = int(new_y - camera_y)
+                pygame.draw.line(self.screen, color, c1_data, c2_data, 1)
 
-                if i == len(corners) - 1:
-                    next_corner = corners[0]
-                else:
-                    next_corner = corners[i + 1]
-
-                next_car_distance = calculate_distance((car.x, car.y), (next_corner[0], next_corner[1]))
-                next_new_dist = next_car_distance * self.zoom_factor
-                next_angle = np.arctan2(next_corner[1] - car.y, next_corner[0] - car.x)
-
-                next_new_x = car.x + next_new_dist * np.cos(next_angle)
-                next_new_y = car.y + next_new_dist * np.sin(next_angle)
-                next_adjusted_x = int(next_new_x - camera_x)
-                next_adjusted_y = int(next_new_y - camera_y)
-
-                pygame.draw.line(self.screen, color, (adjusted_x, adjusted_y), (next_adjusted_x, next_adjusted_y), 2)
-                
+            font = pygame.font.Font(None, 22)
+            if carNum > 0: text = font.render(str(abs(carNum)), True, (0, 0, 0))
+            else: text = font.render(str(abs(carNum)), True, (255, 0, 0))
+            text_rect = text.get_rect(center=(int(new_car_x), int(new_car_y) - 20))
+            self.screen.blit(text, text_rect)
         else:
             car_image = pygame.transform.rotate(self.car_image, car.direction)
-            car_center_x = car.x - camera_x
-            car_center_y = car.y - camera_y
-
-            distance_to_image_center = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (car_center_x, car_center_y))
-            new_distance = distance_to_image_center * self.zoom_factor
-            angle = np.arctan2(self.screen.get_height() / 2 - car_center_y, self.screen.get_width() / 2 - car_center_x)
-            new_car_center_x = self.screen.get_width() / 2 + new_distance * np.cos(angle)
-            new_car_center_y = self.screen.get_height() / 2 + new_distance * np.sin(angle)
 
             scaling_factor = self.pixel_per_meter.get(car.track_name) / (2.3 * 30) * self.zoom_factor
-
-            scaled_car_image = pygame.transform.scale(car_image, (
-                int(car_image.get_width() * scaling_factor),
-                int(car_image.get_height() * scaling_factor)
-            ))
-
-            blit_x = new_car_center_x - scaled_car_image.get_width() // 2
-            blit_y = new_car_center_y - scaled_car_image.get_height() // 2
-
-            blit_distance = calculate_distance((self.screen.get_width() / 2, self.screen.get_height() / 2), (new_car_center_x , new_car_center_y))
-            blit_angle = np.arctan2(self.screen.get_height()/2 - new_car_center_y, self.screen.get_width()/ 2 - new_car_center_x)
-            blit_x = blit_x + blit_distance * np.cos(blit_angle)
-            blit_y = blit_y + blit_distance * np.sin(blit_angle)
-
-            self.screen.blit(scaled_car_image, (blit_x, blit_y))
+            car_image = pygame.transform.scale(car_image, (int(car_image.get_width() * scaling_factor), int(car_image.get_height() * scaling_factor)))
+            self.screen.blit(car_image, (int(new_car_x - car_image.get_width() // 2), int(new_car_y - car_image.get_height() // 2)))
             
     def draw_acceleration(self, acceleration, braking, x, y, width, height):
         pygame.draw.rect(self.screen, (100, 100, 100), (x, y, width, height))
@@ -229,9 +218,9 @@ class Render:
 
             new_x = car.x + new_dist * np.cos(angle)
             new_y = car.y + new_dist * np.sin(angle)
-            # If its the last, draw in red
+
             if point[0] == center_line_x and point[1] == center_line_y:
-                pygame.draw.circle(self.screen, (255, 0, 0), (int(new_x - camera_x), int(new_y - camera_y)), 3)
+                return # Ne pas dessiner le point sur la ligne centrale. (Pk il est la deja?)
             else:
 
                 pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
@@ -375,6 +364,7 @@ class Render:
         if game.player == 0: centered_car = game.car 
         else: centered_car = game.environment.agents[0].car
         self.zoom_factor = (8 / self.pixel_per_meter.get(centered_car.track_name)) + self.zoom_offset
+
         camera_x = centered_car.x - game.screen.get_width() // 2
         camera_y = centered_car.y - game.screen.get_height() // 2
         x_cos = np.cos(np.radians(centered_car.direction))
@@ -387,26 +377,32 @@ class Render:
         total_power_var = acceleration_var - brake_var
 
         offset_x, offset_y = steer_var * y_sin + total_power_var * x_cos, steer_var * x_cos - total_power_var * y_sin
+        if game.visual: self.draw_track((centered_car.x, centered_car.y), self.screen, game)
+        else: self.screen.fill((255, 255, 255))
 
-        if game.visual:
-            self.draw_track((centered_car.x, centered_car.y), self.screen, game)
-            if not game.debug: self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, False)
-            else: self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True)
-        else:
-            self.screen.fill((255, 255, 255))
-            self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True)
         self.draw_acceleration(centered_car.acceleration, centered_car.brake, 10,300, 20, 100)
         self.draw_steering(centered_car.steer, 40, 300, 100, 20)
-        if game.player != 0:
-            for agent in game.environment.agents:
-                if agent.car == centered_car: continue
-                self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, False)
+        
         self.info(centered_car, game)
 
         if game.debug or not game.visual:
             self.debug(game)
             self.DrawPointsInput(centered_car, camera_x + offset_x, camera_y + offset_y, game)
             self.DrawLineToNextCorner(camera_x + offset_x, camera_y + offset_y, centered_car)
+
+        if game.visual:
+            if game.player != 0:
+                for i, agent in enumerate(game.environment.agents):
+                    if agent.car == centered_car: continue
+                    self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, game.debug, game.car_numbers[i])
+            self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,0,0), game.track, game.debug, -game.car_numbers[0])
+        else:
+            if game.player != 0:
+                for i, agent in enumerate(game.environment.agents):
+                    if agent.car == centered_car: continue
+                    self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, True, game.car_numbers[i])
+            self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True, -game.car_numbers[0])
+
         
         self.handle_slider(game)
         pygame.display.update()
