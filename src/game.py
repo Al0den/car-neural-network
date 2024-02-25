@@ -63,6 +63,8 @@ class Game:
         
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
         
+        self.car_numbers = [0] * len(self.environment.agents)
+        
         if self.player == 0:
             self.car = Car(self.track, self.start_pos, self.start_dir, self.track_name)
             self.car.setFutureCorners(self.corners[self.track_name])
@@ -114,7 +116,6 @@ class Game:
             self.s_or_g_choice = s_or_g
             if s_or_g == "g":
                 networks = np.load("./data/train/agents.npy", allow_pickle=True).item()['networks']
-                generation = np.load("./data/train/agents.npy", allow_pickle=True).item()['generation']
                 self.environment.agents = [None] * game_options['environment']['num_agents']
                 corners = None
                 for i in range(len(self.environment.agents)):
@@ -127,7 +128,7 @@ class Game:
                         self.environment.agents[i].car.future_corners = np.copy(corners).tolist()
 
                 self.environment.agents = self.environment.agents[::-1]
-                self.car_numbers = [generation] * len(self.environment.agents)
+                self.car_numbers = [len(self.environment.agents) - i for i in range(len(self.environment.agents))]
             else:
                 agent_nums = []
                 lap_times = []

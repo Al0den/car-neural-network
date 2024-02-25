@@ -4,6 +4,7 @@ import random
 
 from multiprocessing import Manager
 from datetime import datetime
+from settings import *
 
 from agent import Agent
 
@@ -58,7 +59,7 @@ def ContinuousMethod(game, game_options, pygame):
     continuous_commands(game, pygame)
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_f] and game.last_keys_update + 0.3 < datetime.now().timestamp():
+    if keys[pygame.K_f] and game.last_keys_update + key_press_delay < datetime.now().timestamp():
         if game.environment.agents[0].car.future_corners == []: return
         x, y, _ = game.environment.agents[0].car.future_corners.pop(0)
         game.environment.agents[0].car.x = x
@@ -130,7 +131,7 @@ def update_speed(game, pygame):
 
 def update_visual(game, pygame):
     keys = pygame.key.get_pressed()
-    if game.last_keys_update + 0.3 < datetime.now().timestamp(): 
+    if game.last_keys_update + key_press_delay < datetime.now().timestamp(): 
         if keys[pygame.K_v]:
             game.visual = not game.visual
             game.last_keys_update = datetime.now().timestamp()
@@ -142,7 +143,7 @@ def update_visual(game, pygame):
 
 def continuous_commands(game, pygame):
     keys = pygame.key.get_pressed()
-    if game.last_keys_update + 0.3 < datetime.now().timestamp():
+    if game.last_keys_update + key_press_delay < datetime.now().timestamp():
         if keys[pygame.K_r]:
             game.environment.agents[0].car.Kill()
             game.last_keys_update = datetime.now().timestamp()
@@ -150,7 +151,7 @@ def continuous_commands(game, pygame):
 def AgentsRaceMethod(game, game_options, pygame):
     update_speed(game, pygame)
     keys = pygame.key.get_pressed()
-    if game.last_keys_update + 0.3 < datetime.now().timestamp():
+    if game.last_keys_update + key_press_delay < datetime.now().timestamp():
         if keys[pygame.K_r]:
             for agent in game.environment.agents:
                 agent.car.Kill()
@@ -174,6 +175,10 @@ def AgentsRaceMethod(game, game_options, pygame):
                 game.environment.agents.insert(0, game.environment.agents.pop())
                 game.car_numbers.insert(0, game.car_numbers.pop())
             game.last_keys_update = datetime.now().timestamp()
+        if keys[pygame.K_t]:
+            while any([game.car_numbers[i] > game.car_numbers[0] for i in range(len(game.car_numbers))]):
+                game.environment.agents.insert(0, game.environment.agents.pop())
+                game.car_numbers.insert(0, game.car_numbers.pop())
     if all([agent.car.died for agent in game.environment.agents]):
         if game.s_or_g_choice == "g":
             start_pos, start_dir = random.choice(game.start_positions[game.track_name])

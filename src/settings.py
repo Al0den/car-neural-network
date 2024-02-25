@@ -23,7 +23,7 @@ perft_duration = 20
 center_line_hash_size = 100000
 specialised_training_multiple = 5
 compile_shaders = False
-
+key_press_delay = 0.1
 # - Game settings
 god = False
 debug = False
