@@ -263,6 +263,7 @@ class Game:
             self.Metal.getPointsOffset(len(self.environment.agents) * len(points_offset))
             per_agents_points = self.Metal.outVectorBuffer.reshape((len(self.environment.agents), len(points_offset)))
             for i in range(len(self.environment.agents)):
+                if self.environment.agents[i].car.died == True: continue
                 self.environment.agents[i].Tick(self.ticks, self, per_agents_points[i])
             self.ticks += 1
         elif self.player == 9:

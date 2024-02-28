@@ -13,7 +13,7 @@ class Agent:
         self.evolution = ["r"]
         self.mutation_rates = ["-"]
         self.state = np.array([0.0] * state_space_size)
-        self.action = np.array([0, 0])
+        self.action = np.array([0, 0, 0, 0])
 
         self.attempted = True
         self.mutation_strengh = mutation_strenght
@@ -60,7 +60,7 @@ class Agent:
         self.car.UpdateCar()
         self.car.CheckCollisions(ticks)
 
-        self.action[0:2] = [acc - bra, r - l]
+        self.action[0:4] = [acc, bra, l, r]
 
         if ticks > safety_ticks and self.car.speed < min_speed:
             self.car.Kill()

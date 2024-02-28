@@ -186,14 +186,13 @@ def InitialiseDisplay(game, game_options, pygame):
     from render import Render
     pygame.init()
     clock = pygame.time.Clock()
-    game.screen = pygame.display.set_mode((game_options['screen_width'], game_options['screen_height']), pygame.FULLSCREEN | pygame.SRCALPHA)
+    game.screen = pygame.display.set_mode((game_options['screen_width'], game_options['screen_height']), pygame.RESIZABLE | pygame.SRCALPHA)
     game.render = Render(game.screen, game_options, game)
     game.clock = clock
     pygame.display.set_caption("Car Game")
     last_render = time.time()
 
     return clock, last_render
-
 
 def get_nearest_centerline(track, x, y):
     distance = 1

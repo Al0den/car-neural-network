@@ -2,7 +2,7 @@ main
 Info.plist
 map_loader.py
 data/train/trained/*
-data/per_track/*
+data/per_track/*/trained/*
 data/tracks/*.npy
 data/tracks/*_sur*
 *.DS_Store

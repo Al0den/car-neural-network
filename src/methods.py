@@ -190,9 +190,10 @@ def AgentsRaceMethod(game, game_options, pygame):
                 agent.car.x = start_pos[1]
                 agent.car.y = start_pos[0]
                 agent.car.direction = start_dir
+                agent.car.UpdatePreCalc()
+                agent.car.GetNearestCenterline()
                 if corners == None: corners = agent.car.setFutureCorners(game.corners[game.track_name])
                 else: agent.car.future_corners = np.copy(corners).tolist()
-
         else:
             corners = None
             for i in range(len(game.environment.agents)):

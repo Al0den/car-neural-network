@@ -5,7 +5,7 @@ import os
 from utils import calculate_distance, copy_car, angle_range_180
 from settings import *
 from agent import Agent
-from car import Car
+from precomputed import cos, sin
 
 class Render:
     def __init__(self, screen, game_options, game):
@@ -121,10 +121,10 @@ class Render:
 
                 car_distance = calculate_distance((screen_center_X, screen_center_Y), (corner_x, corner_y))
                 new_dist = car_distance * self.zoom_factor
-                angle = np.arctan2(distance_to_center_y, distance_to_center_x)
+                angle = np.degrees(np.arctan2(distance_to_center_y, distance_to_center_x))
 
-                new_x = screen_center_X + new_dist * np.cos(angle)
-                new_y = screen_center_Y + new_dist * np.sin(angle)
+                new_x = screen_center_X + new_dist * cos[int(angle * 10)]
+                new_y = screen_center_Y + new_dist * sin[int(angle * 10)]
 
                 c_data.append([new_x, new_y])
 

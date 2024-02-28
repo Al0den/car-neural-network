@@ -269,6 +269,11 @@ class Car:
         if self.track[y, x] == 10:
             return x, y
         return None
+    
+    def UpdatePreCalc(self):
+        self.int_x = int(self.x)
+        self.int_y = int(self.y)
+        self.int_direction = int(self.direction)
 
     def GetNearestCenterline(self, game=None):
         if self.died: return self.previous_center_line
@@ -369,11 +374,9 @@ class Car:
         prev_directions = [self.direction] * 10
 
         while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 120 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if len(potential_offsets) == 0:
-                two_wide = [(0,2), (0,-2), (2,0), (-2,0), (2,2), (2,-2), (-2,2), (-2,-2), (2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
-                potential_offsets = [offset for offset in two_wide if self.track[current_y + offset[0], current_x + offset[1]] == 10 and angle_distance(np.degrees(np.arctan2(-offset[0], offset[1])), current_dir) <= 110]
-            if len(potential_offsets) == 0:
+                print("Weird")
                 break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
