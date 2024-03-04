@@ -24,16 +24,19 @@ center_line_hash_size = 100000
 specialised_training_multiple = 5
 compile_shaders = False
 key_press_delay = 0.1
+
 # - Game settings
 god = False
 debug = False
 random_start_position = True
 delta_t = 1/60
+base_game_speed = 1/delta_t
 pre_load = True
 min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
 safety_ticks = 150
-base_game_speed = 60
+single_track_players = [0, 3, 4, 7, 9]
+global_metal_instance_players = [0, 4, 5, 7, 8]
 
 # - Live Data Parameters
 prev_ticks = 0
@@ -67,13 +70,13 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.05
+mutation_strenght = 0.15
 
 max_ticks_before_kill = 30000
 min_speed = 5
 base_score_per_checkpoint = 0
 
-agent_selection_coeff = 3
+agent_selection_coeff = 4
 
 # - Render Options
 default_width = 1220

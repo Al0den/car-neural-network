@@ -6,7 +6,6 @@ from agent import Agent
 from utils import copy_network
 from settings import *
 
-
 class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
         self.options = options

@@ -16,13 +16,12 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
     short direction = (input[car_id * 10 + 2] + 90 + offset) % 360;
     short track_id = input[car_id * 10 + 3];
     float ppm = (float)(input[car_id * 10 + 4]) / 1000; // pixels per meter (1000 = 1 meter)
+    int track_offset = track_id * 5000 * 5000;
 
     if (car_x == -1) {
         return;
     }
-    if (track[track_id * 5000 * 5000 + car_y * 5000 + car_x] == 0) {
-        return;
-    }
+    out[id] = 0;
 
     short x = car_x;
     short y = car_y;
@@ -31,27 +30,37 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
     float angleInRadians = (float)direction * (M_PI_F / 180.0f);
     float cosinus;
     float sinus = sincos(angleInRadians, cosinus);
-    
-    int max_distance = (int)(200 * ppm);
-              
-    int point_search_jump = 25;
-    
-    for (int i = 0; i < max_distance; i += point_search_jump) {
+
+    for(int i=0; i<int(30*ppm); i++) {
         x = car_x + (int)(i * sinus);
         y = car_y + (int)(i * cosinus);
-        if (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
+        if (track[track_offset + y * 5000 + x] != 0) {
             distance = i;
             break;
         }
         distance = i;
     }
 
-    if (distance == max_distance) {
-        out[id] = distance;
+    if (track[track_offset + y * 5000 + x] == 0) {
+        out[id] = 0;
         return;
     }
+    
+    int max_distance = (int)(200 * ppm);
+              
+    int point_search_jump = 25;
+    
+    for (int i = distance; i < max_distance; i += point_search_jump) {
+        x = car_x + (int)(i * sinus);
+        y = car_y + (int)(i * cosinus);
+        if (track[track_offset + y * 5000 + x] == 0) {
+            distance = i;
+            break;
+        }
+        distance = i;
+    }
 
-    while (track[track_id * 5000 * 5000 + y * 5000 + x] == 0) {
+    while (track[track_offset + y * 5000 + x] == 0) {
         distance -= 1;
         x = car_x + (int)(distance * sinus);
         y = car_y + (int)(distance * cosinus);

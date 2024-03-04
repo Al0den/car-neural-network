@@ -39,7 +39,6 @@ def SpecificMapMethod(game, pygame, game_options):
         game.track = new_track
         game.track_name = [name for name, track in game.tracks.items() if track is game.track][0]
         start_pos, start_dir = game.real_starts[game.track_name]
-
        
         best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
@@ -126,7 +125,7 @@ def update_speed(game, pygame):
     if keys[pygame.K_DOWN]:
         game.speed -= 1
     if keys[pygame.K_SPACE]:
-        game.speed = 60
+        game.speed = base_game_speed
     game.speed = max(0, game.speed)
 
 def update_visual(game, pygame):

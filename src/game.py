@@ -11,7 +11,6 @@ from scipy.ndimage import distance_transform_edt
 from skimage.morphology import skeletonize
 from multiprocessing import Process, Array, Manager, Value
 
-
 Image.MAX_IMAGE_PIXELS = None
 
 from environment import Environment
@@ -53,7 +52,7 @@ class Game:
 
         with open("./src/config.json") as f: self.config = json.load(f)
 
-        if self.player in [0, 3, 4, 7, 9]: self.load_single_track()
+        if self.player in single_track_players: self.load_single_track()
         else: self.load_all_tracks()
 
         self.generating_corners = False
@@ -214,14 +213,17 @@ class Game:
             else:
                 self.load_all_tracks()
 
-        if self.player in [0, 4, 5, 7, 8]:
+        if self.player in global_metal_instance_players:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
             self.Metal.init_shaders(len(points_offset) * 10 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
         
+        if self.player == 8:
+            self.multiple_players_shader_init()
+
         self.prev_update = time.time()
         self.start_time = time.time()
-
+    
     def tick(self):
         if self.player == 0:
             self.ticks += 1
@@ -257,8 +259,11 @@ class Game:
                 self.car_numbers.append(self.car_numbers.pop(0))
             for i in range(len(self.environment.agents)):
                 agent = self.environment.agents[i]
+                if agent.car.died: 
+                    self.Metal.inVectorBuffer[i * 10] = -1
+                    continue
                 index = i * 10
-                self.Metal.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+                self.Metal.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
               
             self.Metal.getPointsOffset(len(self.environment.agents) * len(points_offset))
             per_agents_points = self.Metal.outVectorBuffer.reshape((len(self.environment.agents), len(points_offset)))
@@ -354,7 +359,11 @@ class Game:
             ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
 
             MetalInstance.init_shaders(len(agents) * 10, len(agents) * len(points_offset), points_offset)
-            
+
+            for i, agent in enumerate(agents):
+                index = i * 10
+                MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
@@ -362,7 +371,10 @@ class Game:
                 for i in range(len(agents)):
                     agent = agents[i]
                     index = i * 10
-                    MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+                    if agent.car.died:
+                        MetalInstance.inVectorBuffer[index] = -1
+                        continue
+                    MetalInstance.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
                     
                 tpa_stamp = time.time()
                 MetalInstance.getPointsOffset(len(agents) * len(points_offset))
@@ -371,6 +383,7 @@ class Game:
                 per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
 
                 for i in range(len(agents)):
+                    if agents[i].car.died == True: continue
                     agents[i].Tick(ticks, self, per_agents_points[i])
                     
                 tick_stamp = time.time()
@@ -467,14 +480,14 @@ class Game:
             if max_potentials[map_try] == 0:
                 max_potentials[map_try] = agent.car.CalculateMaxPotential()
             score = agent.car.CalculateScore(max_potentials[map_try])
-            score = min(1, score)
             
-            if score == 1: 
-                if debug: print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
-                # Car went backwards, dont save its score
+            if score >= 1: 
+                agent.car.CalculateMaxPotential()
+                if abs(agent.car.seen - agent.car.max_pot_seen) < 10: return
+                print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
+                # Weird score, shouldnt be saved
                 return
             local_scores[index] += score * score_multiplier
-                
 
     def EndOfGeneration(self):
         if self.player != 3:
@@ -485,9 +498,9 @@ class Game:
         if self.player == 3:
             target_lap_time = self.config.get("quali_laps").get(self.track_name)
 
-            lap_time = self.environment.previous_best_lap / 60
+            lap_time = self.environment.previous_best_lap / self.speed
             delta = target_lap_time - lap_time
-            visual_lap_time = f"{int(lap_time // 60):01}:{int(lap_time % 60):02}.{int((lap_time - int(lap_time)) * 1000):03}"
+            visual_lap_time = f"{int(lap_time // self.speed):01}:{int(lap_time % self.speed):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
             print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
         
@@ -837,3 +850,8 @@ class Game:
         import sys
         pygame.quit()
         sys.exit()
+
+    def multiple_players_shader_init(self):
+        for i, agent in enumerate(self.environment.agents):
+            index = i * 10
+            self.Metal.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]

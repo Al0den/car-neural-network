@@ -68,8 +68,12 @@ class Car:
         if len(self.future_corners) > 0:
             corner_x, corner_y, _, _ = self.future_corners[0]
             next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
-            if next_corner_dist < 10 * self.ppm:
-                self.future_corners.pop(0)
+            if next_corner_dist < 20 * self.ppm:
+                # Calculate angle to corner, if > 90 then remove it
+                angle = np.degrees(-np.arctan2(corner_y - self.y, corner_x - self.x))
+                angle_diff = angle_distance(self.direction, angle)
+                if angle_diff > 50:
+                    self.future_corners.pop(0)
 
         match track_val:
             case 0:
@@ -92,7 +96,7 @@ class Car:
                 if seen == False:
                     self.checkpoints_seen.append((self.x, self.y, ticks))
             case _:
-                if (not self.safe_from_end) or ticks % 120 == 0:
+                if (not self.safe_from_end) or ticks % (20 * 60 * delta_t) == 0:
                     if calculate_distance((self.x, self.y), self.end_pos) > 400:
                         self.safe_from_end = True
                         return True # Car is all good
@@ -107,11 +111,7 @@ class Car:
                         self.track[self.int_y + 4, self.int_x + 4] == 3 or
                         self.track[self.int_y + 4, self.int_x - 4] == 3 or
                         self.track[self.int_y - 4, self.int_x + 4] == 3 or
-                        self.track[self.int_y - 4, self.int_x - 4] == 3 or
-                        self.track[self.int_y + 6, self.int_x + 6] == 3 or
-                        self.track[self.int_y + 6, self.int_x - 6] == 3 or
-                        self.track[self.int_y - 6, self.int_x + 6] == 3 or
-                        self.track[self.int_y - 6, self.int_x - 6] == 3
+                        self.track[self.int_y - 4, self.int_x - 4] == 3
                     )
                     if res:
                         self.GetNearestCenterline()
@@ -232,10 +232,12 @@ class Car:
         # - Car speed
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
-
-        drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer * 14/20))) * pow(self.speed, 2)
+        drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer))) * pow(self.speed, 2)
+        steer_drag_force = drag_force * abs(self.steer * 3/4)
         drag_acceleration = drag_force / car_mass
+        steer_drag_acceleration = steer_drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration)
+        self.speed -= steer_drag_acceleration * delta_t
         
         self.direction %= 360
         self.int_direction = int(self.direction)
@@ -328,7 +330,7 @@ class Car:
             calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
             
         while ((final_x, final_y) != (current_x, current_y)) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 130 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
@@ -367,7 +369,10 @@ class Car:
         corners = [corner[0] for corner in corners_data]
         corners_amplitude = [corner[1] for corner in corners_data]
         ordered_corners = []
-        
+
+        self.UpdatePreCalc()
+        self.GetNearestCenterline()
+
         current_x, current_y = self.previous_center_line
         current_dir = self.direction
 
@@ -388,5 +393,6 @@ class Car:
                 ordered_corners.append((current_x, current_y, new_dir, amplitude))
             prev_directions.append(new_dir)
             prev_directions.pop(0)
+        ordered_corners.append((current_x, current_y, current_dir, 0))
         self.future_corners = ordered_corners
         return ordered_corners
