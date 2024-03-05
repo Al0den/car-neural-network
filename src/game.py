@@ -114,12 +114,21 @@ class Game:
             s_or_g = input("Load specific (s) or general (g) agents?: ")
             self.s_or_g_choice = s_or_g
             if s_or_g == "g":
-                networks = np.load("./data/train/agents.npy", allow_pickle=True).item()['networks']
+                start_generation = np.load("./data/train/agents.npy", allow_pickle=True).item()['generation']
+                gap = int(input("Gap between agents?: "))
+                print(f" - Selecting agents: {[start_generation - i * gap for i in range(len(self.environment.agents))]}")
+                # Check that for every i from 0-num_agents - 1, agents.current_generation - i * gap file exists
+            
+                
+                if start_generation - gap * len(self.environment.agents) <= 0:
+                    self.exit("Incorrect agent values")
                 self.environment.agents = [None] * game_options['environment']['num_agents']
                 corners = None
                 for i in range(len(self.environment.agents)):
                     self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
-                    self.environment.agents[i].network = random.choice(networks)
+                    gen_num = start_generation - i * gap
+                    network = np.load(f"./data/train/trained/best_agent_{gen_num}.npy", allow_pickle=True).item()['network']
+                    self.environment.agents[i].network = network
                     self.environment.agents[i].car.speed = 0
                     if corners == None:
                         corners = self.environment.agents[i].car.setFutureCorners(self.corners[self.track_name])
@@ -127,7 +136,7 @@ class Game:
                         self.environment.agents[i].car.future_corners = np.copy(corners).tolist()
 
                 self.environment.agents = self.environment.agents[::-1]
-                self.car_numbers = [len(self.environment.agents) - i for i in range(len(self.environment.agents))]
+                self.car_numbers = [start_generation - i * gap for i in range(len(self.environment.agents))]
             else:
                 agent_nums = []
                 lap_times = []
@@ -483,7 +492,7 @@ class Game:
             
             if score >= 1: 
                 agent.car.CalculateMaxPotential()
-                if abs(agent.car.seen - agent.car.max_pot_seen) < 10: return
+                if abs(agent.car.seen - agent.car.max_pot_seen) < 40: return
                 print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
                 # Weird score, shouldnt be saved
                 return

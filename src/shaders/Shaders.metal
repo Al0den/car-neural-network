@@ -4,7 +4,7 @@ using namespace metal;
 
 
 kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device short *out [[ buffer(2) ]], const device short *offsets [[ buffer(3) ]], uint id [[ thread_position_in_grid ]]) {
-    int num_offsets = 11;
+    int num_offsets = 13;
     
     int car_id = int(id / num_offsets);
     int offset_id = int(id % num_offsets);

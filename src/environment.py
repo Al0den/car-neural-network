@@ -210,12 +210,12 @@ class Environment:
         return rate
 
     def log_data(self, ranked_agents, game, path="./data/train/log.csv"):
-        best_lap_time = self.previous_best_lap
+        best_lap_time = self.previous_best_lap / (game.map_tries)
         best_score = self.previous_best_score/ (game.map_tries)
         generation = self.generation
-        laps = max([agent.car.laps for agent in ranked_agents])
+        laps = max([agent.car.laps for agent in ranked_agents]) / game.map_tries
         average_score = np.average([agent.car.score for agent in ranked_agents]) / game.map_tries
-        average_lap = np.average([agent.car.laps for agent in ranked_agents])
+        average_lap = np.average([agent.car.laps for agent in ranked_agents]) / game.map_tries
 
         log_data = game.logger_data
 
@@ -226,9 +226,9 @@ class Environment:
 
         if not os.path.isfile(path):
             with open(path, "w") as file:
-                file.write("Generation, Best Score, Average Score, Best Lap Time, Laps, Average Laps, TPS, Time Spent, Last Mutate Rate, Last Evolution, Father Rank\n")
+                file.write("Generation,Best Score,Average Score,Best Lap Time,Laps,Average Laps,TPS,Time Spent,Last Mutate Rate,Last Evolution,Father Rank\n")
         with open(path, "a") as file:
-            file.write(f"{generation}, {best_score}, {average_score}, {best_lap_time}, {laps}, {average_lap}, {log_data['tps']}, {log_data['time_spent']}, {last_evolution}, {last_mutation_rate}, {father_rank}\n")
+            file.write(f"{generation},{best_score},{average_score},{best_lap_time},{laps},{average_lap},{log_data['tps']},{log_data['time_spent']},{last_evolution},{last_mutation_rate},{father_rank}\n")
 
     def load_specific_agents(self, game):
         try:

@@ -75,51 +75,40 @@ class Car:
                 if angle_diff > 50:
                     self.future_corners.pop(0)
 
-        match track_val:
-            case 0:
-                self.GetNearestCenterline()
-                self.UpdateCorners()
-                toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
-                count = 0
-                for point in toCheck:
-                    if self.track[int(point[1]), int(point[0])] == 0: count += 1
-                    else: break
+        if track_val == 0:
+            self.GetNearestCenterline()
+            self.UpdateCorners()
+            toCheck = [self.front_left, self.front_right, self.back_left, self.back_right]
+            count = 0
+            for point in toCheck:
+                if self.track[int(point[1]), int(point[0])] == 0: count += 1
+                else: break
 
-                if count > 3 and not god:
-                    self.Kill()
-                    return False
-            case 2:
-                seen = False
-                for checkpoint in self.checkpoints_seen:
-                    if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
-                        seen = True
-                if seen == False:
-                    self.checkpoints_seen.append((self.x, self.y, ticks))
-            case _:
-                if (not self.safe_from_end) or ticks % (20 * 60 * delta_t) == 0:
-                    if calculate_distance((self.x, self.y), self.end_pos) > 400:
-                        self.safe_from_end = True
-                        return True # Car is all good
-                    else:
-                        self.safe_from_end = False
-                    res = (
-                        track_val == 3 or
-                        self.track[self.int_y + 2, self.int_x + 2] == 3 or
-                        self.track[self.int_y - 2, self.int_x - 2] == 3 or
-                        self.track[self.int_y + 2, self.int_x - 2] == 3 or
-                        self.track[self.int_y - 2, self.int_x + 2] == 3 or
-                        self.track[self.int_y + 4, self.int_x + 4] == 3 or
-                        self.track[self.int_y + 4, self.int_x - 4] == 3 or
-                        self.track[self.int_y - 4, self.int_x + 4] == 3 or
-                        self.track[self.int_y - 4, self.int_x - 4] == 3
-                    )
-                    if res:
-                        self.GetNearestCenterline()
-                        self.lap_time = ticks
-                        if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
-                            self.lap_time = -1
-                        self.Kill()
-                        return False
+            if count > 3 and not god:
+                self.Kill()
+                return False
+        elif track_val == 2:
+            seen = False
+            for checkpoint in self.checkpoints_seen:
+                if calculate_distance(checkpoint, (self.x, self.y)) < min_checkpoint_distance:
+                    seen = True
+            if seen == False:
+                self.checkpoints_seen.append((self.x, self.y, ticks))
+    
+        res = (
+            track_val == 3 or
+            self.track[self.int_y + 1, self.int_x + 1] == 3 or
+            self.track[self.int_y - 1, self.int_x - 1] == 3 or
+            self.track[self.int_y + 1, self.int_x - 1] == 3 or
+            self.track[self.int_y - 1, self.int_x + 1] == 3
+        )
+        if res:
+            self.GetNearestCenterline()
+            self.lap_time = ticks
+            if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
+                self.lap_time = -1
+            self.Kill()
+            return False
         return True
     
     def Kill(self):
@@ -233,7 +222,7 @@ class Car:
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
         drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer))) * pow(self.speed, 2)
-        steer_drag_force = drag_force * abs(self.steer * 3/4)
+        steer_drag_force = drag_force * abs(self.steer * 1/3)
         drag_acceleration = drag_force / car_mass
         steer_drag_acceleration = steer_drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration)

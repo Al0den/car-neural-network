@@ -1,14 +1,14 @@
-points_offset = [0, 4, -4, 15, -15, 30, -30, 60, -60, 90, -90]
+points_offset = [0, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 10
-first_layer_size_coeff = 1.2
+state_space_size = len(points_offset) + 11
+first_layer_size_coeff = 1.3
 num_hidden_layers = 1
 action_space_size = 4
 map_tries = 20
 
-real_starts_num = 6
+real_starts_num = 5
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -53,9 +53,9 @@ reference_area = 1.7
 lift_coeff = -1.247
 car_mass = 733
 gravity = 9.81
-brake_increment = 1/15
-acceleration_increment = 1/15
-steer_increment = 1/15
+brake_increment = 1/10
+acceleration_increment = 1/10
+steer_increment = 1/10
 
 # - Evolution settings
 mutation_rates = [0.02, 0.05, 0.1, 0.2]
@@ -70,7 +70,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.15
+mutation_strenght = 0.2
 
 max_ticks_before_kill = 30000
 min_speed = 5

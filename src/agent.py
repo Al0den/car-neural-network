@@ -33,18 +33,18 @@ class Agent:
             game.Metal.inVectorBuffer[0:5] = [self.car.int_x, self.car.int_y, self.car.int_direction, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
             game.Metal.getPointsOffset(len(points_offset))
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
-        
-        self.state[0:4] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer]
+        on_track = self.car.track[self.car.int_y, self.car.int_x] != 0
+        self.state[0:5] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, on_track]
         if len(self.car.future_corners) >= 2:
-            self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[7:10] = self.ProcessCorner(self.car.future_corners[1])
+            self.state[5:8] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[8:11] = self.ProcessCorner(self.car.future_corners[1])
         elif len(self.car.future_corners) == 1:
-            self.state[4:7] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[7:10] = [0, 0, 0]
+            self.state[5:8] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[8:11] = [0, 0, 0]
         else:
-            self.state[4:10] = [0, 0, 0, 0 ,0 ,0]
+            self.state[5:11] = [0, 0, 0, 0 ,0 ,0]
 
-        self.state[10:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
+        self.state[11:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
 
         return self.state
     
