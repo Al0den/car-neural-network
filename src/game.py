@@ -118,8 +118,6 @@ class Game:
                 gap = int(input("Gap between agents?: "))
                 print(f" - Selecting agents: {[start_generation - i * gap for i in range(len(self.environment.agents))]}")
                 # Check that for every i from 0-num_agents - 1, agents.current_generation - i * gap file exists
-            
-                
                 if start_generation - gap * len(self.environment.agents) <= 0:
                     self.exit("Incorrect agent values")
                 self.environment.agents = [None] * game_options['environment']['num_agents']
@@ -136,13 +134,13 @@ class Game:
                         self.environment.agents[i].car.future_corners = np.copy(corners).tolist()
 
                 self.environment.agents = self.environment.agents[::-1]
-                self.car_numbers = [start_generation - i * gap for i in range(len(self.environment.agents))]
+                initial = start_generation - gap * len(self.environment.agents)
+                self.car_numbers = [initial + i * gap for i in range(len(self.environment.agents))]
             else:
                 agent_nums = []
                 lap_times = []
                 with open(f"./data/per_track/{self.track_name}/log.csv", "r") as f:
                     lines = f.readlines()
-                    # Remove line 1 and 2
                     lines = lines[2:]
                     for line in lines:
                         if line.split(",")[3] not in lap_times:
@@ -313,6 +311,7 @@ class Game:
             self.ticks += 1
 
     def initialise_process(self):
+
         num_processes = self.options['cores']
         num_agents = len(self.environment.agents)
         processes = []
@@ -325,9 +324,11 @@ class Game:
         self.working = Array('b', [False] * num_agents, lock=False)
         self.log_data = Array('i', [0] * num_processes * 5, lock=False)
         self.max_potentials = Array('d', [0] * self.map_tries, lock=False)
+        self.deaths_per_agent = Array('i', [0] * num_agents, lock=False)
+        self.threshold = Value('i', self.map_tries, lock=False)
 
         for i in range(num_processes):
-            process = Process(target=self.create_process, args=(self.agents_feed, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock, self.max_potentials))
+            process = Process(target=self.create_process, args=(self.agents_feed, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock, self.max_potentials, self.deaths_per_agent, self.threshold))
             processes.append(process)
         
         for i in range(len(processes)):
@@ -335,7 +336,7 @@ class Game:
             processes[i].start()
         print(f" * Started {len(processes)} processes, running {len(self.environment.agents) * self.map_tries} agents in total, on {len(self.track_names)} tracks")
     
-    def create_process(self, agents_feed, log_data, scores, laps, lap_times, working, p_id, main_lock, max_potentials):
+    def create_process(self, agents_feed, log_data, scores, laps, lap_times, working, p_id, main_lock, max_potentials, deaths_per_agent, threshold):
         local_scores = np.array([0] * len(self.environment.agents))
         local_laps = np.array([0] * len(self.environment.agents))
         local_lap_times = np.array([0] * len(self.environment.agents))
@@ -372,7 +373,7 @@ class Game:
             for i, agent in enumerate(agents):
                 index = i * 10
                 MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
-
+            alives = [1] * len(agents)
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
@@ -380,9 +381,7 @@ class Game:
                 for i in range(len(agents)):
                     agent = agents[i]
                     index = i * 10
-                    if agent.car.died:
-                        MetalInstance.inVectorBuffer[index] = -1
-                        continue
+                    if agent.car.died: continue
                     MetalInstance.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
                     
                 tpa_stamp = time.time()
@@ -392,8 +391,18 @@ class Game:
                 per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
 
                 for i in range(len(agents)):
-                    if agents[i].car.died == True: continue
+                    real_index = indexes[i]
+                    if alives[i] and deaths_per_agent[real_index] > threshold.value:
+                        agents[i].car.Kill()
+                        print("Threshold kill")
+                    if agents[i].car.died and alives[i] == 1:
+                        if agent.car.lap_time <= 0:
+                            deaths_per_agent[real_index] += 1
+                        alives[i] = 0
+                        MetalInstance.inVectorBuffer[i * 10] = -1
+                    if agents[i].car.died: continue
                     agents[i].Tick(ticks, self, per_agents_points[i])
+                    
                     
                 tick_stamp = time.time()
                 ticks += 1
