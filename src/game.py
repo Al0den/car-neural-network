@@ -111,11 +111,10 @@ class Game:
             self.environment.agents[0] = agent
             
         elif self.player == 8:
-            s_or_g = input("Load specific (s) or general (g) agents?: ")
-            self.s_or_g_choice = s_or_g
-            if s_or_g == "g":
+            self.s_or_g_choice = self.options["s_or_g"]
+            if self.s_or_g_choice == "g":
                 start_generation = np.load("./data/train/agents.npy", allow_pickle=True).item()['generation']
-                gap = int(input("Gap between agents?: "))
+                gap = self.options["gap"]
                 print(f" - Selecting agents: {[start_generation - i * gap for i in range(len(self.environment.agents))]}")
                 # Check that for every i from 0-num_agents - 1, agents.current_generation - i * gap file exists
                 if start_generation - gap * len(self.environment.agents) <= 0:
@@ -137,6 +136,8 @@ class Game:
                 initial = start_generation - gap * len(self.environment.agents)
                 self.car_numbers = [initial + i * gap for i in range(len(self.environment.agents))]
             else:
+                if not os.path.exists(f"./data/per_track/{self.track_name}/log.csv"):
+                    self.exit("No specific trained agent found, exiting...")
                 agent_nums = []
                 lap_times = []
                 with open(f"./data/per_track/{self.track_name}/log.csv", "r") as f:
@@ -325,7 +326,7 @@ class Game:
         self.log_data = Array('i', [0] * num_processes * 5, lock=False)
         self.max_potentials = Array('d', [0] * self.map_tries, lock=False)
         self.deaths_per_agent = Array('i', [0] * num_agents, lock=False)
-        self.threshold = Value('i', self.map_tries, lock=False)
+        self.threshold = Value('i', 6, lock=False)
 
         for i in range(num_processes):
             process = Process(target=self.create_process, args=(self.agents_feed, self.log_data, self.scores, self.laps, self.lap_times, self.working, i, self.main_lock, self.max_potentials, self.deaths_per_agent, self.threshold))
@@ -392,17 +393,14 @@ class Game:
 
                 for i in range(len(agents)):
                     real_index = indexes[i]
-                    if alives[i] and deaths_per_agent[real_index] > threshold.value:
-                        agents[i].car.Kill()
-                        print("Threshold kill")
-                    if agents[i].car.died and alives[i] == 1:
-                        if agent.car.lap_time <= 0:
-                            deaths_per_agent[real_index] += 1
-                        alives[i] = 0
-                        MetalInstance.inVectorBuffer[i * 10] = -1
+                    if alives[i] == 1:
+                        if agents[i].car.died:
+                            if agents[i].car.lap_time <= 0:
+                                deaths_per_agent[real_index] += 1
+                            alives[i] = 0
+                            MetalInstance.inVectorBuffer[i * 10] = -1
                     if agents[i].car.died: continue
                     agents[i].Tick(ticks, self, per_agents_points[i])
-                    
                     
                 tick_stamp = time.time()
                 ticks += 1
@@ -466,7 +464,7 @@ class Game:
             else: iters += 1
             print(line_to_print, end='\r', flush=True)
         print(" " * (len(line_to_print) + 4), end='\r')
-         
+
         self.logger_data = {
             "tps": TPS,
             "rts": RTS,
@@ -481,6 +479,7 @@ class Game:
             self.environment.agents[i].car.lap_time += self.lap_times[i]
             self.environment.agents[i].car.laps += self.laps[i]
             self.environment.agents[i].car.score += self.scores[i] 
+            self.deaths_per_agent[i] = 0
             
         for i in range(self.map_tries): self.max_potentials[i] = 0
             

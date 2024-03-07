@@ -1,5 +1,11 @@
 import os
 from settings import *
+import readline
+
+def complete_track(text, state):
+    tracks = [file[:-4] for file in os.listdir("data/tracks") if file.endswith(".png") and not file.endswith("_surface.png")]
+    options = [track for track in tracks if track.startswith(text)]
+    return options[state] if state < len(options) else None
 
 def load_options():
     environment_options = {
@@ -28,7 +34,6 @@ def load_options():
     }
 
     game_options['player'] = int(input("Player (0 = player, 1 = Train, 2 = Continue Train, 3 = Specific Train, 4 = Specific Display, 5 = Continuous Display, 6 = Race, 7 = Draw Line, 8 = Show Multiple Agents, 9 = Generate All Lines, 10 = Benchmark):"))
-
     if game_options['player'] == 0:
         game_options['display'] = True
     elif game_options['player'] == 1:
@@ -58,6 +63,9 @@ def load_options():
         game_options['display'] = True
         game_options['environment']['num_agents'] = int(input("Number of agents: "))
         game_options['cores'] = 1
+        game_options['s_or_g'] = input("Specific (s) or global (g) trained agents?:")
+        if game_options['s_or_g'] == "g":
+            game_options['gap'] = int(input("Gap between agents?: "))
     elif game_options['player'] == 9:
         game_options['display'] == True
         game_options['environment']['num_agents'] = int(input("Number of agents: "))
@@ -65,14 +73,18 @@ def load_options():
     elif game_options['player'] == 10:
         game_options['cores'] = 1
         game_options['environment']['num_agents'] = 10
-
+    
     if game_options['player'] in [0, 3, 4, 6, 7, 8, 9]:
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete_track)
+
         print("Available tracks:")
         for file in os.listdir("data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
                 print(f" - {file[:-4]}")
+
         game_options['track_name'] = input("Track: ")
-        game_options['environment']['track_name'] = game_options['track_name']
+    
 
     os.system("clear")
     print(f" * Config: Cores - {str(game_options['cores'])}, Agents - {str(game_options['environment']['num_agents'])}, Track - {game_options['track_name']}, Mode - {number_to_player(game_options['player'])}") 
