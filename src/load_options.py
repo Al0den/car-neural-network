@@ -1,6 +1,9 @@
 import os
 from settings import *
 import readline
+from colorama import Fore, init
+
+init()
 
 def complete_track(text, state):
     tracks = [file[:-4] for file in os.listdir("data/tracks") if file.endswith(".png") and not file.endswith("_surface.png")]
@@ -81,7 +84,13 @@ def load_options():
         print("Available tracks:")
         for file in os.listdir("data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
-                print(f" - {file[:-4]}")
+                track_name = file[:-4]
+                npy_file_path = os.path.join("data/tracks", f"{track_name}.npy")
+
+                if os.path.exists(npy_file_path):
+                    print(f" - {Fore.GREEN}{track_name}{Fore.RESET}")
+                else:
+                    print(f" - {Fore.RED}{track_name}{Fore.RESET}")
 
         game_options['track_name'] = input("Track: ")
     

@@ -36,7 +36,7 @@ def new_brake_speed(current_speed):
 
 def angle_distance(angle1, angle2):
     val = abs(angle1 - angle2) % 360
-    if abs(angle1 - angle2) > 180: return 360 - val
+    if val > 180: return 360 - val
     return val
 
 def get_new_starts(track, n, turn_intensity):

@@ -500,7 +500,6 @@ class Game:
             
             if score >= 1: 
                 agent.car.CalculateMaxPotential()
-                if abs(agent.car.seen - agent.car.max_pot_seen) < 40: return
                 print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
                 # Weird score, shouldnt be saved
                 return

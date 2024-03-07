@@ -367,9 +367,12 @@ class Car:
         prev_directions = [self.direction] * 10
 
         while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 120 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if len(potential_offsets) == 0:
-                print("Weird")
+                print(f"Weird, {ordered_corners}, {current_x}, {current_y}, {current_dir}")
+                print([self.track[current_y + offset[1], current_x + offset[0]] for offset in offsets])
+                print([np.round(np.degrees(np.arctan2(-offset[1], offset[0])),2) for offset in offsets])
+                print([angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) for offset in offsets])
                 break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
