@@ -13,6 +13,8 @@ class Car:
 
         with open('./src/config.json', 'r') as json_file:
             config_data = json.load(json_file)
+        
+        self.drag_coeff = config_data['drag_coeffs'].get(track_name)
         self.ppm = config_data['pixel_per_meter'].get(track_name)
 
         self.c_length = car_length * self.ppm
@@ -221,7 +223,7 @@ class Car:
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
         drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer))) * pow(self.speed, 2)
-        steer_drag_force = drag_force * abs(self.steer * 1/3)
+        steer_drag_force = drag_force * abs(self.steer * 1/8)
         drag_acceleration = drag_force / car_mass
         steer_drag_acceleration = steer_drag_force / car_mass
         self.speed -= drag_acceleration * delta_t * (1-self.acceleration)

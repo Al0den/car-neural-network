@@ -6,3 +6,9 @@ compile_shader:
 	cp ./src/shaders/shaders.metal ../metal-python/PyMetalBridge/Sources/PyMetalBridge/shaders.metal && cp ./src/shaders/PyMetalBridge.swift ../metal-python/PyMetalBridge/Sources/PyMetalBridge/PyMetalBridge.swift && cd ../metal-python/PyMetalBridge && rm -rf .build && ./build_metal.sh && swift build -c release && cp .build/release/libPyMetalBridge.dylib ../../Car/src/shaders/ && cd ../../Car && mv src/shaders/libPyMetalBridge.dylib src/shaders/compiled_shader.dylib
 perft_results:
 	echo 'sort cumtime\nreverse\nstats' | python3 -m pstats ./data/profile.txt
+results:
+	@read -p "Enter the track: " user_input && \
+	echo "You entered: $$user_input" && \
+	echo "7\n0\n$$user_input" | python src/main.py && \
+	echo "\n$$user_input\n" | python utils/ff1.py
+	

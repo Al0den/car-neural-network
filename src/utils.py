@@ -2,6 +2,7 @@ import numpy as np
 import random
 import time
 import sys
+import re
 
 from PIL import Image
 
@@ -213,30 +214,36 @@ def get_terminal_width():
     return columns
 
 def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc):
-
     terminal_width = get_terminal_width()
 
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])
 
     progress = int(alive_agents / total_agents * (terminal_width * 1/2))
     progress_bar = f"Progress: [{colored('#' * progress, 'red')}{colored('.' * (int(terminal_width * 1/2) - progress), 'green')}] {alive_agents}/{total_agents}"
-    
+
+    def colored_length(text):
+        # Function to calculate the length of the colored text
+        return len(re.sub(r'\033\[[0-9;]+m', '', text))
+
+    # Adjusted the formatting to consider colored text length
     info_line_1 = f"Input Percentage: {input_percentage:<5}% | Metal Percentage: {metal_percentage:<5}% | Tick Percentage: {tick_percentage:<5}%"
     info_line_2 = f"Total Ticks: {tot_ticks} | Ticks Per Second: {TPS} | Real Time Speed: {RTS}"
     info_line_3 = f"Min Ticks: {min_ticks} | Max Ticks: {max_ticks} | Min Alive: {min_alive} | Max Alive: {max_alive}"
-    
+
     time_left_line = f"Time Spent: {human_formatted} - Ticks: {int(tot_ticks/game.options['cores'])}"
-    
+
     tls_color = 'green' if tls > 0 else 'red'
     tss_color = 'green' if tss > 0 else 'red'
     tlc_color = 'green' if tlc > 0 else 'red'
     tsc_color = 'green' if tsc > 0 else 'red'
 
+    # Adjusted the formatting to consider colored text length
     trajectory_line_1 = f"Long Term Lap Improvement: {colored(tls, tls_color)} | Short Term Lap Improvement: {colored(tss, tss_color)}"
     trajectory_line_2 = f"Long Term Completion Improvement: {colored(tlc, tlc_color)} | Short Term Completion Improvement: {colored(tsc, tsc_color)}"
 
     # Convert lap time to m:ss
     display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))
+
     if game.player == 3:
         target_lap_time = game.config.get("quali_laps").get(game.track_name)
         delta = round(game.environment.previous_best_lap/60 - target_lap_time, 2)
@@ -247,13 +254,11 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
 
     print("\033c", end='')
     print(f"\n{generation_line:^{terminal_width}}\n\n"
-          f"{progress_bar:^{terminal_width}}\n\n"
-          f"{info_line_1:^{terminal_width}}\n\n"
-          f"{info_line_2:^{terminal_width}}\n\n"
-          f"{info_line_3:^{terminal_width}}\n\n"
-          f"{trajectory_line_1:^{terminal_width}}\n\n"
-          f"{trajectory_line_2:^{terminal_width}}\n\n"
-          f"{results_line:^{terminal_width}}\n\n"
-          f"{time_left_line:^{terminal_width}}\n\n")
-
-
+          f"{progress_bar:^{terminal_width - colored_length(progress_bar) + len(progress_bar)}}\n\n"
+          f"{info_line_1:^{terminal_width - colored_length(info_line_1) + len(info_line_1)}}\n\n"
+          f"{info_line_2:^{terminal_width - colored_length(info_line_2) + len(info_line_2)}}\n\n"
+          f"{info_line_3:^{terminal_width - colored_length(info_line_3) + len(info_line_3)}}\n\n"
+          f"{trajectory_line_1:^{terminal_width - colored_length(trajectory_line_1) + len(trajectory_line_1)}}\n\n"
+          f"{trajectory_line_2:^{terminal_width - colored_length(trajectory_line_2) + len(trajectory_line_2)}}\n\n"
+          f"{results_line:^{terminal_width - colored_length(results_line) + len(results_line)}}\n\n"
+          f"{time_left_line:^{terminal_width - colored_length(time_left_line) + len(time_left_line)}}\n\n")

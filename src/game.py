@@ -553,7 +553,15 @@ class Game:
             visual_lap_time = f"{int(lap_time // self.speed):01}:{int(lap_time % self.speed):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
             print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")          
-
+        
+        if self.environment.previous_completion_long[0] == 0:
+            for i in range(len(self.environment.previous_completion_long)):
+                self.environment.previous_completion_long[i] = self.environment.previous_best_score
+                self.environment.previous_lap_times_long[i] = self.environment.previous_best_lap
+            for i in range(len(self.environment.previous_completion_short)):
+                self.environment.previous_completion_short[i] = self.environment.previous_best_score
+                self.environment.previous_lap_times_short[i] = self.environment.previous_best_lap
+        
         self.environment.previous_completion_short.pop(0)
         self.environment.previous_completion_short.append(self.environment.previous_best_score)
         self.environment.previous_lap_times_short.pop(0)
@@ -562,6 +570,8 @@ class Game:
         self.environment.previous_completion_long.append(self.environment.previous_best_score)
         self.environment.previous_lap_times_long.pop(0)
         self.environment.previous_lap_times_long.append(self.environment.previous_best_lap)
+
+        
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0

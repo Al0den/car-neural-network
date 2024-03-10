@@ -10,8 +10,8 @@ class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
         self.previous_lap_times_short = [0] * 10
         self.previous_completion_short = [0] * 10
-        self.previous_lap_times_long = [0] * 100
-        self.previous_completion_long = [0] * 100
+        self.previous_lap_times_long = [0] * 50
+        self.previous_completion_long = [0] * 50
 
         self.options = options
         self.track = track
@@ -159,7 +159,9 @@ class Environment:
             'previous_lap_times_short': self.previous_lap_times_short,
             'previous_completion_short': self.previous_completion_short,
             'previous_lap_times_long': self.previous_lap_times_long,
-            'previous_completion_long': self.previous_completion_long
+            'previous_completion_long': self.previous_completion_long,
+            'previous_best_lap': self.previous_best_lap,
+            'previous_best_score': self.previous_best_score
         }
         np.save(path, data, allow_pickle=True)
 

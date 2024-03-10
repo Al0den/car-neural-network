@@ -7,7 +7,7 @@ import numpy as np
 from load_options import load_options
 from methods import HumanMethod, SpecificMapMethod, ContinuousMethod, HumanVSaiMethod, AgentsRaceMethod
 from game import Game
-from settings import god, debug, pre_load
+from settings import *
 from utils import SaveOptimalLine, SaveAgentsSpeedGraph, InitialiseDisplay
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
@@ -31,7 +31,7 @@ def main():
 
     if game.player == 7:
         generated = np.copy(game.track).astype(np.uint16)
-        brake, steer, throttle, speeds = [], [], [], []
+        brake, steer, throttle, speeds, timestamps = [], [], [], [], []
     game.restart = False
 
     # Main loop
@@ -73,16 +73,26 @@ def main():
         elif game.player == 7:
             x, y = game.environment.agents[0].car.x, game.environment.agents[0].car.y
             generated[int(y), int(x)] = 10 + game.environment.agents[0].car.speed
+            
             speeds.append(game.environment.agents[0].car.speed)
             throttle.append(game.environment.agents[0].car.acceleration)
             brake.append(game.environment.agents[0].car.brake)
             steer.append(game.environment.agents[0].car.steer)
+            timestamps.append(game.ticks * delta_t)
             if game.environment.agents[0].car.died:
                 print(" * Saving generated track...")
                 SaveOptimalLine(generated, game.track_name, game.best_agent)
                 SaveAgentsSpeedGraph(speeds, throttle, brake, game.best_agent, game.track_name, steer)
                 print(f" * Saved generated track to ./data/per_track/{game.track_name}/generated_{game.best_agent}.png")
                 game.running.value = False
+                run_data = {
+                    "timestamps": timestamps,
+                    "speeds": speeds,
+                    "throttle": throttle,
+                    "brake": brake,
+                    "steer": steer,
+                }
+                np.save(f"./data/per_track/{game.track_name}/generated_data.npy", run_data)
         elif game.player == 8:
             AgentsRaceMethod(game, game_options, pygame)
             game.render.RenderFrame(game)
