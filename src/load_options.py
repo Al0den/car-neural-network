@@ -86,8 +86,10 @@ def load_options():
             if file.endswith(".png") and not file.endswith("_surface.png"):
                 track_name = file[:-4]
                 npy_file_path = os.path.join("data/tracks", f"{track_name}.npy")
-
-                if os.path.exists(npy_file_path):
+                per_track_file_path = os.path.join("data/per_track", track_name)
+                if os.path.exists(per_track_file_path):
+                    print(f" - {Fore.BLUE}{track_name}{Fore.RESET}")
+                elif os.path.exists(npy_file_path):
                     print(f" - {Fore.GREEN}{track_name}{Fore.RESET}")
                 else:
                     print(f" - {Fore.RED}{track_name}{Fore.RESET}")

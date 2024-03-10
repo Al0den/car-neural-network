@@ -1,7 +1,7 @@
 import numpy as np
 import json
 
-def get_corners(track, track_name, threshold=30, data_size=50):
+def get_corners(track, track_name, threshold=65, data_size=50):
     points = np.where(track == 10)
     with open('./src/config.json', 'r') as json_file:
         config_data = json.load(json_file) 
@@ -94,7 +94,7 @@ def get_corners(track, track_name, threshold=30, data_size=50):
     p = 0
     while True:
         p += 1
-        print(f"Currently on pass: {p}    \r", end='', flush=True)
+        print(f"Currently on pass: {p}             \r", end='', flush=True)
         changed = False
         for i in range(len(blobs)):
             for j in range(i + 1, len(blobs)):

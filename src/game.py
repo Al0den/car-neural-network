@@ -15,12 +15,13 @@ Image.MAX_IMAGE_PIXELS = None
 
 from environment import Environment
 from car import Car
-from utils import is_color_within_margin, calculate_distance, get_new_starts, get_nearest_centerline
+from utils import is_color_within_margin, calculate_distance, get_new_starts, get_nearest_centerline, update_terminal, angle_distance
 from agent import Agent
 from settings import *
 from smoothen import smoothen
 from metal import Metal
 from corners import get_corners
+from precomputed import offsets
 
 class Game:
     def __init__(self, game_options):
@@ -81,6 +82,7 @@ class Game:
             self.environment.agents[0] = agent
             
             self.environment.agents[0].car.speed = self.config['quali_start_speed'].get(self.track_name)
+            self.environment.agents[0].car.acceleration = 1
             self.environment.agents[0].car.setFutureCorners(self.corners[self.track_name])
             
         elif self.player == 5:
@@ -105,6 +107,7 @@ class Game:
                 agent = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                 agent.network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(best_agent) + ".npy", allow_pickle=True).item()['network']
             agent.car.speed = self.config['quali_start_speed'].get(self.track_name)
+            agent.car.acceleration = 1
             agent.car.setFutureCorners(self.corners[self.track_name])
 
             self.best_agent = best_agent
@@ -159,6 +162,7 @@ class Game:
                     self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                     self.environment.agents[i].network = np.load(f"./data/per_track/{self.track_name}/trained/best_agent_{agent_nums[i]}.npy", allow_pickle=True).item()['network']
                     self.environment.agents[i].car.speed = self.config['quali_start_speed'].get(self.track_name)
+                    self.environment.agents[i].car.acceleration = 1
                     if corners == None:
                         corners = self.environment.agents[i].car.setFutureCorners(self.corners[self.track_name])
                     else:
@@ -180,6 +184,7 @@ class Game:
                 self.environment.agents[i] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
                 self.environment.agents[i].network = np.load("./data/per_track/" + self.track_name + "/trained/best_agent_" + str(possible_agent_number[i]) + ".npy", allow_pickle=True).item()['network']
                 self.environment.agents[i].car.speed = self.options['quali_start_speed'].get(self.track_name)
+                self.environment.agents[i].car.acceleration = 1
             self.environment.agents = self.environment.agents[::-1]
             available.sort(reverse=True)
             lap_times.reverse()
@@ -392,11 +397,8 @@ class Game:
                 per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
 
                 for i in range(len(agents)):
-                    real_index = indexes[i]
                     if alives[i] == 1:
                         if agents[i].car.died:
-                            if agents[i].car.lap_time <= 0:
-                                deaths_per_agent[real_index] += 1
                             alives[i] = 0
                             MetalInstance.inVectorBuffer[i * 10] = -1
                     if agents[i].car.died: continue
@@ -432,6 +434,44 @@ class Game:
             working[p_id] = False
             gc.collect()
 
+    def ScoreAllAgents(self, agents, local_lap_times, local_laps, local_scores, map_tries, indexes):
+        # Group agents of the same map_try together
+        agents_per_map_try = {}
+        for i in range(len(agents)):
+            if agents[i].car.died: continue
+            if map_tries[i] not in agents_per_map_try:
+                agents_per_map_try[map_tries[i]] = []
+            # Append their finish_x and finish_y to the list
+            agents_per_map_try[map_tries[i]].append([agents[i].car.finish_x, agents[i].car.finish_y])
+        
+        all_agents_scores = [0] * len(agents)
+
+        # Score all groupes of agents using multiple agents score function
+        for map_try in agents_per_map_try:
+            # Find any agent tjat jas this maomtry
+            agent = [agent for i, agent in enumerate(agents) if map_tries[i] == map_try][0]
+            track = agent.car.track
+            start_pos = [agent.car.start_x, agent.car.start_y]
+            start_dir = agent.car.start_direction
+
+            scores = self.MultipleAgentsScore(agents_per_map_try[map_try], track, start_pos, start_dir)
+            for i in range(len(agents)):
+                if map_tries[i] == map_try:
+                    all_agents_scores[i] = scores.pop(0)
+        
+        for i in range(len(agents)):
+            index = indexes[i]
+            if agents[i].car.lap_time > 0:
+                local_scores[index] += 1 * score_multiplier
+                local_laps[index] += 1
+                local_lap_times[index] += agents[i].car.lap_time
+            elif agents[i].car.lap_time == -1:
+                continue
+            else:
+                local_scores[index] = all_agents_scores[i]
+
+        return 
+
     def train_agents_gpu(self):
         if self.generated_starts == []: self.CreateFutureStartsData()
 
@@ -454,16 +494,9 @@ class Game:
         iters = 0
         while any(self.working):
             time.sleep(update_delay)
-            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS = self.LiveUpdateData(tps_values, start, prev_ticks)
+            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, tss, tls, tsc, tlc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            prev_size = len(line_to_print)
-            line_to_print = f" - Agents Training | Alive: {alive_agents}, Ticks: {int(tot_ticks/self.options['cores'])}, Input/Metal/Tick: {input_percentage}/{metal_percentage}/{tick_percentage}%, TPS: {TPS}, RTS: {RTS}x | {human_formatted}"
-            if iters * update_delay > 1:
-                print(" " * (prev_size + 4), end='\r')
-                iters = 0
-            else: iters += 1
-            print(line_to_print, end='\r', flush=True)
-        print(" " * (len(line_to_print) + 4), end='\r')
+            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc)
 
         self.logger_data = {
             "tps": TPS,
@@ -500,6 +533,7 @@ class Game:
             
             if score >= 1: 
                 agent.car.CalculateMaxPotential()
+                if abs(agent.car.seen - agent.car.max_pot_seen) < 40: return
                 print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
                 # Weird score, shouldnt be saved
                 return
@@ -518,8 +552,17 @@ class Game:
             delta = target_lap_time - lap_time
             visual_lap_time = f"{int(lap_time // self.speed):01}:{int(lap_time % self.speed):02}.{int((lap_time - int(lap_time)) * 1000):03}"
 
-            print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")                   
-        
+            print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")          
+
+        self.environment.previous_completion_short.pop(0)
+        self.environment.previous_completion_short.append(self.environment.previous_best_score)
+        self.environment.previous_lap_times_short.pop(0)
+        self.environment.previous_lap_times_short.append(self.environment.previous_best_lap)
+        self.environment.previous_completion_long.pop(0)
+        self.environment.previous_completion_long.append(self.environment.previous_best_score)
+        self.environment.previous_lap_times_long.pop(0)
+        self.environment.previous_lap_times_long.append(self.environment.previous_best_lap)
+
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
             self.lap_times[i] = 0
@@ -554,8 +597,13 @@ class Game:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
         else:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+   
+        trajectory_short_score = int(np.average([self.environment.previous_lap_times_short[i] - self.environment.previous_lap_times_short[i+1] for i in range(len(self.environment.previous_lap_times_short) - 1)]))
+        trajectory_long_score = int(np.average([self.environment.previous_lap_times_long[i] - self.environment.previous_lap_times_long[i+1] for i in range(len(self.environment.previous_lap_times_long) - 1)]))
+        trajectory_short_completion = int(np.average([self.environment.previous_completion_short[i+1] - self.environment.previous_completion_short[i] for i in range(len(self.environment.previous_completion_short) - 1)]))
+        trajectory_long_completion = int(np.average([self.environment.previous_completion_long[i+1] - self.environment.previous_completion_long[i] for i in range(len(self.environment.previous_completion_long) - 1)]))
 
-        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS
+        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, trajectory_short_score, trajectory_long_score, trajectory_short_completion, trajectory_long_completion
 
     def CreateAgentsBatches(self):
         all_agents = []
@@ -568,7 +616,9 @@ class Game:
                 new_agent.network = self.environment.agents[k].network
                 new_agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
                 
-                if self.player == 3: new_agent.car.speed = self.config['quali_start_speed'].get(start_tracks[i])
+                if self.player == 3: 
+                    new_agent.car.acceleration = 1
+                    new_agent.car.speed = self.config['quali_start_speed'].get(start_tracks[i])
                
                 new_agent.car.future_corners = np.array(all_corners[i], copy=True).tolist()
 
@@ -584,6 +634,34 @@ class Game:
             batches[i % self.options['cores']].append([agent, real_agent_index, map_try_num])
 
         return batches
+    
+    def MultipleAgentsScore(self, finish_positions, track, start_pos, start_dir):
+        current_x = start_pos[0]
+        current_y = start_pos[1]
+        current_dir = start_dir
+
+        mutable_finish_positions = finish_positions.copy()
+        per_pos_seen = [0] * len(finish_positions)
+        total_seen = 0
+        print("\ngdsgddg\n\n")
+        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]) and total_seen < 50000:
+            for i in range(len(mutable_finish_positions)):
+                if mutable_finish_positions[i] == [current_x, current_y]:
+                    per_pos_seen[i] = total_seen
+                    mutable_finish_positions.pop(i)
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
+            if len(potential_offsets) == 0: 
+                print("fdafafas")
+                print("No potential offsets")
+                break
+            offset = random.choice(potential_offsets)
+            current_x += offset[0]
+            current_y += offset[1]
+            current_dir = np.degrees(np.arctan2(-offset[1], offset[0]))
+            total_seen += 1
+        scores = [(per_pos_seen[i] / total_seen) * score_multiplier for i in range(len(per_pos_seen))]
+        print(total_seen)
+        return scores
     
     def load_single_track(self):
         self.tracks = {}
@@ -765,14 +843,13 @@ class Game:
             with open('./src/config.json', 'w') as json_file:
                 config_data['pixel_per_meter'][track_name] = ppm
                 json.dump(config_data, json_file, indent=4)
-
-            print(" - Generating new starts")
             real_start_x = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[0]
             real_start_y = get_nearest_centerline(self.track, real_start[0][0], real_start[0][1])[1]
             real_start = [[real_start_y, real_start_x], real_start[1]]
             print(" - Generating center line inputs")
             corners, track_intensity= self.setup_corners()
             assert(real_start != None)
+            print(" - Generating new starts")
             data = {
                 "track": self.track,
                 "start_positions": get_new_starts(self.track, 5000, track_intensity),

@@ -8,6 +8,11 @@ from settings import *
 
 class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
+        self.previous_lap_times_short = [0] * 10
+        self.previous_completion_short = [0] * 10
+        self.previous_lap_times_long = [0] * 100
+        self.previous_completion_long = [0] * 100
+
         self.options = options
         self.track = track
         self.alive = self.options['num_agents']
@@ -21,7 +26,7 @@ class Environment:
         self.previous_best_score = 0
 
         self.agents = np.array([Agent(options, track, start_pos, start_dir, track_name) for _ in range(self.options['num_agents'])])
-        
+
         if player == 2 or player == 1: self.previous_agents = [None] * 30
         else: self.previous_agents = [None] * 10
 
@@ -142,6 +147,7 @@ class Environment:
         for agent in self.previous_agents:
             if agent != None:
                 previous_networks.append(agent.network)
+
         data = {
             'networks': networks,
             'previous_networks': previous_networks,
@@ -150,6 +156,10 @@ class Environment:
             'hidden_layer_size': self.options['hidden_layer_size'],
             'num_hidden_layers': self.options['num_hidden_layers'],
             'generation': self.generation,
+            'previous_lap_times_short': self.previous_lap_times_short,
+            'previous_completion_short': self.previous_completion_short,
+            'previous_lap_times_long': self.previous_lap_times_long,
+            'previous_completion_long': self.previous_completion_long
         }
         np.save(path, data, allow_pickle=True)
 
@@ -168,6 +178,10 @@ class Environment:
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
+        self.previous_completion_long = data['previous_completion_long']
+        self.previous_lap_times_long = data['previous_lap_times_long']
+        self.previous_completion_short = data['previous_completion_short']
+        self.previous_lap_times_short = data['previous_lap_times_short']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
 
         for agent in self.agents:

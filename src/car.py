@@ -318,7 +318,7 @@ class Car:
             calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
             
         while ((final_x, final_y) != (current_x, current_y)) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
@@ -342,7 +342,7 @@ class Car:
             calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
         assert(self.track[current_y, current_x] == 10)
         while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if potential_offsets == []: 
                 raise Exception(f"Car has no potential, seen: {seen}, track: {self.track_name}, x: {current_x}, y: {current_y}, dir: {current_dir}")
             current_offset = potential_offsets[0]
@@ -367,7 +367,7 @@ class Car:
         prev_directions = [self.direction] * 10
 
         while not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 110 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if len(potential_offsets) == 0:
                 print(f"Weird, {ordered_corners}, {current_x}, {current_y}, {current_dir}")
                 print([self.track[current_y + offset[1], current_x + offset[0]] for offset in offsets])

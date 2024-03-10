@@ -21,7 +21,7 @@ point_search_jump = 10.0
 perft_ticks = 10
 perft_duration = 20
 center_line_hash_size = 100000
-specialised_training_multiple = 5
+specialised_training_multiple = 3
 compile_shaders = False
 key_press_delay = 0.1
 
@@ -40,7 +40,7 @@ global_metal_instance_players = [0, 4, 5, 7, 8]
 
 # - Live Data Parameters
 prev_ticks = 0
-update_delay = 0.02
+update_delay = 0.05
 tps_window_size = 20  # Adjust the window size as needed
 
 # - Simulation settings

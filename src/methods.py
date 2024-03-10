@@ -43,6 +43,7 @@ def SpecificMapMethod(game, pygame, game_options):
         best_agent, agent = extract_best_agent(f"./data/per_track/{game.track_name}/trained", game_options['environment'], game, start_pos, start_dir)
         load_csv_data("./data/train/log.csv", game)
         agent.car.speed = game.config['quali_start_speed'].get(game.track_name)
+        agent.car.acceleration = 1
         agent.car.setFutureCorners(game.corners[game.track_name])
 
         game.environment.agents[0] = agent
@@ -199,6 +200,7 @@ def AgentsRaceMethod(game, game_options, pygame):
                 temp_agent = Agent(game_options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
                 temp_agent.network = game.environment.agents[i].network
                 temp_agent.car.speed = game.config['quali_start_speed'].get(game.track_name)
+                temp_agent.car.acceleration = 1
                 if corners == None: corners = temp_agent.car.setFutureCorners(game.corners[game.track_name])
                 else: temp_agent.car.future_corners = np.copy(corners).tolist()
                 game.environment.agents[i] = temp_agent

@@ -204,3 +204,56 @@ def get_nearest_centerline(track, x, y):
         distance += 1
     print("Could find the nearest track, aborting")
     sys.exit()
+
+import shutil
+from termcolor import colored
+
+def get_terminal_width():
+    columns, _ = shutil.get_terminal_size()
+    return columns
+
+def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc):
+
+    terminal_width = get_terminal_width()
+
+    generation_line = colored(f"Generation: {generation}", attrs=['bold'])
+
+    progress = int(alive_agents / total_agents * (terminal_width * 1/2))
+    progress_bar = f"Progress: [{colored('#' * progress, 'red')}{colored('.' * (int(terminal_width * 1/2) - progress), 'green')}] {alive_agents}/{total_agents}"
+    
+    info_line_1 = f"Input Percentage: {input_percentage:<5}% | Metal Percentage: {metal_percentage:<5}% | Tick Percentage: {tick_percentage:<5}%"
+    info_line_2 = f"Total Ticks: {tot_ticks} | Ticks Per Second: {TPS} | Real Time Speed: {RTS}"
+    info_line_3 = f"Min Ticks: {min_ticks} | Max Ticks: {max_ticks} | Min Alive: {min_alive} | Max Alive: {max_alive}"
+    
+    time_left_line = f"Time Spent: {human_formatted} - Ticks: {int(tot_ticks/game.options['cores'])}"
+    
+    tls_color = 'green' if tls > 0 else 'red'
+    tss_color = 'green' if tss > 0 else 'red'
+    tlc_color = 'green' if tlc > 0 else 'red'
+    tsc_color = 'green' if tsc > 0 else 'red'
+
+    trajectory_line_1 = f"Long Term Lap Improvement: {colored(tls, tls_color)} | Short Term Lap Improvement: {colored(tss, tss_color)}"
+    trajectory_line_2 = f"Long Term Completion Improvement: {colored(tlc, tlc_color)} | Short Term Completion Improvement: {colored(tsc, tsc_color)}"
+
+    # Convert lap time to m:ss
+    display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))
+    if game.player == 3:
+        target_lap_time = game.config.get("quali_laps").get(game.track_name)
+        delta = round(game.environment.previous_best_lap/60 - target_lap_time, 2)
+        delta_display = f"{delta}" if delta < 0 else f"+{delta}"
+        results_line = f"Previous Completion: {game.environment.previous_best_score/(score_multiplier * game.map_tries) * 100:0.2f}% | Best Lap Time: {display_lap_time} | Delta: {delta_display}"
+    else:
+        results_line = f"Previous Completion: {game.environment.previous_best_score/(score_multiplier * game.map_tries) * 100:0.2f}% | Best Lap Time: {display_lap_time}"
+
+    print("\033c", end='')
+    print(f"\n{generation_line:^{terminal_width}}\n\n"
+          f"{progress_bar:^{terminal_width}}\n\n"
+          f"{info_line_1:^{terminal_width}}\n\n"
+          f"{info_line_2:^{terminal_width}}\n\n"
+          f"{info_line_3:^{terminal_width}}\n\n"
+          f"{trajectory_line_1:^{terminal_width}}\n\n"
+          f"{trajectory_line_2:^{terminal_width}}\n\n"
+          f"{results_line:^{terminal_width}}\n\n"
+          f"{time_left_line:^{terminal_width}}\n\n")
+
+
