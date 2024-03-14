@@ -327,7 +327,7 @@ class Game:
         self.lap_times = Array('i', [0] * num_agents, lock=False)
         self.laps = Array('i', [0] * num_agents, lock=False)
         self.scores = Array('d', [0] * num_agents, lock=False)
-        self.working = Array('b', [False] * num_agents, lock=False)
+        self.working = Array('i', [0] * num_processes, lock=False)
         self.log_data = Array('i', [0] * num_processes * 5, lock=False)
         self.max_potentials = Array('d', [0] * self.map_tries, lock=False)
         self.deaths_per_agent = Array('i', [0] * num_agents, lock=False)
@@ -359,7 +359,7 @@ class Game:
         while True:
             try:
                 input_feed = agents_feed.pop(0)
-                working[p_id] = True
+                working[p_id] = 1
             except:
                 time.sleep(0.5)
                 continue
@@ -380,6 +380,7 @@ class Game:
                 index = i * 10
                 MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
             alives = [1] * len(agents)
+            working[p_id] = 2
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
@@ -417,7 +418,7 @@ class Game:
                 log_data[p_id * 5 + 2] = int(input_tpa)
                 log_data[p_id * 5 + 3] = int(metal_tpa)
                 log_data[p_id * 5 + 4] = int(tick_tpa)
-     
+            working[p_id] = 3
             for i in range(len(agents)):
                 self.IndividualAgentScore(agents[i], local_lap_times, local_laps, local_scores, max_potentials, map_tries[i], indexes[i])
 
@@ -431,30 +432,27 @@ class Game:
             local_laps.fill(0)
             local_lap_times.fill(0)
 
-            working[p_id] = False
+            working[p_id] = 0
             gc.collect()
 
     def ScoreAllAgents(self, agents, local_lap_times, local_laps, local_scores, map_tries, indexes):
         # Group agents of the same map_try together
-        agents_per_map_try = {}
+        agents_per_map_try = [[] * len(map_tries)]
         for i in range(len(agents)):
             if agents[i].car.died: continue
-            if map_tries[i] not in agents_per_map_try:
-                agents_per_map_try[map_tries[i]] = []
-            # Append their finish_x and finish_y to the list
             agents_per_map_try[map_tries[i]].append([agents[i].car.finish_x, agents[i].car.finish_y])
         
         all_agents_scores = [0] * len(agents)
 
         # Score all groupes of agents using multiple agents score function
-        for map_try in agents_per_map_try:
+        for map_try in range(len(map_tries))
             # Find any agent tjat jas this maomtry
             agent = [agent for i, agent in enumerate(agents) if map_tries[i] == map_try][0]
             track = agent.car.track
             start_pos = [agent.car.start_x, agent.car.start_y]
             start_dir = agent.car.start_direction
 
-            scores = self.MultipleAgentsScore(agents_per_map_try[map_try], track, start_pos, start_dir)
+            scores = self.MultipleAgentsScore(agents_per_map_try[i], track, start_pos, start_dir)
             for i in range(len(agents)):
                 if map_tries[i] == map_try:
                     all_agents_scores[i] = scores.pop(0)
@@ -479,24 +477,25 @@ class Game:
     
         batches = self.CreateAgentsBatches()
         self.agents_feed.extend(batches)
-
-        while sum(self.working[:]) < self.options['cores']:
-            time.sleep(0.1)
-            print(f" - Waiting for agents to start | Started: {sum(self.working[:])}, Left: {len(self.agents_feed)}         \r", end='', flush=True)
-        
         start = time.time()
         tps_values = [0] * tps_window_size
         prev_ticks = 0
+
+        while any([True for worker in self.working[:] if worker == 0]):
+            time.sleep(0.1)
+            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, tss, tls, tsc, tlc = self.LiveUpdateData(tps_values, start, prev_ticks)
+            prev_ticks = tot_ticks
+            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc, self.working[:])
 
         thread = threading.Thread(target=self.CreateFutureStartsData)
         thread.start()
         line_to_print = " "
         iters = 0
-        while any(self.working):
+        while any([True for worker in self.working[:] if worker != 0]):
             time.sleep(update_delay)
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, tss, tls, tsc, tlc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc)
+            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc, self.working[:])
 
         self.logger_data = {
             "tps": TPS,
@@ -540,27 +539,11 @@ class Game:
             local_scores[index] += score * score_multiplier
 
     def EndOfGeneration(self):
-        if self.player != 3:
-            if self.environment.previous_best_lap == 0:
-                print(f"Generation: {self.environment.generation - 1} | Completion: {(self.environment.previous_best_score/ (score_multiplier * self.map_tries) * 100):0.2f}%, laps: {max(self.laps)} TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
-            else:
-                print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {self.environment.previous_best_lap}, Successful Cars: {self.environment.successful_agents_num}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']} | {self.logger_data['human_format']}")
-        if self.player == 3:
-            target_lap_time = self.config.get("quali_laps").get(self.track_name)
-
-            lap_time = self.environment.previous_best_lap / self.speed
-            delta = target_lap_time - lap_time
-            visual_lap_time = f"{int(lap_time // self.speed):01}:{int(lap_time % self.speed):02}.{int((lap_time - int(lap_time)) * 1000):03}"
-
-            print(f"Generation: {self.environment.generation - 1} | Completion: {self.environment.previous_best_score / (score_multiplier * self.map_tries) * 100:0.2f}%, Lap time: {visual_lap_time}, Delta: {delta:.3f}s, Successful Cars: {self.environment.successful_agents_num}/{len(self.environment.agents)}, TPS: {self.logger_data['tps']}, RTS: {self.logger_data['rts']}x | {self.logger_data['human_format']}")          
-        
         if self.environment.previous_completion_long[0] == 0:
             for i in range(len(self.environment.previous_completion_long)):
                 self.environment.previous_completion_long[i] = self.environment.previous_best_score
-                self.environment.previous_lap_times_long[i] = self.environment.previous_best_lap
             for i in range(len(self.environment.previous_completion_short)):
                 self.environment.previous_completion_short[i] = self.environment.previous_best_score
-                self.environment.previous_lap_times_short[i] = self.environment.previous_best_lap
         
         self.environment.previous_completion_short.pop(0)
         self.environment.previous_completion_short.append(self.environment.previous_best_score)
@@ -570,8 +553,6 @@ class Game:
         self.environment.previous_completion_long.append(self.environment.previous_best_score)
         self.environment.previous_lap_times_long.pop(0)
         self.environment.previous_lap_times_long.append(self.environment.previous_best_lap)
-
-        
 
         for i in range(len(self.environment.agents)):
             self.scores[i] = 0
@@ -599,9 +580,8 @@ class Game:
         tick_percentage = round(tot_tick / (tot_input + tot_metal + tot_tick + 1) * 100, 1)
         TPS = int(tot_ticks / (time_spent))
         RTS = round(TPS * delta_t, 1)
-        if sum(self.working[:]) != 0:
-            tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / (sum(self.working[:]) + 0.0001)
-
+        if any([True for worker in self.working[:] if worker == 2]):
+            tps = round((tot_ticks - prev_ticks) / update_delay, 2) * self.options['cores'] / (sum([1 for worker in self.working[:] if worker == 2]) + 0.0001)
             tps_values.pop(0)
             tps_values.append(tps)
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
@@ -621,7 +601,6 @@ class Game:
 
         for i in range(self.map_tries):
             for k in range(len(self.environment.agents)):
-                print(f" - Creating agents | {i * len(self.environment.agents) + k + 1}/{self.map_tries * len(self.environment.agents)}        \r", end='', flush=True)
                 new_agent = Agent(self.options['environment'], self.tracks[start_tracks[i]], starts[i][0], starts[i][1], start_tracks[i])
                 new_agent.network = self.environment.agents[k].network
                 new_agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
@@ -946,6 +925,7 @@ class Game:
         self.totalScore += score
         self.runs += 1
         self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
+    
     def exit(self, message="Exiting..."):
         print(message)
         self.running.value = False

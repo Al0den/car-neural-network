@@ -25,8 +25,8 @@ class Agent:
         corner_x, corner_y, corner_dir, corner_ampl = corner
         distance = min(1, calculate_distance((corner_x, corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
         relative_angle = angle_range_180(self.car.direction - corner_dir)
-        left_or_right = 1 if relative_angle > 0 else -1 if relative_angle < 0 else 0
-        return [distance, left_or_right, min(1, corner_ampl/100)]
+        left_or_right = 1 if relative_angle >= 0 else -1
+        return [distance, left_or_right * min(1, corner_ampl/100)]
 
     def CalculateState(self, game, calculated_points=None):
         if calculated_points is None:
@@ -36,15 +36,15 @@ class Agent:
         on_track = self.car.track[self.car.int_y, self.car.int_x] != 0
         self.state[0:5] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, on_track]
         if len(self.car.future_corners) >= 2:
-            self.state[5:8] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[8:11] = self.ProcessCorner(self.car.future_corners[1])
+            self.state[5:7] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[7:9] = self.ProcessCorner(self.car.future_corners[1])
         elif len(self.car.future_corners) == 1:
-            self.state[5:8] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[8:11] = [0, 0, 0]
+            self.state[5:7] = self.ProcessCorner(self.car.future_corners[0])
+            self.state[7:9] = [0, 0]
         else:
-            self.state[5:11] = [0, 0, 0, 0 ,0 ,0]
+            self.state[5:9] = [0, 0, 0 ,0]
 
-        self.state[11:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
+        self.state[9:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
 
         return self.state
     

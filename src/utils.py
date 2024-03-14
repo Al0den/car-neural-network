@@ -213,13 +213,23 @@ def get_terminal_width():
     columns, _ = shutil.get_terminal_size()
     return columns
 
-def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc):
+def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc, working):
+
     terminal_width = get_terminal_width()
 
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])
 
     progress = int(alive_agents / total_agents * (terminal_width * 1/2))
     progress_bar = f"Progress: [{colored('#' * progress, 'red')}{colored('.' * (int(terminal_width * 1/2) - progress), 'green')}] {alive_agents}/{total_agents}"
+    def worker_color(worker_num):
+        match worker_num:
+            case 0: return 'red'
+            case 1: return 'yellow'
+            case 2: return 'green'
+            case 3: return 'blue'
+    working_bar = ""
+    for worker in working:
+        working_bar += colored('█ ', worker_color(worker))
 
     def colored_length(text):
         # Function to calculate the length of the colored text
@@ -252,8 +262,7 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
     else:
         results_line = f"Previous Completion: {game.environment.previous_best_score/(score_multiplier * game.map_tries) * 100:0.2f}% | Best Lap Time: {display_lap_time}"
 
-    print("\033c", end='')
-    print(f"\n{generation_line:^{terminal_width}}\n\n"
+    print(f"\033c\n{generation_line:^{terminal_width - colored_length(generation_line) + len(generation_line)}}\n\n"
           f"{progress_bar:^{terminal_width - colored_length(progress_bar) + len(progress_bar)}}\n\n"
           f"{info_line_1:^{terminal_width - colored_length(info_line_1) + len(info_line_1)}}\n\n"
           f"{info_line_2:^{terminal_width - colored_length(info_line_2) + len(info_line_2)}}\n\n"
@@ -261,4 +270,5 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
           f"{trajectory_line_1:^{terminal_width - colored_length(trajectory_line_1) + len(trajectory_line_1)}}\n\n"
           f"{trajectory_line_2:^{terminal_width - colored_length(trajectory_line_2) + len(trajectory_line_2)}}\n\n"
           f"{results_line:^{terminal_width - colored_length(results_line) + len(results_line)}}\n\n"
-          f"{time_left_line:^{terminal_width - colored_length(time_left_line) + len(time_left_line)}}\n\n")
+          f"{time_left_line:^{terminal_width - colored_length(time_left_line) + len(time_left_line)}}\n\n"
+          f"{working_bar:^{terminal_width - colored_length(working_bar) + len(working_bar)}}\n")

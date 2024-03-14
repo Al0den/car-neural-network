@@ -8,10 +8,10 @@ from settings import *
 
 class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
-        self.previous_lap_times_short = [0] * 10
-        self.previous_completion_short = [0] * 10
-        self.previous_lap_times_long = [0] * 50
-        self.previous_completion_long = [0] * 50
+        self.previous_lap_times_short = [0] * 25
+        self.previous_completion_short = [0] * 25
+        self.previous_lap_times_long = [0] * 100
+        self.previous_completion_long = [0] * 100
 
         self.options = options
         self.track = track
@@ -184,6 +184,8 @@ class Environment:
         self.previous_lap_times_long = data['previous_lap_times_long']
         self.previous_completion_short = data['previous_completion_short']
         self.previous_lap_times_short = data['previous_lap_times_short']
+        self.previous_best_lap = data['previous_best_lap']
+        self.previous_best_score = data['previous_best_score']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
 
         for agent in self.agents:
@@ -269,6 +271,12 @@ class Environment:
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
+        self.previous_completion_long = data['previous_completion_long']
+        self.previous_lap_times_long = data['previous_lap_times_long']
+        self.previous_completion_short = data['previous_completion_short']
+        self.previous_lap_times_short = data['previous_lap_times_short']
+        self.previous_best_lap = data['previous_best_lap']
+        self.previous_best_score = data['previous_best_score']
         self.generation = data['generation'] + 1
 
         for agent in self.agents:

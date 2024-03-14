@@ -1,10 +1,10 @@
-points_offset = [0, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
+points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 11
+state_space_size = len(points_offset) + 9
 first_layer_size_coeff = 1.3
-num_hidden_layers = 1
+num_hidden_layers = 2
 action_space_size = 4
 map_tries = 20
 
@@ -17,10 +17,8 @@ max_center_line_distance = 20
 first_layer_size = int(state_space_size * first_layer_size_coeff)
 
 # - Parameters
-point_search_jump = 10.0
 perft_ticks = 10
 perft_duration = 20
-center_line_hash_size = 100000
 specialised_training_multiple = 3
 compile_shaders = False
 key_press_delay = 0.1
@@ -70,7 +68,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.1
+mutation_strenght = 0.15
 
 max_ticks_before_kill = 30000
 min_speed = 5
