@@ -8,10 +8,8 @@ from settings import *
 
 class Environment:
     def __init__(self, options, track, player, start_pos, start_dir, track_name=None):
-        self.previous_lap_times_short = [0] * 25
-        self.previous_completion_short = [0] * 25
-        self.previous_lap_times_long = [0] * 100
-        self.previous_completion_long = [0] * 100
+        self.previous_lap_times = []
+        self.previous_completion = [] 
 
         self.options = options
         self.track = track
@@ -156,12 +154,10 @@ class Environment:
             'hidden_layer_size': self.options['hidden_layer_size'],
             'num_hidden_layers': self.options['num_hidden_layers'],
             'generation': self.generation,
-            'previous_lap_times_short': self.previous_lap_times_short,
-            'previous_completion_short': self.previous_completion_short,
-            'previous_lap_times_long': self.previous_lap_times_long,
-            'previous_completion_long': self.previous_completion_long,
+            'previous_lap_times': self.previous_lap_times,
+            'previous_completion': self.previous_completion,
             'previous_best_lap': self.previous_best_lap,
-            'previous_best_score': self.previous_best_score
+            'previous_best_score': self.previous_best_score,
         }
         np.save(path, data, allow_pickle=True)
 
@@ -180,10 +176,8 @@ class Environment:
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
-        self.previous_completion_long = data['previous_completion_long']
-        self.previous_lap_times_long = data['previous_lap_times_long']
-        self.previous_completion_short = data['previous_completion_short']
-        self.previous_lap_times_short = data['previous_lap_times_short']
+        self.previous_completion = data['previous_completion']
+        self.previous_lap_times = data['previous_lap_times']
         self.previous_best_lap = data['previous_best_lap']
         self.previous_best_score = data['previous_best_score']
         self.generation = data['generation'] + 1 # Since we saved agents, we are starting to teach them the next generation
@@ -209,7 +203,8 @@ class Environment:
             'input_size': self.options['state_space_size'],
             'output_size': self.options['action_space_size'],
             'hidden_layer_size': self.options['hidden_layer_size'],
-            'num_hidden_layers': self.options['num_hidden_layers']
+            'num_hidden_layers': self.options['num_hidden_layers'],
+            'direction': best_agent.car.start_direction
         }
         np.save(path + str(generations), data)
     
@@ -271,10 +266,10 @@ class Environment:
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
-        self.previous_completion_long = data['previous_completion_long']
-        self.previous_lap_times_long = data['previous_lap_times_long']
-        self.previous_completion_short = data['previous_completion_short']
-        self.previous_lap_times_short = data['previous_lap_times_short']
+       
+        self.previous_lap_times = data['previous_lap_times']
+        self.previous_completion = data['previous_completion']
+        
         self.previous_best_lap = data['previous_best_lap']
         self.previous_best_score = data['previous_best_score']
         self.generation = data['generation'] + 1

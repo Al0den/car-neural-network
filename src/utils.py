@@ -44,9 +44,15 @@ def get_new_starts(track, n, turn_intensity):
     start_positions = []
 
     positions = np.argwhere(track == 10).tolist()
-    turn_intensity_threshold = np.mean(turn_intensity) * 10
+    turn_intensity_threshold = np.mean(turn_intensity) * 25
     print(f" - Found {len(positions)} potential starts")
-    positions = [pos for pos in positions if turn_intensity[pos[0], pos[1]] < turn_intensity_threshold]
+    positions.sort(key=lambda pos: turn_intensity[pos[0], pos[1]])
+
+    # Calculate the number of positions to keep (85% of total)
+    num_positions_to_keep = int(len(positions) * 0.85)
+
+    # Select the top 80% of positions
+    positions = positions[:num_positions_to_keep]
     print(" - Found", len(positions), "valid start positions")
     if not positions: return []
 
@@ -213,7 +219,7 @@ def get_terminal_width():
     columns, _ = shutil.get_terminal_size()
     return columns
 
-def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, tss, tls, tsc, tlc, working):
+def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working):
 
     terminal_width = get_terminal_width()
 
@@ -242,15 +248,12 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
 
     time_left_line = f"Time Spent: {human_formatted} - Ticks: {int(tot_ticks/game.options['cores'])}"
 
-    tls_color = 'green' if tls > 0 else 'red'
-    tss_color = 'green' if tss > 0 else 'red'
-    tlc_color = 'green' if tlc > 0 else 'red'
-    tsc_color = 'green' if tsc > 0 else 'red'
+    tls_color = 'green' if tc <= 0 else 'red'
+    tss_color = 'green' if ts >= 0 else 'red'
 
     # Adjusted the formatting to consider colored text length
-    trajectory_line_1 = f"Long Term Lap Improvement: {colored(tls, tls_color)} | Short Term Lap Improvement: {colored(tss, tss_color)}"
-    trajectory_line_2 = f"Long Term Completion Improvement: {colored(tlc, tlc_color)} | Short Term Completion Improvement: {colored(tsc, tsc_color)}"
-
+    trajectory_line_1 = f"Lap Improvement: {colored(tc, tls_color)} | Score Improvement: {colored(ts, tss_color)}"
+    
     # Convert lap time to m:ss
     display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))
 
@@ -268,7 +271,6 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
           f"{info_line_2:^{terminal_width - colored_length(info_line_2) + len(info_line_2)}}\n\n"
           f"{info_line_3:^{terminal_width - colored_length(info_line_3) + len(info_line_3)}}\n\n"
           f"{trajectory_line_1:^{terminal_width - colored_length(trajectory_line_1) + len(trajectory_line_1)}}\n\n"
-          f"{trajectory_line_2:^{terminal_width - colored_length(trajectory_line_2) + len(trajectory_line_2)}}\n\n"
           f"{results_line:^{terminal_width - colored_length(results_line) + len(results_line)}}\n\n"
           f"{time_left_line:^{terminal_width - colored_length(time_left_line) + len(time_left_line)}}\n\n"
           f"{working_bar:^{terminal_width - colored_length(working_bar) + len(working_bar)}}\n")

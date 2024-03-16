@@ -4,7 +4,7 @@ points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 center_line_input = True
 state_space_size = len(points_offset) + 9
 first_layer_size_coeff = 1.3
-num_hidden_layers = 2
+num_hidden_layers = 1
 action_space_size = 4
 map_tries = 20
 
@@ -70,11 +70,11 @@ score_multiplier = 10000
 
 mutation_strenght = 0.15
 
-max_ticks_before_kill = 30000
+max_ticks_before_kill = 25000
 min_speed = 5
 base_score_per_checkpoint = 0
 
-agent_selection_coeff = 4
+agent_selection_coeff = 5
 
 # - Render Options
 default_width = 1220

@@ -14,6 +14,8 @@ struct Arete {
     int p;
 };
 
+// Question 15
+
 struct Arete* liste_aretes(struct Graphe g) {
     struct Arete* liste = malloc(sizeof(struct Arete) * (int)(g.V * (g.V - 1)/2));
     assert(liste != NULL);
@@ -28,6 +30,8 @@ struct Arete* liste_aretes(struct Graphe g) {
     }
     return liste;
 }
+
+// Question 16
 
 struct Graphe* init_kruskal(struct Graphe g) {
     struct Graphe* res = malloc(sizeof(struct Graphe));
@@ -44,32 +48,55 @@ struct Graphe* init_kruskal(struct Graphe g) {
     return res;
 }
 
+void tri_aretes(struct Arete a[], int k);
+
 struct Graphe kruskal(struct Graphe g) {
-    struct Arete* liste = liste_aretes(g);
     struct Graphe* res = init_kruskal(g);
-    int* comp = malloc(sizeof(int) * g.V);
-    assert(comp != NULL);
-    for (int i=0; i<g.V; i++) {
-        comp[i] = i;
+    struct Arete* aretes = liste_aretes(g);
+    int nb_aretes = g.V * (g.V - 1) / 2;
+    tri_aretes(aretes, nb_aretes);
+    int* parent = malloc(sizeof(int) * g.V);
+    assert(parent != NULL);
+    for (int i = 0; i < g.V; i++) {
+        parent[i] = i;
     }
-    for (int i=0; i<g.V; i++) {
-        int s1 = liste[i].s1;
-        int s2 = liste[i].s2;
-        if (comp[s1] != comp[s2]) {
-            res->adj[s1 * g.V + s2] = liste[i].p;
-            res->adj[s2 * g.V + s1] = liste[i].p;
-            int old_comp = comp[s2];
-            for (int j=0; j<g.V; j++) {
-                if (comp[j] == old_comp) {
-                    comp[j] = comp[s1];
-                }
-            }
+    int index = 0; 
+    for (int i = 0; i < nb_aretes; i++) {
+        int u = aretes[i].s1;
+        int v = aretes[i].s2;
+        int u_ens = find(parent, u);
+        int v_ens = find(parent, v);
+        if (u_ens != v_ens) {
+            res->adj[u * g.V + v] = 1;
+            res->adj[v * g.V + u] = 1;
+            // res->adj[u * g.V + v] = aretes[i].p;
+            // res->adj[v * g.V + u] = aretes[i].p;
+            union_sets(parent, u_ens, v_ens);
+            index++;
+        }
+        if (index == g.V - 1) {
+            break;
         }
     }
-    free(comp);
-    free(liste);
+    free(parent);
+    free(aretes);
     return *res;
 }
+
+int find(int parent[], int i) {
+    if (parent[i] == i) {
+        return i;
+    }
+    return find(parent, parent[i]);
+}
+
+void union_sets(int parent[], int u, int v) {
+    int u_set = find(parent, u);
+    int v_set = find(parent, v);
+    parent[u_set] = v_set;
+}
+
+// Question 18
 
 int degre(struct Graphe g, int i) {
     int s = 0;
@@ -80,6 +107,8 @@ int degre(struct Graphe g, int i) {
     }
     return s;
 }
+
+// Question 19
 
 int *sommets_impairs(struct Graphe g, int *nb_sommets) {
     int *degres = malloc(sizeof(int) * g.V);
@@ -103,9 +132,6 @@ int *sommets_impairs(struct Graphe g, int *nb_sommets) {
     }
     return res;
 }
-
-
-
 
 int main() {}
 

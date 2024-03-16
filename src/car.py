@@ -98,10 +98,10 @@ class Car:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
     
         res = ( track_val == 3 or
-            self.track[self.int_y + 1, self.int_x + 1] == 3 or
-            self.track[self.int_y - 1, self.int_x - 1] == 3 or
-            self.track[self.int_y + 1, self.int_x - 1] == 3 or
-            self.track[self.int_y - 1, self.int_x + 1] == 3
+            self.track[self.int_y + 2, self.int_x + 2] == 3 or
+            self.track[self.int_y - 2, self.int_x - 2] == 3 or
+            self.track[self.int_y + 2, self.int_x - 2] == 3 or
+            self.track[self.int_y - 2, self.int_x + 2] == 3
         )
         if res:
             self.GetNearestCenterline()
