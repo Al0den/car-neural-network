@@ -220,7 +220,6 @@ def get_terminal_width():
     return columns
 
 def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working):
-
     terminal_width = get_terminal_width()
 
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])
@@ -252,7 +251,7 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
     tss_color = 'green' if ts >= 0 else 'red'
 
     # Adjusted the formatting to consider colored text length
-    trajectory_line_1 = f"Lap Improvement: {colored(tc, tls_color)} | Score Improvement: {colored(ts, tss_color)}"
+    trajectory_line_1 = f"Lap Improvement: {colored(ts, tls_color)} | Score Improvement: {colored(tc, tss_color)}"
     
     # Convert lap time to m:ss
     display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))

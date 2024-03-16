@@ -222,11 +222,11 @@ class Car:
         # - Car speed
         self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
-        drag_force = 0.5 * (drag_coeff) * (reference_area * (1 + abs(self.steer))) * pow(self.speed, 2)
-        steer_drag_force = drag_force * abs(self.steer * 1/8)
+        drag_force = 0.5 * (drag_coeff) * (reference_area) * pow(self.speed, 2)
+        steer_drag_force = drag_force * abs(self.steer * 1/10)
         drag_acceleration = drag_force / car_mass
         steer_drag_acceleration = steer_drag_force / car_mass
-        self.speed -= drag_acceleration * delta_t * (1-self.acceleration)
+        self.speed -= drag_acceleration * delta_t * abs((1-self.acceleration) * (1-self.brake))
         self.speed -= steer_drag_acceleration * delta_t
         
         self.direction %= 360

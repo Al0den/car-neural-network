@@ -577,13 +577,12 @@ class Game:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
         else:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
-        if len(self.environment.previous_lap_times) > 1 and len(self.environment.previous_completion) > 1: 
+        if len(self.environment.previous_lap_times) > 1: 
             # Create a set of weights following e^(-x/30), so that the last index is of weight 1, and first the lowest weight., for previous compeltion
             # Then average out by dividing by sum of weights
             weights = [np.exp(-i/30) for i in range(len(self.environment.previous_lap_times)-1)]
-            weights = weights[::-1]
-            trajectory_completion = round(sum([(self.environment.previous_completion[i+1] - self.environment.previous_completion[i]) * weights[i] for i in range(len(self.environment.previous_completion) - 1)]) / sum(weights), 2)
-            trajectory_score = round(sum([(self.environment.previous_lap_times[i+1] - self.environment.previous_lap_times[i]) * weights[i] for i in range(len(self.environment.previous_lap_times)- 1)]) / sum(weights), 2)
+            trajectory_completion = round(sum([(self.environment.previous_completion[i] - self.environment.previous_completion[i+1]) * weights[i] for i in range(len(self.environment.previous_completion) - 2)]) / sum(weights), 2)
+            trajectory_score = round(sum([(self.environment.previous_lap_times[i] - self.environment.previous_lap_times[i+1]) * weights[i] for i in range(len(self.environment.previous_lap_times) - 2)]) / sum(weights), 2)
         else:
             trajectory_completion = 0
             trajectory_score = 0

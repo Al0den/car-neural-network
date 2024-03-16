@@ -266,9 +266,12 @@ class Environment:
         self.options['action_space_size'] = data['output_size']
         self.options['hidden_layer_size'] = data['hidden_layer_size']
         self.options['num_hidden_layers'] = data['num_hidden_layers']
-       
-        self.previous_lap_times = data['previous_lap_times']
-        self.previous_completion = data['previous_completion']
+        if method == "specialised":
+            self.previous_lap_times = data['previous_lap_times']
+            self.previous_completion = data['previous_completion']
+        else:
+            self.previous_lap_times = []
+            self.previous_completion = []
         
         self.previous_best_lap = data['previous_best_lap']
         self.previous_best_score = data['previous_best_score']
