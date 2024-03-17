@@ -33,8 +33,8 @@ pre_load = True
 min_checkpoint_distance = 200
 max_time_on_checkpoint = 200
 safety_ticks = 150
-single_track_players = [0, 3, 4, 7, 9]
-global_metal_instance_players = [0, 4, 5, 7, 8]
+single_track_players = [0, 3, 4, 6, 7, 9]
+global_metal_instance_players = [0, 4, 5, 6, 7, 8]
 
 # - Live Data Parameters
 prev_ticks = 0
@@ -68,7 +68,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.15
+mutation_strenght = 0.2
 
 max_ticks_before_kill = 25000
 min_speed = 5

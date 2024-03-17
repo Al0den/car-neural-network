@@ -88,36 +88,37 @@ def ContinuousMethod(game, game_options, pygame):
     game.ticks = 0
 
 def HumanVSaiMethod(game, game_options, pygame):
-    if game.environment.agents[0].car.died:
-        game.restart = True
-        game.environment.agents[0].car.Kill()
-        game.environment.agents[0].car.died = False
-        game.environment.agents[0].car.x = game.start_pos[0]
-        game.environment.agents[0].car.y = game.start_pos[1]
-        game.environment.agents[0].car.direction = game.start_dir
-    elif game.started:
-        game.environment.agents[1].tick(0, game)
-        game.environment.agents[0].car.applyPlayerInputs()
-        game.environment.agents[0].car.updateCar()
-        game.environment.agents[0].car.checkCollisions(game.ticks)
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_r] or game.restart == True:
-        best_agent, agent = extract_best_agent("./data/train/", game_options['environment'], game, game.start_pos, game.start_dir)
-        print(f" - Loading best agent {best_agent}")
-
-        game.environment.agents[1] = agent
-        game.environment.agents[0] = Agent(game_options['environment'], game.track, game.start_pos, game.start_dir, game.track_name)
-        game.started = False
-    if keys[pygame.K_SPACE] and game.started == False:
+    if keys[pygame.K_SPACE] and not game.started:
         game.started = True
-        game.environment.agents[0].car.x = game.start_pos[0]
-        game.environment.agents[0].car.y = game.start_pos[1]
-        game.environment.agents[0].car.direction = game.start_dir
-        game.environment.agents[1].car.direction = game.start_dir
-        game.environment.agents[1].car.x = game.start_pos[0]
-        game.environment.agents[1].car.y = game.start_pos[1]
-    if keys[pygame.K_v]:
-        game.visual = not game.visual
+    if keys[pygame.K_r] or game.environment.agents[0].car.died:
+        game.started = False
+        game.environment.agents[0].car.x, game.environment.agents[0].car.y = game.real_starts[game.track_name][0][1], game.real_starts[game.track_name][0][0]
+        game.environment.agents[0].car.direction = game.real_starts[game.track_name][1]
+        game.environment.agents[0].car.died = False
+        game.environment.agents[0].car.speed = 0
+        game.environment.agents[0].car.acceleration = 1
+        game.environment.agents[0].car.setFutureCorners(game.corners[game.track_name])
+        game.environment.agents[0].car.speed = game.config['quali_start_speed'].get(game.track_name)
+
+        game.environment.agents[1].car.x, game.environment.agents[1].car.y = game.real_starts[game.track_name][0][1], game.real_starts[game.track_name][0][0]
+        game.environment.agents[1].car.direction = game.real_starts[game.track_name][1]
+        game.environment.agents[1].car.died = False
+        game.environment.agents[1].car.speed = 0
+        game.environment.agents[1].car.acceleration = 1
+        game.environment.agents[1].car.setFutureCorners(game.corners[game.track_name])
+        game.environment.agents[1].car.speed = game.config['quali_start_speed'].get(game.track_name)
+
+        np.save(f"./data/train/versus_data.npy", game.data)
+
+        game.ticks = 0
+    if game.last_keys_update + key_press_delay < datetime.now().timestamp():
+        if keys[pygame.K_v]:
+            game.visual = not game.visual
+            game.last_keys_update = datetime.now().timestamp()
+        if keys[pygame.K_b]:
+            game.debug = not game.debug
+            game.last_keys_update = datetime.now().timestamp()
     
 def update_speed(game, pygame):
     keys = pygame.key.get_pressed()

@@ -96,10 +96,23 @@ class Game:
             self.environment.generation = best_agent
             self.environment.agents[0] = agent
         elif self.player == 6:
-            _, agent = self.load_best_agent("./data/train/trained")
+            import pygame
+            _, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained/")
 
             self.environment.agents[1] = agent
             self.environment.agents[0] = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
+
+            self.environment.agents[1].car.speed = self.config['quali_start_speed'].get(self.track_name)
+            self.environment.agents[1].car.acceleration = 1
+
+            self.environment.agents[0].car.speed = self.config['quali_start_speed'].get(self.track_name)
+            self.environment.agents[0].car.acceleration = 1
+
+            self.environment.agents[1].car.setFutureCorners(self.corners[self.track_name])
+            self.environment.agents[0].car.setFutureCorners(self.corners[self.track_name])
+
+            self.data = [{"speed": [], "power": [], "brake": []}, {"speed": [], "power": [], "brake": []}]
+
         elif self.player == 7:
             if game_options['generation_to_load'] == 0:
                 best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained/")
@@ -237,6 +250,8 @@ class Game:
 
         self.prev_update = time.time()
         self.start_time = time.time()
+
+        self.CalculateProgressionValues()
     
     def tick(self):
         if self.player == 0:
@@ -263,6 +278,21 @@ class Game:
             else:
                 self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
+        elif self.player == 6:
+            if self.started:
+                self.environment.agents[0].car.ApplyPlayerInputs()
+                self.environment.agents[0].car.UpdateCar()
+                self.environment.agents[0].car.CheckCollisions(self.ticks)
+                self.environment.agents[1].Tick(self.ticks, self)
+                self.ticks += 1
+
+                self.data[0]["speed"].append(self.environment.agents[0].car.speed)
+                self.data[0]["power"].append(self.environment.agents[0].car.acceleration)
+                self.data[0]["brake"].append(self.environment.agents[0].car.brake)
+                self.data[1]["speed"].append(self.environment.agents[1].car.speed)
+                self.data[1]["power"].append(self.environment.agents[1].car.acceleration)
+                self.data[1]["brake"].append(self.environment.agents[1].car.brake)
+
         elif self.player == 7:
             self.environment.agents[0].Tick(self.ticks, self)
             self.ticks += 1
@@ -549,6 +579,8 @@ class Game:
             self.lap_times[i] = 0
             self.laps[i] = 0
 
+        self.CalculateProgressionValues()
+
     def LiveUpdateData(self, tps_values, start, prev_ticks):
         alive_agents, ticks, min_ticks, max_ticks, max_alive, min_alive, tot_input, tot_metal, tot_tick = 0, 0, 0, 0, 0, 0, 0, 0, 0
         for i in range(int(len(self.log_data)/5)):
@@ -577,16 +609,23 @@ class Game:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
         else:
             smoothed_tps = round(sum(tps_values) / len(tps_values), 1)
+        
+        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, self.trajectory_score, self.trajectory_completion
+    
+    def CalculateProgressionValues(self):
         if len(self.environment.previous_lap_times) > 1: 
-            # Create a set of weights following e^(-x/30), so that the last index is of weight 1, and first the lowest weight., for previous compeltion
-            # Then average out by dividing by sum of weights
             weights = [np.exp(-i/30) for i in range(len(self.environment.previous_lap_times)-1)]
             trajectory_completion = round(sum([(self.environment.previous_completion[i] - self.environment.previous_completion[i+1]) * weights[i] for i in range(len(self.environment.previous_completion) - 2)]) / sum(weights), 2)
-            trajectory_score = round(sum([(self.environment.previous_lap_times[i] - self.environment.previous_lap_times[i+1]) * weights[i] for i in range(len(self.environment.previous_lap_times) - 2)]) / sum(weights), 2)
         else:
             trajectory_completion = 0
+
+        non_zero_lap_times = [i for i in self.environment.previous_lap_times if i != 0]
+        if len(non_zero_lap_times) > 1:
+            trajectory_score = round(sum([(non_zero_lap_times[i] - non_zero_lap_times[i+1]) * weights[i] for i in range(len(non_zero_lap_times) - 2)]) / sum(weights), 2)
+        else:
             trajectory_score = 0
-        return alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, trajectory_score, trajectory_completion
+        self.trajectory_score = trajectory_score
+        self.trajectory_completion = trajectory_completion
 
     def CreateAgentsBatches(self):
         all_agents = []

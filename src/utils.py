@@ -193,7 +193,7 @@ def InitialiseDisplay(game, game_options, pygame):
     from render import Render
     pygame.init()
     clock = pygame.time.Clock()
-    game.screen = pygame.display.set_mode((game_options['screen_width'], game_options['screen_height']), pygame.RESIZABLE | pygame.SRCALPHA)
+    game.screen = pygame.display.set_mode((game_options['screen_width'], game_options['screen_height']), pygame.FULLSCREEN | pygame.SRCALPHA)
     game.render = Render(game.screen, game_options, game)
     game.clock = clock
     pygame.display.set_caption("Car Game")
@@ -247,11 +247,11 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
 
     time_left_line = f"Time Spent: {human_formatted} - Ticks: {int(tot_ticks/game.options['cores'])}"
 
-    tls_color = 'green' if tc <= 0 else 'red'
-    tss_color = 'green' if ts >= 0 else 'red'
+    tc_color = 'green' if tc >= 0 else 'red'
+    ts_color = 'green' if ts <= 0 else 'red'
 
     # Adjusted the formatting to consider colored text length
-    trajectory_line_1 = f"Lap Improvement: {colored(ts, tls_color)} | Score Improvement: {colored(tc, tss_color)}"
+    trajectory_line_1 = f"Lap Improvement: {colored(ts, ts_color)} | Score Improvement: {colored(tc, tc_color)}"
     
     # Convert lap time to m:ss
     display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))
