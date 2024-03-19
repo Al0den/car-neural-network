@@ -285,13 +285,21 @@ class Game:
                 self.environment.agents[0].car.CheckCollisions(self.ticks)
                 self.environment.agents[1].Tick(self.ticks, self)
                 self.ticks += 1
-
-                self.data[0]["speed"].append(self.environment.agents[0].car.speed)
-                self.data[0]["power"].append(self.environment.agents[0].car.acceleration)
-                self.data[0]["brake"].append(self.environment.agents[0].car.brake)
-                self.data[1]["speed"].append(self.environment.agents[1].car.speed)
-                self.data[1]["power"].append(self.environment.agents[1].car.acceleration)
-                self.data[1]["brake"].append(self.environment.agents[1].car.brake)
+                if self.environment.agents[0].car.speed == 0:
+                    # Just copy the previous value in all arrays
+                    self.data[0]["speed"].append(self.data[0]["speed"][-1])
+                    self.data[0]["power"].append(self.data[0]["power"][-1])
+                    self.data[0]["brake"].append(self.data[0]["brake"][-1])
+                    self.data[1]["speed"].append(self.data[1]["speed"][-1])
+                    self.data[1]["power"].append(self.data[1]["power"][-1])
+                    self.data[1]["brake"].append(self.data[1]["brake"][-1])
+                else:
+                    self.data[0]["speed"].append(self.environment.agents[0].car.speed)
+                    self.data[0]["power"].append(self.environment.agents[0].car.acceleration)
+                    self.data[0]["brake"].append(self.environment.agents[0].car.brake)
+                    self.data[1]["speed"].append(self.environment.agents[1].car.speed)
+                    self.data[1]["power"].append(self.environment.agents[1].car.acceleration)
+                    self.data[1]["brake"].append(self.environment.agents[1].car.brake)
 
         elif self.player == 7:
             self.environment.agents[0].Tick(self.ticks, self)
@@ -348,7 +356,6 @@ class Game:
             self.ticks += 1
 
     def initialise_process(self):
-
         num_processes = self.options['cores']
         num_agents = len(self.environment.agents)
         processes = []
