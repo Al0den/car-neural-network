@@ -23,6 +23,8 @@ from metal import Metal
 from corners import get_corners
 from precomputed import offsets
 
+from utils import next_speed
+
 class Game:
     def __init__(self, game_options):
         self.player = game_options['player']
@@ -50,6 +52,7 @@ class Game:
         self.track_name = game_options['track_name'] # - Track name
 
         self.shared_tracks = None
+        self.speed_precalc = None
 
         with open("./src/config.json") as f: self.config = json.load(f)
 
@@ -64,6 +67,8 @@ class Game:
         self.environment = Environment(game_options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
         
         self.car_numbers = [0] * len(self.environment.agents)
+
+        self.issues = Value('i', 0, lock=False)
         
         if self.player == 0:
             self.car = Car(self.track, self.start_pos, self.start_dir, self.track_name)
@@ -220,6 +225,13 @@ class Game:
             print(" - Starting performance test...")
             self.totalScore = 0
             self.runs = 0
+            self.pre_calc_speed = []
+            for i in range(0, 3399, 1):
+                self.pre_calc_speed.append(next_speed(i/10))
+            self.pre_calc_speed = np.array(self.pre_calc_speed)
+
+            for i in range(len(self.environment.agents)):
+                self.environment.agents[i].car.speed_pre_calc = self.pre_calc_speed
             
         elif self.player == 11:
             data = np.load("./data/per_track/" + self.track_name + "/generated_run.npy", allow_pickle=True).item()
@@ -389,6 +401,12 @@ class Game:
         track_index = MetalInstance.getTrackIndexes()
 
         self.tracks = {}
+        
+        speed_pre_calc = [0] * 3601
+        for i in range(0, 3399, 1):
+            speed_pre_calc[i] = next_speed(i/10)
+
+        speed_pre_calc = np.array(speed_pre_calc)
 
         for track_name in self.track_names:
             track_id = track_index[track_name]
@@ -408,6 +426,7 @@ class Game:
 
             for agent in agents:
                 agent.car.track = self.tracks[agent.car.track_name]
+                agent.car.speed_pre_calc = speed_pre_calc
 
             alive = len(agents)
             ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
@@ -525,7 +544,7 @@ class Game:
             time.sleep(0.1)
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:])
+            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
 
         thread = threading.Thread(target=self.CreateFutureStartsData)
         thread.start()
@@ -534,7 +553,7 @@ class Game:
             time.sleep(update_delay)
             alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
-            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:])
+            update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
 
         self.logger_data = {
             "tps": TPS,
@@ -572,6 +591,7 @@ class Game:
             if score >= 1: 
                 agent.car.CalculateMaxPotential()
                 if abs(agent.car.seen - agent.car.max_pot_seen) < 40: return
+                self.issues.value += 1
                 print(f"Weird score..., track: {agent.car.track_name}, start_x-start_y: {agent.car.start_x}-{agent.car.start_y}, start_dir: {agent.car.start_direction}, final_x-final_y: {agent.car.finish_x}-{agent.car.finish_y}, seen: {agent.car.seen}, max_pot: {agent.car.max_pot_seen}")
                 # Weird score, shouldnt be saved
                 return
@@ -640,7 +660,7 @@ class Game:
 
         for i in range(self.map_tries):
             for k in range(len(self.environment.agents)):
-                new_agent = Agent(self.options['environment'], self.tracks[start_tracks[i]], starts[i][0], starts[i][1], start_tracks[i])
+                new_agent = Agent(self.options['environment'], self.tracks[start_tracks[i]], starts[i][0], starts[i][1], start_tracks[i], False)
                 new_agent.network = self.environment.agents[k].network
                 new_agent.SetAgent(starts[i], self.tracks[start_tracks[i]], start_tracks[i])
                 
@@ -938,6 +958,7 @@ class Game:
     def performanceTest(self):
         tick_time = 0
         self.debug = True
+        
         for track_name in self.track_names:
             track = self.tracks[track_name]
             pos, direction = random.choice(self.start_positions[track_name])
@@ -949,16 +970,20 @@ class Game:
                 agent.car.y = pos[0]
                 agent.car.direction = direction
                 agent.car.UpdateCorners()
-            
+
+            rand = np.array([np.random.uniform(0, 200)] * len(points_offset))
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):
-                    agent.Tick(i, self, np.array([np.random.uniform(0, 200)] * len(points_offset)))
+                    agent.Tick(i, self, rand)
             tick_time += time.time() - start_time
         score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score
         self.runs += 1
-        self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name)
+        self.environment = Environment(self.options['environment'], self.track, self.player, self.start_pos, self.start_dir, self.track_name, )
+
+        for i in range(len(self.environment.agents)):
+            self.environment.agents[i].car.speed_pre_calc = self.pre_calc_speed
     
     def exit(self, message="Exiting..."):
         print(message)

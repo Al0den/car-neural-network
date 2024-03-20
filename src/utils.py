@@ -25,10 +25,14 @@ def copy_network(network):
         copied_network.append(copied_layer_weights)
     return copied_network
 
-def next_speed(current_speed):
-    current_t = -4.5 * np.log(1-(current_speed/max_speed))
-    next_t = current_t + delta_t
-    return speed_after_t(next_t)
+def next_speed(current_speed, speed_pre_calc=None):
+    try:
+        return speed_pre_calc[int(current_speed * 10)]
+    except:
+        current_speed = int(current_speed * 10)/10
+        current_t = -4.5 * np.log(1-(current_speed/max_speed))
+        next_t = current_t + delta_t
+        return speed_after_t(next_t)
 
 def new_brake_speed(current_speed):
     applied_speed = min(current_speed, max_speed)
@@ -219,7 +223,7 @@ def get_terminal_width():
     columns, _ = shutil.get_terminal_size()
     return columns
 
-def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working):
+def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working, issues):
     terminal_width = get_terminal_width()
 
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])
@@ -251,7 +255,7 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
     ts_color = 'green' if ts <= 0 else 'red'
 
     # Adjusted the formatting to consider colored text length
-    trajectory_line_1 = f"Lap Improvement: {colored(ts, ts_color)} | Score Improvement: {colored(tc, tc_color)}"
+    trajectory_line_1 = f"Lap Improvement: {colored(ts, ts_color)} | Score Improvement: {colored(tc, tc_color)} | Issues: {issues}"
     
     # Convert lap time to m:ss
     display_lap_time = time.strftime("%M:%S", time.gmtime(game.environment.previous_best_lap/60))

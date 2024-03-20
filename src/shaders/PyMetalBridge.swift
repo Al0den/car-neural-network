@@ -15,6 +15,8 @@ var trackVectorBuffers = [Int: MTLBuffer]()
 var allTracksBuffer: MTLBuffer?
 var inBuffer: MTLBuffer?
 var outBuffer: MTLBuffer?
+var carOutBuffer: MTLBuffer?
+var carInBuffer: MTLBuffer?
 var offsetsBuffer: MTLBuffer?
 
 var commandBuffer : MTLCommandBuffer?
@@ -49,6 +51,41 @@ public func get_track_pointer(track: Int) -> UnsafeMutablePointer<UInt8> {
     let offsetInBytes = track * 5000 * 5000 * MemoryLayout<UInt8>.size
     let pointer = allTracksBuffer?.contents().advanced(by: offsetInBytes).bindMemory(to: UInt8.self, capacity: 5000 * 5000)
     return pointer!
+}
+
+@available(macOS 10.13, *)
+@_cdecl("update_car")
+public func update_car(count: Int) -> Int {
+    return updateCar(count: count)
+}
+
+@available(macOS 10.13, *)
+public func updateCar(count: Int) -> Int {
+    do {
+        let commandBuffer = commandQueue.makeCommandBuffer()
+        let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
+
+        let getPointsFunction = defaultLibrary.makeFunction(name: "update_car")!
+        let computePipelineState = try device.makeComputePipelineState(function: getPointsFunction)
+        computeCommandEncoder!.setComputePipelineState(computePipelineState)
+
+        computeCommandEncoder!.setBuffer(carInBuffer, offset: 0, index: 0)
+        computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
+        computeCommandEncoder!.setBuffer(carOutBuffer, offset: 0, index: 2)
+
+        let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
+        let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
+
+        computeCommandEncoder!.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+        computeCommandEncoder!.endEncoding()
+        commandBuffer!.commit()
+        commandBuffer!.waitUntilCompleted()
+
+        return 0
+    } catch {
+        print("\(error)")
+        return 1
+    }
 }
 
 @available(macOS 10.13, *)

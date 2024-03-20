@@ -7,7 +7,7 @@ from precomputed import sin, cos, offsets, directions, two_wide_offsets
 from settings import *
 
 class Car:
-    def __init__(self, track, start_pos, start_dir, track_name=None):
+    def __init__(self, track, start_pos, start_dir, track_name=None, speed_pre_calc=True):
         self.track = track
         self.track_name = track_name or False
 
@@ -53,10 +53,18 @@ class Car:
 
         self.UpdateCorners()
 
+        self.speed_pre_calc = None
+        if speed_pre_calc:
+            self.pre_calc_speed = []
+            for i in range(0, 3399, 1):
+                self.pre_calc_speed.append(next_speed(i/10))
+            self.speed_pre_calc = np.array(self.pre_calc_speed)
+
         self.died = False
         self.track_max_potential = None
 
         self.safe_from_end = False
+        self.end_check = 0
         
     def Tick(self, game):
         self.ApplyPlayerInputs()
@@ -96,20 +104,23 @@ class Car:
                     seen = True
             if seen == False:
                 self.checkpoints_seen.append((self.x, self.y, ticks))
-    
-        res = ( track_val == 3 or
-            self.track[self.int_y + 2, self.int_x + 2] == 3 or
-            self.track[self.int_y - 2, self.int_x - 2] == 3 or
-            self.track[self.int_y + 2, self.int_x - 2] == 3 or
-            self.track[self.int_y - 2, self.int_x + 2] == 3
-        )
-        if res:
-            self.GetNearestCenterline()
-            self.lap_time = ticks
-            if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
-                self.lap_time = 0
-            self.Kill()
-            return False
+        if (not self.safe_from_end) or ticks - self.end_check > 10:
+            self.end_check = ticks
+            self.safe_from_end = calculate_distance((self.x, self.y), self.end_pos) > 75 * self.ppm
+            if not self.safe_from_end:
+                res = ( track_val == 3 or
+                    self.track[self.int_y + 3, self.int_x + 3] == 3 or
+                    self.track[self.int_y - 3, self.int_x - 3] == 3 or
+                    self.track[self.int_y + 3, self.int_x - 3] == 3 or
+                    self.track[self.int_y - 3, self.int_x + 3] == 3
+                )
+                if res:
+                    self.GetNearestCenterline()
+                    self.lap_time = ticks
+                    if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
+                        self.lap_time = 0
+                    self.Kill()
+                    return False
         return True
     
     def Kill(self):
@@ -220,7 +231,7 @@ class Car:
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
         # - Car speed
-        self.speed += (next_speed(self.speed) - self.speed) * self.acceleration
+        self.speed += (next_speed(self.speed, self.speed_pre_calc) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
         drag_force = 0.5 * (drag_coeff) * (reference_area) * pow(self.speed, 2)
         steer_drag_force = drag_force * abs(self.steer * 1/5)
@@ -298,6 +309,7 @@ class Car:
         
         if game is not None and game.debug:
             print(f"Didnt find center line, using previous. Ticknum: {game.ticks}")
+            game.issues.value += 1
 
         self.center_line_direction = 0
         return self.previous_center_line

@@ -140,7 +140,6 @@ def update_visual(game, pygame):
             print(" * Toggling debug mode")
             game.debug = not game.debug
             game.last_keys_update = datetime.now().timestamp()
-    
 
 def continuous_commands(game, pygame):
     keys = pygame.key.get_pressed()

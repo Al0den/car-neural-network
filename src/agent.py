@@ -7,9 +7,12 @@ from settings import *
 max_corner_distance = 800
 
 class Agent:
-    def __init__(self, options, track, start_pos, start_dir, track_name=None):
-        self.car = Car(track, start_pos, start_dir, track_name)
-        self.InitializeNetwork(options)
+    def __init__(self, options, track, start_pos, start_dir, track_name=None, create_speed_pre_calc=True, create_network=True):
+        self.car = Car(track, start_pos, start_dir, track_name, create_speed_pre_calc)
+        if create_network:
+            self.InitializeNetwork(options)
+        else:
+            self.network = []
         self.evolution = ["r"]
         self.mutation_rates = ["-"]
         self.state = np.array([0.0] * state_space_size)

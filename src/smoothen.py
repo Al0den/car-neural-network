@@ -141,6 +141,8 @@ def smoothen(track):
         end_pos_y += end_pos[0]
     end_pos_x /= len(all_end_positions)
     end_pos_y /= len(all_end_positions)
+    print(end_pos_x, end_pos_y, track_matrix[int(end_pos_y), int(end_pos_x)])
+    assert(track_matrix[int(end_pos_y), int(end_pos_x)] in [3, 10])
 
     config_data['end_pos'][track] = (end_pos_x, end_pos_y)
     with open('./src/config.json', 'w') as json_file:

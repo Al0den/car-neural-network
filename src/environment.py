@@ -22,9 +22,11 @@ class Environment:
 
         self.previous_best_lap = 0
         self.previous_best_score = 0
-
-        self.agents = np.array([Agent(options, track, start_pos, start_dir, track_name) for _ in range(self.options['num_agents'])])
-
+        create_speed_pre_calc = True
+        if player in [10, 2, 3, 1]: 
+            create_speed_pre_calc = False
+        self.agents = np.array([Agent(options, track, start_pos, start_dir, track_name, create_speed_pre_calc) for _ in range(self.options['num_agents'])])
+        
         if player == 2 or player == 1: self.previous_agents = [None] * 30
         else: self.previous_agents = [None] * 10
 
@@ -51,7 +53,7 @@ class Environment:
         new_agents = []
         
         for father in best_agents:
-            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
             child.network = copy_network(father.network)
             child.evolution = father.evolution + ["i"]
             child.mutation_rates = father.mutation_rates + ["-"]
@@ -59,7 +61,7 @@ class Environment:
             
         for _ in range(max(1, int(len(ranked_agents) * previous_ratio))):
             if self.previous_agents == [] or self.previous_agents[0] == None: break
-            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
             father = None
             while father == None:
                 father, father_rank = self.linear_weighted_selection(self.previous_agents)
@@ -72,10 +74,10 @@ class Environment:
        
         while len(new_agents) < len(self.agents):
             randint = np.random.uniform(0,1)
-            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+            child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
             if randint > 1 - only_mutate_rate:
                 father, father_rank = self.linear_weighted_selection(ranked_agents)
-                child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name)
+                child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
                 child.network = copy_network(father.network)
                 child.father_rank = father_rank
                 rate = self.mutate(child)
