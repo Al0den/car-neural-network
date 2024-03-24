@@ -19,7 +19,7 @@ first_layer_size = int(state_space_size * first_layer_size_coeff)
 # - Parameters
 perft_ticks = 10
 perft_duration = 20
-specialised_training_multiple = 3
+specialised_training_multiple = 5
 compile_shaders = False
 key_press_delay = 0.1
 
@@ -45,7 +45,7 @@ tps_window_size = 20  # Adjust the window size as needed
 car_length = 5.23
 car_width = 1.8
 max_speed = 340 # Need to modify precalculated speed values if changed
-turn_coeff = 4.2
+turn_coeff = 4.05
 drag_coeff = 0.881
 reference_area = 1.7
 lift_coeff = -1.247
@@ -54,6 +54,7 @@ gravity = 9.81
 brake_increment = 1/10
 acceleration_increment = 1/10
 steer_increment = 1/10
+angle_resolution_factor = 10
 
 # - Evolution settings
 mutation_rates = [0.02, 0.05, 0.1, 0.2]
@@ -68,7 +69,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.14
+mutation_strenght = 0.15
 
 max_ticks_before_kill = 25000
 min_speed = 5

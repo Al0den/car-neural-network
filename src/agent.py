@@ -27,6 +27,7 @@ class Agent:
     def ProcessCorner(self, corner):
         corner_x, corner_y, corner_dir, corner_ampl = corner
         distance = min(1, calculate_distance((corner_x, corner_y), (self.car.x, self.car.y)) / (self.car.ppm * max_corner_distance))
+        #distance = abs(self.car.int_x - corner_x) + abs(self.car.int_y - corner_y)
         relative_angle = angle_range_180(self.car.direction - corner_dir)
         left_or_right = 1 if relative_angle >= 0 else -1
         return [distance, left_or_right * min(1, corner_ampl/100)]

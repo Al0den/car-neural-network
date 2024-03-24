@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, offsets, directions, two_wide_offsets
+from precomputed import sin, cos, offsets, directions, two_wide_offsets, tan
 from settings import *
 
 class Car:
@@ -223,9 +223,10 @@ class Car:
         
     def UpdateCar(self):     
         speed_factor = max(1.0 - pow(int(self.speed) / (max_speed), 0.5), 0.1)
-
         wheel_angle = speed_factor * self.steer * 14
-        turning_radius = self.c_length / np.tan(np.radians(wheel_angle)) if wheel_angle != 0 else float('inf')
+
+        tan_angle = tan[int((wheel_angle % 180) * angle_resolution_factor)]
+        turning_radius = self.c_length / tan_angle if tan_angle != 0 else float('inf')
 
         wheel_angle = np.arctan(self.c_length / (turning_radius - self.c_width / 2))
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
@@ -234,18 +235,16 @@ class Car:
         self.speed += (next_speed(self.speed, self.speed_pre_calc) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
         drag_force = 0.5 * (drag_coeff) * (reference_area) * pow(self.speed, 2)
-        steer_drag_force = drag_force * abs(self.steer * 1/5)
-        drag_acceleration = drag_force / car_mass
-        steer_drag_acceleration = steer_drag_force / car_mass
-        self.speed -= drag_acceleration * delta_t * abs((1-self.acceleration) * (1-self.brake))
-        self.speed -= steer_drag_acceleration * delta_t
+        drag_acceleration = drag_force * delta_t / car_mass
+        self.speed -= drag_acceleration * (1-self.acceleration) * (1-self.brake)
+        self.speed -= drag_acceleration * pow(self.steer * 1/3, 2)
         
         self.direction %= 360
         self.int_direction = int(self.direction)
         
         displacement = (self.speed / 3.6) * self.ppm
-        self.x += displacement * cos[(self.int_direction) * 10] * delta_t
-        self.y -= displacement * sin[(self.int_direction) * 10] * delta_t
+        self.x += displacement * cos[(self.int_direction) * angle_resolution_factor] * delta_t
+        self.y -= displacement * sin[(self.int_direction) * angle_resolution_factor] * delta_t
         
         self.int_x = int(self.x)
         self.int_y = int(self.y)
@@ -255,8 +254,8 @@ class Car:
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
         angle = np.arctan(half_small_side / half_big_side)
-        cos_1 = cos[(int(self.direction + angle - 90)% 360) * 10]
-        sin_1 = sin[(int(self.direction + angle - 90)% 360) * 10]
+        cos_1 = cos[(int(self.direction + angle - 90)% 360) * angle_resolution_factor]
+        sin_1 = sin[(int(self.direction + angle - 90)% 360) * angle_resolution_factor]
 
         self.front_left[0] = self.x - half_small_side * cos_1 - half_big_side * sin_1
         self.front_left[1] = self.y - half_big_side * cos_1 + half_small_side * sin_1
@@ -289,7 +288,7 @@ class Car:
         remaining_directions = [1, -1, 0, 2]
         for i in range(int(max_center_line_distance * self.ppm + 10)):
             for direction in remaining_directions:
-                angle = (self.int_direction + direction * 90) * 10 % 3600
+                angle = ((self.int_direction + direction * 90) % 360) * angle_resolution_factor
                 x = int(self.x + i * cos[angle] * 2)
                 y = int(self.y - i * sin[angle] * 2)
                 if x < 1 or y < 1 or x >= len(self.track[0]) - 1 or y >= len(self.track) - 1: continue
@@ -401,3 +400,28 @@ class Car:
         ordered_corners.append((current_x, current_y, current_dir, 0))
         self.future_corners = ordered_corners
         return ordered_corners
+    
+    def MaxPotential(self, score_dict):
+        start_seen = score_dict[int(str(self.start_x) + str(self.start_y))]
+        potential_offsets = [offset for offset in offsets if self.track[self.start_y + offset[1], self.start_x + offset[0]] == 10]
+        # Take the offset that minimises the angle distance to start_dir
+        best_offset = min(potential_offsets, key=lambda offset: angle_distance(self.start_direction, np.degrees(np.arctan2(-offset[1], offset[0]))))
+        offset_seen = score_dict[int(str(self.start_x + best_offset[0]) + str(self.start_y + best_offset[1]))]
+        # If it is positive, then return the number of keys - start_seen
+        if offset_seen > start_seen:
+            return len(score_dict.keys()) - start_seen
+        else:
+            return start_seen
+        
+    def ScoreCar(self, score_dict, game=None):
+        try:
+            seen = score_dict[int(str(self.previous_center_line[0]) + str(self.previous_center_line[1]))]
+            start_seen = score_dict[int(str(self.start_x) + str(self.start_y))]
+            return abs(seen - start_seen)
+        except:
+            print(f"Error in score, {self.previous_center_line}, {self.start_x}, {self.start_y}")
+            if game is not None:
+                game.issues.value += 1
+            return 0
+
+        

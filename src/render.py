@@ -121,10 +121,10 @@ class Render:
 
                 car_distance = calculate_distance((screen_center_X, screen_center_Y), (corner_x, corner_y))
                 new_dist = car_distance * self.zoom_factor
-                angle = np.degrees(np.arctan2(distance_to_center_y, distance_to_center_x))
+                angle = int(np.degrees(np.arctan2(distance_to_center_y, distance_to_center_x)) * angle_resolution_factor)
 
-                new_x = screen_center_X + new_dist * cos[int(angle * 10)]
-                new_y = screen_center_Y + new_dist * sin[int(angle * 10)]
+                new_x = screen_center_X + new_dist * cos[angle]
+                new_y = screen_center_Y + new_dist * sin[angle]
 
                 c_data.append([new_x, new_y])
 

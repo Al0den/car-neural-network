@@ -1,7 +1,9 @@
 import numpy as np
 import json
 import pygame
+import random
 
+from precomputed import offsets, two_wide_offsets
 from utils import calculate_distance, angle_distance
 
 def smoothen(track):
@@ -135,6 +137,8 @@ def smoothen(track):
             current_length = 0
 
     all_end_positions = np.argwhere(track_matrix == 3)
+    # Remove all pixels more than 500 pixels or closer to the edges
+    all_end_positions = [end_pos for end_pos in all_end_positions if end_pos[0] > 50 and end_pos[0] < track_matrix.shape[0] - 50 and end_pos[1] > 50 and end_pos[1] < track_matrix.shape[1] - 50]
     end_pos_x, end_pos_y = 0, 0
     for end_pos in all_end_positions:
         end_pos_x += end_pos[1]
@@ -143,14 +147,50 @@ def smoothen(track):
     end_pos_y /= len(all_end_positions)
     print(end_pos_x, end_pos_y, track_matrix[int(end_pos_y), int(end_pos_x)])
     assert(track_matrix[int(end_pos_y), int(end_pos_x)] in [3, 10])
-
+    real_start_pos, real_start_dir = data['real_start']
+    scores, max_score = init_track_scores(track_matrix, real_start_pos, real_start_dir)
+    
     config_data['end_pos'][track] = (end_pos_x, end_pos_y)
+    
     with open('./src/config.json', 'w') as json_file:
         json.dump(config_data, json_file)
     
     data['track'] = final_mat
+    data['scores'] = scores
+    data['max_score'] = max_score
     pygame.image.save(track_surface, "./data/tracks/" + track + "_surface.png")
     np.save(f"./data/tracks/{track}.npy", data)
+
+def init_track_scores(track, start_pos, start_dir):
+        current_y, current_x = start_pos
+        current_dir = start_dir
+        seen = 0
+        seen_dict = {}
+        print(current_x, current_y, current_dir, track[current_y, current_x])
+        current_dir += 180
+        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in two_wide_offsets]):
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
+            if len(potential_offsets) == 0: 
+                print("No potential offsets")
+                break
+            offset = random.choice(potential_offsets)
+            current_x += offset[0]
+            current_y += offset[1]
+            current_dir = np.degrees(np.arctan2(-offset[1], offset[0]))
+        current_dir += 180
+        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
+            if len(potential_offsets) == 0: 
+                print("No potential offsets")
+                break
+            offset = random.choice(potential_offsets)
+            current_x += offset[0]
+            current_y += offset[1]
+            current_dir = np.degrees(np.arctan2(-offset[1], offset[0]))
+            seen += 1
+            seen_dict[int(str(current_x) + str(current_y))] = seen
+        print(f" - Generated: {len(seen_dict)} scores")
+        return seen_dict, seen
 
 if __name__=="__main__":
     track = input("Track to smoothen: ")

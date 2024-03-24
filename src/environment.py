@@ -71,12 +71,15 @@ class Environment:
                 child.mutation_rates = father.mutation_rates + ["-"]
                 child.father_rank = father_rank
                 new_agents.append(child)
-       
+            
+        num_agents = len(ranked_agents)
+        selection_weights = [num_agents - i + 1 for i in range(num_agents)]
+        selection_weights = [i ** agent_selection_coeff for i in selection_weights]
         while len(new_agents) < len(self.agents):
             randint = np.random.uniform(0,1)
             child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
             if randint > 1 - only_mutate_rate:
-                father, father_rank = self.linear_weighted_selection(ranked_agents)
+                father, father_rank = self.linear_weighted_selection(ranked_agents, selection_weights)
                 child = Agent(self.options, self.track, self.start_pos, self.start_dir, game.track_name, False)
                 child.network = copy_network(father.network)
                 child.father_rank = father_rank
@@ -84,8 +87,8 @@ class Environment:
                 child.evolution = father.evolution + ["m"]
                 child.mutation_rates = father.mutation_rates + [rate]
             elif randint > 1 - (cross_over_rate + only_mutate_rate):
-                father, father_rank = self.linear_weighted_selection(ranked_agents)
-                mother, mother_rank = self.linear_weighted_selection(ranked_agents)
+                father, father_rank = self.linear_weighted_selection(ranked_agents, selection_weights)
+                mother, mother_rank = self.linear_weighted_selection(ranked_agents, selection_weights)
                 child = self.crossover(father, mother, game)
                 child.father_rank = int((father_rank + mother_rank)/2)
                 new_rand = np.random.uniform(0,1)
@@ -118,11 +121,11 @@ class Environment:
         self.generation += 1
         self.alive = len(self.agents)
 
-    def linear_weighted_selection(self, ranked_agents):
+    def linear_weighted_selection(self, ranked_agents, selection_weights=None):
         num_agents = len(ranked_agents)
-        
-        selection_weights = [num_agents - i + 1 for i in range(num_agents)]
-        selection_weights = [i ** agent_selection_coeff for i in selection_weights]
+        if selection_weights == None:
+            selection_weights = [num_agents - i + 1 for i in range(num_agents)]
+            selection_weights = [i ** agent_selection_coeff for i in selection_weights]
         indices = [i for i in range(num_agents)]
         selected_agent = random.choices(indices, weights=selection_weights)[0]
         selected_rank = indices.index(selected_agent)

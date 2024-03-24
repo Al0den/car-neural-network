@@ -269,7 +269,7 @@ class Game:
         if self.player == 0:
             self.ticks += 1
             if self.ticks % 100 == 0 and debug:
-                print("Ticks: " + str(self.ticks))
+                print(f"Ticks: {self.ticks}, score {self.car.ScoreCar(self.track_scores[self.track_name])}. max_potential: {self.car.MaxPotential(self.track_scores[self.track_name])}")
             self.car.Tick(self)
             if self.car.died == True:
                 self.restart = True
@@ -476,6 +476,7 @@ class Game:
                 log_data[p_id * 5 + 3] = int(metal_tpa)
                 log_data[p_id * 5 + 4] = int(tick_tpa)
             working[p_id] = 3
+
             for i in range(len(agents)):
                 self.IndividualAgentScore(agents[i], local_lap_times, local_laps, local_scores, max_potentials, map_tries[i], indexes[i])
 
@@ -493,41 +494,65 @@ class Game:
             gc.collect()
 
     def ScoreAllAgents(self, agents, local_lap_times, local_laps, local_scores, map_tries, indexes):
-        # Group agents of the same map_try together
-        agents_per_map_try = [[] * len(map_tries)]
-        for i in range(len(agents)):
-            if agents[i].car.died: continue
-            agents_per_map_try[map_tries[i]].append([agents[i].car.finish_x, agents[i].car.finish_y])
-        
-        all_agents_scores = [0] * len(agents)
-
-        # Score all groupes of agents using multiple agents score function
-        for map_try in range(len(map_tries)):
-            if agents_per_map_try[map_try] == []: continue
-            # Find any agent tjat jas this maomtry
-            agent = [agent for i, agent in enumerate(agents) if map_tries[i] == map_try][0]
-            track = agent.car.track
+        triplets = [(agents[i], map_tries[i], indexes[i]) for i in range(len(agents))]
+        # Group agents by map_try
+        grouped = {}
+        for triplet in triplets:
+            if triplet[1] not in grouped:
+                grouped[triplet[1]] = []
+            # if agent.car.lap_time != 0, dont add it just manually add a score of 1, 1 lap and its lap time
+            if triplet[0].car.lap_time != 0:
+                real_index = triplet[2]
+                local_scores[real_index] += 1 * score_multiplier
+                local_laps[real_index] += 1
+                local_lap_times[real_index] += triplet[0].car.lap_time
+            else:
+                grouped[triplet[1]].append(triplet)
+        # Now calculate the scores for each group
+        for group in grouped:
+            if len(grouped[group]) == 0:
+                continue
+            finish_positions = [[agent.car.finish_x, agent.car.finish_y] for agent, _, _ in grouped[group]]
+            real_indexes = [index for _, _, index in grouped[group]]
+            agent, _,  _ = grouped[group][0]
+            track = self.tracks[agent.car.track_name]
             start_pos = [agent.car.start_x, agent.car.start_y]
             start_dir = agent.car.start_direction
+            scores = self.MultipleAgentsScore(finish_positions, track, start_pos, start_dir)
+            
+            for i in range(len(real_indexes)):
+                local_scores[real_indexes[i]] += scores[i]
+            
+    def MultipleAgentsScore(self, finish_positions, track, start_pos, start_dir):
+        current_x = start_pos[0]
+        current_y = start_pos[1]
+        current_dir = start_dir
 
-            scores = self.MultipleAgentsScore(agents_per_map_try[i], track, start_pos, start_dir)
+        mutable_finish_positions = [pos for pos in finish_positions]
+        per_pos_seen = [-1] * len(finish_positions)
+        total_seen = 0
+        calculated_dirs = {}
+        remaining_index = [i for i in range(len(mutable_finish_positions))]
+        for offset in offsets:
+            calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
+        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]) and total_seen < 50000:
+            for i in remaining_index:
+                if mutable_finish_positions[i] == [current_x, current_y]:
+                    per_pos_seen[i] = total_seen
+                    remaining_index.remove(i)
 
-            for i in range(len(agents)):
-                if map_tries[i] == map_try:
-                    all_agents_scores[i] = scores.pop(0)
-        
-        for i in range(len(agents)):
-            index = indexes[i]
-            if agents[i].car.lap_time > 0:
-                local_scores[index] += 1 * score_multiplier
-                local_laps[index] += 1
-                local_lap_times[index] += agents[i].car.lap_time
-            elif agents[i].car.lap_time == -1:
-                continue
-            else:
-                local_scores[index] = all_agents_scores[i]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
+            if len(potential_offsets) == 0: 
+                print("No potential offsets")
+                break
+            offset = random.choice(potential_offsets)
+            current_x += offset[0]
+            current_y += offset[1]
+            current_dir = calculated_dirs[offset[0] + 1000 * offset[1]]
+            total_seen += 1
 
-        return 
+        scores = [(per_pos_seen[i] / total_seen) * score_multiplier for i in range(len(per_pos_seen))]
+        return scores
 
     def train_agents_gpu(self):
         if self.generated_starts == []: self.CreateFutureStartsData()
@@ -586,7 +611,8 @@ class Game:
         else:
             if max_potentials[map_try] == 0:
                 max_potentials[map_try] = agent.car.CalculateMaxPotential()
-            score = agent.car.CalculateScore(max_potentials[map_try])
+            agent_seen = agent.car.ScoreCar(self.track_scores[agent.car.track_name], self)
+            score = agent_seen / max_potentials[map_try]
             
             if score >= 1: 
                 agent.car.CalculateMaxPotential()
@@ -598,6 +624,7 @@ class Game:
             local_scores[index] += score * score_multiplier
 
     def EndOfGeneration(self):
+        print("ended generation")
         self.environment.previous_completion.insert(0, self.environment.previous_best_score)
         self.environment.previous_lap_times.insert(0, self.environment.previous_best_lap)
 
@@ -686,39 +713,12 @@ class Game:
 
         return batches
     
-    def MultipleAgentsScore(self, finish_positions, track, start_pos, start_dir):
-        current_x = start_pos[0]
-        current_y = start_pos[1]
-        current_dir = start_dir
-
-        mutable_finish_positions = finish_positions.copy()
-        per_pos_seen = [0] * len(finish_positions)
-        total_seen = 0
-        print("\ngdsgddg\n\n")
-        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]) and total_seen < 50000:
-            for i in range(len(mutable_finish_positions)):
-                if mutable_finish_positions[i] == [current_x, current_y]:
-                    per_pos_seen[i] = total_seen
-                    mutable_finish_positions.pop(i)
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
-            if len(potential_offsets) == 0: 
-                print("fdafafas")
-                print("No potential offsets")
-                break
-            offset = random.choice(potential_offsets)
-            current_x += offset[0]
-            current_y += offset[1]
-            current_dir = np.degrees(np.arctan2(-offset[1], offset[0]))
-            total_seen += 1
-        scores = [(per_pos_seen[i] / total_seen) * score_multiplier for i in range(len(per_pos_seen))]
-        print(total_seen)
-        return scores
-    
     def load_single_track(self):
         self.tracks = {}
         self.start_positions = {}
         self.real_starts = {}
         self.corners = {}
+        self.track_scores = {}
         track_name = self.options['track_name']
         data = self.load_track(track_name)
 
@@ -727,6 +727,7 @@ class Game:
         self.start_positions[track_name] = data['start_positions']
         self.real_starts[track_name] = data['real_start']
         self.corners[track_name] = data['corners']
+        self.track_scores[track_name] = data['scores']
 
         self.track = random.choice(list(self.tracks.values()))
         self.track_name = [name for name, track in self.tracks.items() if track is self.track][0]
@@ -807,6 +808,7 @@ class Game:
             self.shared_tracks = Manager().dict()
         self.real_starts = {}
         self.corners = {}
+        self.track_scores = {}
         for file in os.listdir("./data/tracks"):
             if file.endswith(".png") and not file.endswith("_surface.png"):
                 print(f" - Loading track: {file[:-4]}         \r", end='', flush=True)
@@ -823,6 +825,7 @@ class Game:
                 self.corners[file[:-4]] = data['corners']
                 self.start_positions[file[:-4]] = data['start_positions']
                 self.real_starts[file[:-4]] = data['real_start']
+                self.track_scores[file[:-4]] = data['scores']
         
         print(f" * Loaded tracks: {str(', '.join(list(self.tracks.keys())))}")
         self.track_name = random.choice(list(self.tracks.keys()))
@@ -892,12 +895,14 @@ class Game:
             print(" - Generating center line inputs")
             corners, track_intensity= self.setup_corners()
             assert(real_start != None)
+            
             print(" - Generating new starts")
             data = {
                 "track": self.track,
                 "start_positions": get_new_starts(self.track, 5000, track_intensity),
                 "corners": corners,
-                "real_start": real_start
+                "real_start": real_start,
+                "scores": {}
             }
             
             np.save("./data/tracks/" + track_name, data)
@@ -962,7 +967,8 @@ class Game:
         for track_name in self.track_names:
             track = self.tracks[track_name]
             pos, direction = random.choice(self.start_positions[track_name])
-
+            corners = [(np.random.uniform(0, 5000), np.random.uniform(0, 500), np.random.uniform(0, 360), np.random.uniform(0, 90)) for _ in range(len(self.corners[track_name]))]
+            corners = [(int(c1), int(c2), int(c3), int(c4)) for (c1, c2, c3, c4) in corners]
             for agent in self.environment.agents:
                 agent.car.track = track
                 agent.car.track_name = track_name
@@ -970,7 +976,8 @@ class Game:
                 agent.car.y = pos[0]
                 agent.car.direction = direction
                 agent.car.UpdateCorners()
-
+                agent.car.future_corners = corners
+            
             rand = np.array([np.random.uniform(0, 200)] * len(points_offset))
             start_time = time.time()
             for agent in self.environment.agents:
@@ -997,3 +1004,6 @@ class Game:
         for i, agent in enumerate(self.environment.agents):
             index = i * 10
             self.Metal.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, self.track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+
+    
+

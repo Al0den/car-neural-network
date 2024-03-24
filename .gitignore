@@ -23,3 +23,6 @@ src/libPyMetalBridge.dylib.dSYM/Contents/Resources/Relocations/aarch64/libPyMeta
 src/libPyMetalBridge.dylib.dSYM/Contents/Resources/DWARF/libPyMetalBridge.dylib
 test_dot_product.py
 test.sql
+main.ml
+main.sql
+main.ml

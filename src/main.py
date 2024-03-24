@@ -16,13 +16,13 @@ def main():
     os.makedirs("./data/tracks", exist_ok=True)
     os.makedirs("./data/train/trained", exist_ok=True)
     os.makedirs("./data/per_track", exist_ok=True)
+
     game_options = load_options()
     game = Game(game_options)
 
     if god: print("WARNING: God mode is on, car will ignore track boundaries")
     if game.debug: print("WARNING: Debug is on, console can get spammed")
-    if not pre_load: print("WARNING: Pre load is not on, track center-line will be calculated at every step")
-
+    
     if game_options['display']:
         import pygame
         clock, last_render = InitialiseDisplay(game, game_options, pygame)
