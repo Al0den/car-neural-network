@@ -12,6 +12,9 @@ class Metal:
 
     def getPointsOffset(self, input_num):
         self.shader.get_points_offsets(input_num)
+
+    def getCornerData(self, input_num):
+        self.shader.process_corner(input_num)
     
     def showBuffer(self, count):
         self.shader.show_buffer(count)
@@ -28,7 +31,7 @@ class Metal:
         numpy_array = np.ctypeslib.as_array(pointer, shape=(5000,5000))
         return numpy_array
 
-    def init_shaders(self, inVectorBufferCount, outVectorBufferCount, offsets):
+    def init_shaders(self, inVectorBufferCount, outVectorBufferCount, offsets, cornerBufferCount, outCornerBufferCount):
         pointer = self.shader.init_input_buffer(inVectorBufferCount)
         numpy_array_in = np.ctypeslib.as_array(pointer, shape=(inVectorBufferCount,))
         self.inVectorBuffer = numpy_array_in
@@ -41,6 +44,14 @@ class Metal:
         numpy_array_offsets = np.ctypeslib.as_array(pointer, shape=(len(offsets),))
         self.offsetsBuffer = numpy_array_offsets
 
+        pointer = self.shader.init_corner_buffer(cornerBufferCount)
+        numpy_array_corner = np.ctypeslib.as_array(pointer, shape=(cornerBufferCount,))
+        self.cornerBuffer = numpy_array_corner
+
+        pointer = self.shader.init_corner_out_buffer(outCornerBufferCount)
+        numpy_array_corner_out = np.ctypeslib.as_array(pointer, shape=(outCornerBufferCount,))
+        self.cornerOutBuffer = numpy_array_corner_out
+        
         for i in range(len(offsets)):
             self.offsetsBuffer[i] = offsets[i]
 
@@ -58,6 +69,7 @@ class Metal:
     def init_argtypes(self):
         self.shader.get_points_offsets.argtypes = [ ctypes.c_int ]
         self.shader.get_track_pointer.argtypes = [ ctypes.c_int ]
+        self.shader.process_corner.argtypes = [ ctypes.c_int ]
 
         self.shader.add_track.argtypes = [
             ctypes.c_int,
@@ -68,12 +80,16 @@ class Metal:
         self.shader.init_input_buffer.argtypes = [ ctypes.c_int64 ]
         self.shader.init_output_buffer.argtypes = [ ctypes.c_int64 ]
         self.shader.init_offsets_buffer.argtypes = [ ctypes.c_int64 ]
-
+        self.shader.init_corner_buffer.argtypes = [ ctypes.c_int64 ]
+        self.shader.init_corner_out_buffer.argtypes = [ ctypes.c_int64 ]
+        
         self.shader.show_buffer.argtypes = [ ctypes.c_int64 ]
 
         self.shader.init_input_buffer.restype = ctypes.POINTER(ctypes.c_int16)
-        self.shader.init_output_buffer.restype = ctypes.POINTER(ctypes.c_int16)
+        self.shader.init_output_buffer.restype = ctypes.POINTER(ctypes.c_float)
         self.shader.init_offsets_buffer.restype = ctypes.POINTER(ctypes.c_int16)
         self.shader.get_track_pointer.restype = ctypes.POINTER(ctypes.c_uint8)
+        self.shader.init_corner_buffer.restype = ctypes.POINTER(ctypes.c_int16)
+        self.shader.init_corner_out_buffer.restype = ctypes.POINTER(ctypes.c_float)
 
         

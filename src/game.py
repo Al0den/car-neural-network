@@ -255,7 +255,8 @@ class Game:
         if self.player in global_metal_instance_players:
             self.Metal = Metal(self.tracks)
             self.track_index = self.Metal.getTrackIndexes()
-            self.Metal.init_shaders(len(points_offset) * 10 * len(self.environment.agents), len(points_offset) * len(self.environment.agents), points_offset)
+            num_agents = len(self.environment.agents)
+            self.Metal.init_shaders(len(points_offset) * 10 * num_agents, len(points_offset) * num_agents, points_offset, num_agents * 8, num_agents * 4)
         
         if self.player == 8:
             self.multiple_players_shader_init()
@@ -431,7 +432,8 @@ class Game:
             alive = len(agents)
             ticks, input_tpa, metal_tpa, tick_tpa = 0, 0, 0, 0
 
-            MetalInstance.init_shaders(len(agents) * 10, len(agents) * len(points_offset), points_offset)
+            num_agents = len(agents)
+            MetalInstance.init_shaders(num_agents * 10, num_agents * len(points_offset), points_offset, num_agents * 8, num_agents * 4)
 
             for i, agent in enumerate(agents):
                 index = i * 10
@@ -447,12 +449,28 @@ class Game:
                     index = i * 10
                     if agent.car.died: continue
                     MetalInstance.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
+                    index = i * 8
+                    if len(agent.car.future_corners) >= 2:
+                        corner_data = [int(data) for data in agent.car.future_corners[0]]
+                        corner_data_2 = [int(data) for data in agent.car.future_corners[1]]
+                        MetalInstance.cornerBuffer[index:index + 4] = corner_data 
+                        MetalInstance.cornerBuffer[index + 4:index + 8] = corner_data_2
+                    elif len(agent.car.future_corners) == 1:
+                        corner_data = [int(data) for data in agent.car.future_corners[0]]
+                        MetalInstance.cornerBuffer[index:index + 4] = corner_data
+                        corner_data = [0, 0, 0, 0]
+                        MetalInstance.cornerBuffer[index + 4:index + 8] = corner_data
+                    else:
+                        corner_data = [0, 0, 0, 0, 0, 0, 0, 0]
+                        MetalInstance.cornerBuffer[index:index + 8] = corner_data
                     
                 tpa_stamp = time.time()
                 MetalInstance.getPointsOffset(len(agents) * len(points_offset))
+                MetalInstance.getCornerData(len(agents) * 2)
                
                 metal_stamp = time.time()
                 per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
+                per_agent_corner = MetalInstance.cornerOutBuffer.reshape(len(agents), 4)
 
                 for i in range(len(agents)):
                     if alives[i] == 1:
@@ -460,7 +478,7 @@ class Game:
                             alives[i] = 0
                             MetalInstance.inVectorBuffer[i * 10] = -1
                     if agents[i].car.died: continue
-                    agents[i].Tick(ticks, self, per_agents_points[i])
+                    agents[i].Tick(ticks, self, per_agents_points[i], per_agent_corner[i])
                     
                 tick_stamp = time.time()
                 ticks += 1
@@ -979,10 +997,11 @@ class Game:
                 agent.car.future_corners = corners
             
             rand = np.array([np.random.uniform(0, 200)] * len(points_offset))
+            rand_4 = np.array([np.random.uniform(0, 200)] * 4)
             start_time = time.time()
             for agent in self.environment.agents:
                 for i in range(perft_ticks):
-                    agent.Tick(i, self, rand)
+                    agent.Tick(i, self, rand, rand_4)
             tick_time += time.time() - start_time
         score = tick_time / len(self.track_names) / len(self.environment.agents) / perft_ticks * 1000
         self.totalScore += score

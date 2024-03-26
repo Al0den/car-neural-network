@@ -4,7 +4,7 @@ from car import Car
 from utils import calculate_distance, angle_range_180
 from settings import *
 
-max_corner_distance = 800
+
 
 class Agent:
     def __init__(self, options, track, start_pos, start_dir, track_name=None, create_speed_pre_calc=True, create_network=True):
@@ -31,31 +31,40 @@ class Agent:
         relative_angle = angle_range_180(self.car.direction - corner_dir)
         left_or_right = 1 if relative_angle >= 0 else -1
         return [distance, left_or_right * min(1, corner_ampl/100)]
+    
+    def ProcessCornerGPU(self, corner, corner_2, game):
+        corner = [int(data) for data in corner]
+        game.Metal.cornerBuffer[0:4] = corner
+        game.Metal.cornerBuffer[4:8] = corner_2
+        game.Metal.getCornerData(2)
+        corner_data = game.Metal.cornerOutBuffer[0:4]
+        return corner_data
 
-    def CalculateState(self, game, calculated_points=None):
+    def CalculateState(self, game, calculated_points=None, processed_corners=None):
         if calculated_points is None:
             game.Metal.inVectorBuffer[0:5] = [self.car.int_x, self.car.int_y, self.car.int_direction, game.track_index[self.car.track_name], int(self.car.ppm * 1000)]
             game.Metal.getPointsOffset(len(points_offset))
             calculated_points = game.Metal.outVectorBuffer[:len(points_offset)]
+            if processed_corners is None:
+                if len(self.car.future_corners) >= 2:
+                    processed_corners = self.ProcessCornerGPU(self.car.future_corners[0], self.car.future_corners[1], game)
+                    
+                elif len(self.car.future_corners) == 1:
+                    processed_corners = self.ProcessCornerGPU(self.car.future_corners[0], [0, 0, 0, 0], game)
+                else:
+                    processed_corners = [0, 0, 0, 0]
         on_track = self.car.track[self.car.int_y, self.car.int_x] != 0
+        
         self.state[0:5] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, on_track]
-        if len(self.car.future_corners) >= 2:
-            self.state[5:7] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[7:9] = self.ProcessCorner(self.car.future_corners[1])
-        elif len(self.car.future_corners) == 1:
-            self.state[5:7] = self.ProcessCorner(self.car.future_corners[0])
-            self.state[7:9] = [0, 0]
-        else:
-            self.state[5:9] = [0, 0, 0 ,0]
-
-        self.state[9:] = np.minimum(1, calculated_points / (self.car.ppm * max_points_distance))
+        self.state[5:9] = processed_corners
+        self.state[9:] = calculated_points
 
         return self.state
     
-    def Tick(self, ticks, game, calculated_points=None, updateCar=True):
+    def Tick(self, ticks, game, calculated_points=None, processed_corners=None):
         if self.car.died == True: return
 
-        self.CalculateState(game, calculated_points)
+        self.CalculateState(game, calculated_points, processed_corners)
         
         acc, bra, l, r = self.CalculateNextAction(self.state)
 

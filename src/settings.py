@@ -4,9 +4,10 @@ points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 center_line_input = True
 state_space_size = len(points_offset) + 9
 first_layer_size_coeff = 1.3
-num_hidden_layers = 1
+num_hidden_layers = 0
 action_space_size = 4
 map_tries = 20
+max_corner_distance = 800
 
 real_starts_num = 5
 assert(real_starts_num <= map_tries)

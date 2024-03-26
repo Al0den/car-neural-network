@@ -195,7 +195,7 @@ class Render:
             game.Metal.inVectorBuffer[0:5] = [int(car.x), int(car.y), int(car.direction), game.track_index[car.track_name], int(1000 * car.ppm)]
             game.Metal.getPointsOffset(len(points_offset))
         points_distance = game.Metal.outVectorBuffer[:len(points_offset)]
-
+        points_distance = [point * car.ppm * max_points_distance for point in points_distance]
         points = []
         for i, distance in enumerate(points_distance):
             distance = distance 

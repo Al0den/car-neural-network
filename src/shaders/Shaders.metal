@@ -3,8 +3,10 @@
 using namespace metal;
 
 
-kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device short *out [[ buffer(2) ]], const device short *offsets [[ buffer(3) ]], uint id [[ thread_position_in_grid ]]) {
+
+kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device float *out [[ buffer(2) ]], const device short *offsets [[ buffer(3) ]], uint id [[ thread_position_in_grid ]]) {
     int num_offsets = 15;
+    int max_points_distance = 200;
     
     int car_id = int(id / num_offsets);
     int offset_id = int(id % num_offsets);
@@ -66,18 +68,48 @@ kernel void points_offsets(const device short *input [[ buffer(0) ]], const devi
         y = car_y + (int)(distance * cosinus);
     }
 
-    out[id] = distance;
+    out[id] = min(1.0, distance/ (ppm * max_points_distance));
     return;
 }
-kernel void dot_product(const device int *input [[ buffer(0) ]], const device float *weights [[ buffer(1) ]], device float *out [[ buffer(2) ]], uint id [[ thread_position_in_grid ]]) {
-    int input_size = input[1];
-    int a_start_index = input[id * 2 + 2];
-    int b_start_index = input[id * 2 + 3];
 
-    float sum = 0;
-    for (int i = 0; i < input_size; i++) {
-        sum += weights[a_start_index + i] * weights[b_start_index + i];
+kernel void process_corner(const device short *input [[ buffer(0) ]], const device short *corner_data [[ buffer(4) ]], device float *out [[ buffer(5) ]], uint id [[ thread_position_in_grid ]]) {
+    int num_corner_data = 4;
+    int num_corners = 2;
+    
+    int max_corner_distance = 800;
+    
+    int car_id = id / (num_corner_data * num_corners);
+    int corner_id = id * num_corner_data;
+    
+    short corner_x = corner_data[corner_id];
+    if (corner_x == 0) {
+        out[id * num_corners] = 0;
+        out[id * num_corners + 1] = 0;
+        return;
     }
-    out[id] = sum;
+    short corner_y = corner_data[corner_id+ 1];
+    short corner_dir = corner_data[corner_id + 2];
+    short corner_ampl = corner_data[corner_id + 3];
+
+    short car_x = input[car_id * 10];
+    short car_y = input[car_id * 10 + 1];
+    short car_direction = input[car_id * 10 + 2] ;
+
+    short ppm = (float)(input[car_id * 10 + 4]) / 1000; // pixels per meter (1000 = 1 meter)
+
+    float distance_raw = sqrt((float)(corner_x - car_x) * (float)(corner_x - car_x) + (float)(corner_y - car_y) * (float)(corner_y - car_y));
+    float distance = distance_raw / (ppm * max_corner_distance);
+    distance = min(distance, (float)1.0);
+    float angle = corner_dir - car_direction;
+    while(angle > 180) {
+        angle -= 360;
+    }
+    while(angle < -180) {
+        angle += 360;
+    }
+    int left_or_right = angle >= 0 ? 1 : -1;
+    float result_ampl = left_or_right * min(1.0, (float)corner_ampl/100);
+    out[id * num_corners] = distance;
+    out[id * num_corners + 1] = result_ampl;
     return;
 }

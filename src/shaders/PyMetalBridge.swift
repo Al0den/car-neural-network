@@ -15,9 +15,9 @@ var trackVectorBuffers = [Int: MTLBuffer]()
 var allTracksBuffer: MTLBuffer?
 var inBuffer: MTLBuffer?
 var outBuffer: MTLBuffer?
-var carOutBuffer: MTLBuffer?
-var carInBuffer: MTLBuffer?
 var offsetsBuffer: MTLBuffer?
+var cornerBuffer: MTLBuffer?
+var cornerOutBuffer: MTLBuffer?
 
 var commandBuffer : MTLCommandBuffer?
 var computeCommandEncoder : MTLComputeCommandEncoder?
@@ -54,24 +54,23 @@ public func get_track_pointer(track: Int) -> UnsafeMutablePointer<UInt8> {
 }
 
 @available(macOS 10.13, *)
-@_cdecl("update_car")
-public func update_car(count: Int) -> Int {
-    return updateCar(count: count)
+@_cdecl("process_corner")
+public func process_corner(count: Int) -> Int {
+    return processCorner(count: count)
 }
 
-@available(macOS 10.13, *)
-public func updateCar(count: Int) -> Int {
+public func processCorner(count: Int) -> Int {
     do {
         let commandBuffer = commandQueue.makeCommandBuffer()
         let computeCommandEncoder = commandBuffer!.makeComputeCommandEncoder()
-
-        let getPointsFunction = defaultLibrary.makeFunction(name: "update_car")!
-        let computePipelineState = try device.makeComputePipelineState(function: getPointsFunction)
+            
+        let processCornerFunction = defaultLibrary.makeFunction(name: "process_corner")!
+        let computePipelineState = try device.makeComputePipelineState(function: processCornerFunction)
         computeCommandEncoder!.setComputePipelineState(computePipelineState)
 
-        computeCommandEncoder!.setBuffer(carInBuffer, offset: 0, index: 0)
-        computeCommandEncoder!.setBuffer(allTracksBuffer, offset: 0, index: 1)
-        computeCommandEncoder!.setBuffer(carOutBuffer, offset: 0, index: 2)
+        computeCommandEncoder!.setBuffer(inBuffer, offset: 0, index: 0)
+        computeCommandEncoder!.setBuffer(cornerBuffer, offset: 0, index: 4)
+        computeCommandEncoder!.setBuffer(cornerOutBuffer, offset: 0, index: 5)
 
         let threadsPerGroup = MTLSize(width: 1, height: 1, depth: 1)
         let numThreadgroups = MTLSize(width: count, height: 1, depth: 1)
@@ -140,11 +139,11 @@ public func init_input_buffer(count: Int) -> UnsafeMutablePointer<Int16> {
 
 @available(macOS 10.13, *)
 @_cdecl("init_output_buffer")
-public func init_output_buffer(count: Int) -> UnsafeMutablePointer<Int16> {
-    let bufferSize = MemoryLayout<Int16>.size * count
+public func init_output_buffer(count: Int) -> UnsafeMutablePointer<Float32> {
+    let bufferSize = MemoryLayout<Float32>.size * count
     let outVectorBuffer = device.makeBuffer(length: bufferSize, options: [])!
 
-    let pointer = outVectorBuffer.contents().bindMemory(to: Int16.self, capacity: count)
+    let pointer = outVectorBuffer.contents().bindMemory(to: Float32.self, capacity: count)
     
     if outBuffer != nil { outBuffer!.setPurgeableState(.empty) }
     outBuffer = outVectorBuffer
@@ -162,6 +161,32 @@ public func init_offsets_buffer(count: Int) -> UnsafeMutablePointer<Int16> {
 
     if offsetsBuffer != nil { offsetsBuffer!.setPurgeableState(.empty) }
     offsetsBuffer = offsetsVectorBuffer
+
+    return pointer
+}
+@available(macOS 10.13, *)
+@_cdecl("init_corner_buffer")
+public func init_corner_buffer(count: Int) -> UnsafeMutablePointer<Int16> {
+    let bufferSize = MemoryLayout<Int16>.size * count
+    let outVectorBuffer = device.makeBuffer(length: bufferSize, options: [])!
+
+    let pointer = outVectorBuffer.contents().bindMemory(to: Int16.self, capacity: count)
+    
+    if outBuffer != nil { outBuffer!.setPurgeableState(.empty) }
+    cornerBuffer = outVectorBuffer
+
+    return pointer
+}
+
+@available(macOS 10.13, *)
+@_cdecl("init_corner_out_buffer")
+public func init_corner_out_buffer(count: Int) -> UnsafeMutablePointer<Float32> {
+    let bufferSize = MemoryLayout<Float32>.size * count
+    let outVectorBuffer = device.makeBuffer(length: bufferSize, options: [])!
+    let pointer = outVectorBuffer.contents().bindMemory(to: Float32.self, capacity: count)
+    
+    if outBuffer != nil { outBuffer!.setPurgeableState(.empty) }
+    cornerOutBuffer = outVectorBuffer
 
     return pointer
 }

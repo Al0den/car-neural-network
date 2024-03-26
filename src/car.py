@@ -420,7 +420,7 @@ class Car:
             return abs(seen - start_seen)
         except:
             print(f"Error in score, {self.previous_center_line}, {self.start_x}, {self.start_y}")
-            self.CalculateScore(0)
+            self.CalculateScore(1)
             if game is not None:
                 game.issues.value += 1
             return self.seen
