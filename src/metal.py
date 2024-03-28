@@ -15,6 +15,9 @@ class Metal:
 
     def getCornerData(self, input_num):
         self.shader.process_corner(input_num)
+
+    def pointsAndCorner(self, inputNum1, inputNum2):
+        self.shader.compute_offsets_corner(inputNum1, inputNum2)
     
     def showBuffer(self, count):
         self.shader.show_buffer(count)
@@ -69,7 +72,9 @@ class Metal:
     def init_argtypes(self):
         self.shader.get_points_offsets.argtypes = [ ctypes.c_int ]
         self.shader.get_track_pointer.argtypes = [ ctypes.c_int ]
+
         self.shader.process_corner.argtypes = [ ctypes.c_int ]
+        self.shader.compute_offsets_corner.argtypes = [ ctypes.c_int, ctypes.c_int ]
 
         self.shader.add_track.argtypes = [
             ctypes.c_int,

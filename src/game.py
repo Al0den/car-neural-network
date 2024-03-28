@@ -119,6 +119,7 @@ class Game:
             self.data = [{"speed": [], "power": [], "brake": []}, {"speed": [], "power": [], "brake": []}]
 
         elif self.player == 7:
+            
             if game_options['generation_to_load'] == 0:
                 best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained/")
             else:
@@ -128,6 +129,7 @@ class Game:
             agent.car.speed = self.config['quali_start_speed'].get(self.track_name)
             agent.car.acceleration = 1
             agent.car.setFutureCorners(self.corners[self.track_name])
+            
 
             self.best_agent = best_agent
             self.environment.agents[0] = agent
@@ -329,12 +331,17 @@ class Game:
                     continue
                 index = i * 10
                 self.Metal.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
+                index = i * 8
+                self.Metal.cornerBuffer[index:index+4] = agent.car.future_corners[0]
+                self.Metal.cornerBuffer[index+4:index+8] = agent.car.future_corners[1]
               
-            self.Metal.getPointsOffset(len(self.environment.agents) * len(points_offset))
+            self.Metal.pointsAndCorner(len(self.environment.agents) * len(points_offset), len(self.environment.agents) * 2)
             per_agents_points = self.Metal.outVectorBuffer.reshape((len(self.environment.agents), len(points_offset)))
+            per_agents_corner = self.Metal.cornerOutBuffer.reshape(len(self.environment.agents), 4)
+
             for i in range(len(self.environment.agents)):
                 if self.environment.agents[i].car.died == True: continue
-                self.environment.agents[i].Tick(self.ticks, self, per_agents_points[i])
+                self.environment.agents[i].Tick(self.ticks, self, per_agents_points[i], per_agents_corner[i])
             self.ticks += 1
         elif self.player == 9:
             any_alive = False
@@ -439,7 +446,9 @@ class Game:
                 index = i * 10
                 MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
             alives = [1] * len(agents)
+            corner_lengths = [len(agent.car.future_corners) for agent in agents]
             working[p_id] = 2
+
             while alive > 0:
                 alive = sum([1 for agent in agents if not agent.car.died])
                 start_time = time.time()
@@ -450,28 +459,21 @@ class Game:
                     if agent.car.died: continue
                     MetalInstance.inVectorBuffer[index:index + 3] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction]
                     index = i * 8
-                    if len(agent.car.future_corners) >= 2:
-                        corner_data = [int(data) for data in agent.car.future_corners[0]]
-                        corner_data_2 = [int(data) for data in agent.car.future_corners[1]]
-                        MetalInstance.cornerBuffer[index:index + 4] = corner_data 
-                        MetalInstance.cornerBuffer[index + 4:index + 8] = corner_data_2
-                    elif len(agent.car.future_corners) == 1:
-                        corner_data = [int(data) for data in agent.car.future_corners[0]]
-                        MetalInstance.cornerBuffer[index:index + 4] = corner_data
-                        corner_data = [0, 0, 0, 0]
-                        MetalInstance.cornerBuffer[index + 4:index + 8] = corner_data
-                    else:
-                        corner_data = [0, 0, 0, 0, 0, 0, 0, 0]
-                        MetalInstance.cornerBuffer[index:index + 8] = corner_data
                     
+                    corner_lengths[i] = len(agent.car.future_corners)
+                    MetalInstance.cornerBuffer[index:index + 4] = agent.car.future_corners[0]
+                    MetalInstance.cornerBuffer[index+4:index+8] = agent.car.future_corners[1]
+                        
                 tpa_stamp = time.time()
-                MetalInstance.getPointsOffset(len(agents) * len(points_offset))
-                MetalInstance.getCornerData(len(agents) * 2)
+
+                MetalInstance.pointsAndCorner(len(agents) * len(points_offset), len(agents) * 2)
                
                 metal_stamp = time.time()
                 per_agents_points = MetalInstance.outVectorBuffer.reshape(len(agents), len(points_offset))
+                
                 per_agent_corner = MetalInstance.cornerOutBuffer.reshape(len(agents), 4)
-
+                
+                
                 for i in range(len(agents)):
                     if alives[i] == 1:
                         if agents[i].car.died:
@@ -493,6 +495,7 @@ class Game:
                 log_data[p_id * 5 + 2] = int(input_tpa)
                 log_data[p_id * 5 + 3] = int(metal_tpa)
                 log_data[p_id * 5 + 4] = int(tick_tpa)
+                                                                                    
             working[p_id] = 3
 
             for i in range(len(agents)):
@@ -511,67 +514,6 @@ class Game:
             working[p_id] = 0
             gc.collect()
 
-    def ScoreAllAgents(self, agents, local_lap_times, local_laps, local_scores, map_tries, indexes):
-        triplets = [(agents[i], map_tries[i], indexes[i]) for i in range(len(agents))]
-        # Group agents by map_try
-        grouped = {}
-        for triplet in triplets:
-            if triplet[1] not in grouped:
-                grouped[triplet[1]] = []
-            # if agent.car.lap_time != 0, dont add it just manually add a score of 1, 1 lap and its lap time
-            if triplet[0].car.lap_time != 0:
-                real_index = triplet[2]
-                local_scores[real_index] += 1 * score_multiplier
-                local_laps[real_index] += 1
-                local_lap_times[real_index] += triplet[0].car.lap_time
-            else:
-                grouped[triplet[1]].append(triplet)
-        # Now calculate the scores for each group
-        for group in grouped:
-            if len(grouped[group]) == 0:
-                continue
-            finish_positions = [[agent.car.finish_x, agent.car.finish_y] for agent, _, _ in grouped[group]]
-            real_indexes = [index for _, _, index in grouped[group]]
-            agent, _,  _ = grouped[group][0]
-            track = self.tracks[agent.car.track_name]
-            start_pos = [agent.car.start_x, agent.car.start_y]
-            start_dir = agent.car.start_direction
-            scores = self.MultipleAgentsScore(finish_positions, track, start_pos, start_dir)
-            
-            for i in range(len(real_indexes)):
-                local_scores[real_indexes[i]] += scores[i]
-            
-    def MultipleAgentsScore(self, finish_positions, track, start_pos, start_dir):
-        current_x = start_pos[0]
-        current_y = start_pos[1]
-        current_dir = start_dir
-
-        mutable_finish_positions = [pos for pos in finish_positions]
-        per_pos_seen = [-1] * len(finish_positions)
-        total_seen = 0
-        calculated_dirs = {}
-        remaining_index = [i for i in range(len(mutable_finish_positions))]
-        for offset in offsets:
-            calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
-        while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]) and total_seen < 50000:
-            for i in remaining_index:
-                if mutable_finish_positions[i] == [current_x, current_y]:
-                    per_pos_seen[i] = total_seen
-                    remaining_index.remove(i)
-
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
-            if len(potential_offsets) == 0: 
-                print("No potential offsets")
-                break
-            offset = random.choice(potential_offsets)
-            current_x += offset[0]
-            current_y += offset[1]
-            current_dir = calculated_dirs[offset[0] + 1000 * offset[1]]
-            total_seen += 1
-
-        scores = [(per_pos_seen[i] / total_seen) * score_multiplier for i in range(len(per_pos_seen))]
-        return scores
-
     def train_agents_gpu(self):
         if self.generated_starts == []: self.CreateFutureStartsData()
 
@@ -585,7 +527,7 @@ class Game:
 
         while any([True for worker in self.working[:] if worker == 0]):
             time.sleep(0.1)
-            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
+            alive_agents, _, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, _, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
             update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
 
@@ -594,7 +536,7 @@ class Game:
  
         while any([True for worker in self.working[:] if worker != 0]):
             time.sleep(update_delay)
-            alive_agents, ticks, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, smoothed_tps, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
+            alive_agents, _, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, _, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
             update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
 

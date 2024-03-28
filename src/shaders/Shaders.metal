@@ -2,12 +2,10 @@
 #include <metal_stdlib>
 using namespace metal;
 
-
-
 kernel void points_offsets(const device short *input [[ buffer(0) ]], const device uint8_t *track [[ buffer(1) ]], device float *out [[ buffer(2) ]], const device short *offsets [[ buffer(3) ]], uint id [[ thread_position_in_grid ]]) {
     int num_offsets = 15;
     int max_points_distance = 200;
-    
+
     int car_id = int(id / num_offsets);
     int offset_id = int(id % num_offsets);
 
@@ -78,15 +76,10 @@ kernel void process_corner(const device short *input [[ buffer(0) ]], const devi
     
     int max_corner_distance = 800;
     
-    int car_id = id / (num_corner_data * num_corners);
+    int car_id = id / (num_corners);
     int corner_id = id * num_corner_data;
     
     short corner_x = corner_data[corner_id];
-    if (corner_x == 0) {
-        out[id * num_corners] = 0;
-        out[id * num_corners + 1] = 0;
-        return;
-    }
     short corner_y = corner_data[corner_id+ 1];
     short corner_dir = corner_data[corner_id + 2];
     short corner_ampl = corner_data[corner_id + 3];

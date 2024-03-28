@@ -19,9 +19,6 @@ var offsetsBuffer: MTLBuffer?
 var cornerBuffer: MTLBuffer?
 var cornerOutBuffer: MTLBuffer?
 
-var commandBuffer : MTLCommandBuffer?
-var computeCommandEncoder : MTLComputeCommandEncoder?
-
 @available(macOS 10.13, *)
 @_cdecl("add_track")
 public func add_track(track: Int, track_data: UnsafePointer<UInt8>) {
@@ -91,6 +88,60 @@ public func processCorner(count: Int) -> Int {
 @_cdecl("get_points_offsets")
 public func get_points_offsets(count: Int) -> Int {
     return computeOffsets(count: count)
+}
+
+@available(macOS 10.13, *)
+@_cdecl("compute_offsets_corner")
+public func compute_offsets_corner(count1: Int, count2: Int) -> Int {
+    return computeOffsetsCorner(count1 : count1, count2: count2)
+}
+
+@available(macOS 10.13, *)
+public func computeOffsetsCorner(count1: Int, count2: Int) -> Int {
+    do {
+        let commandBuffer1 = commandQueue.makeCommandBuffer()
+        let commandBuffer2 = commandQueue.makeCommandBuffer()
+
+        let computeCommandEncoder1 = commandBuffer1!.makeComputeCommandEncoder()
+        let computeCommandEncoder2 = commandBuffer2!.makeComputeCommandEncoder()
+      
+        let getPointsFunction = defaultLibrary.makeFunction(name: "points_offsets")!
+        let processCornerFunction = defaultLibrary.makeFunction(name: "process_corner")!
+        let computePipelineState1 = try device.makeComputePipelineState(function: getPointsFunction)
+        let computePipelineState2 = try device.makeComputePipelineState(function: processCornerFunction)
+        computeCommandEncoder1!.setComputePipelineState(computePipelineState1)
+        computeCommandEncoder2!.setComputePipelineState(computePipelineState2)
+
+        computeCommandEncoder1!.setBuffer(inBuffer, offset: 0, index: 0)
+        computeCommandEncoder1!.setBuffer(allTracksBuffer, offset: 0, index: 1)
+        computeCommandEncoder1!.setBuffer(outBuffer, offset: 0, index: 2)
+        computeCommandEncoder1!.setBuffer(offsetsBuffer, offset: 0, index: 3)
+
+        computeCommandEncoder2!.setBuffer(inBuffer, offset: 0, index: 0)
+        computeCommandEncoder2!.setBuffer(cornerBuffer, offset: 0, index: 4)
+        computeCommandEncoder2!.setBuffer(cornerOutBuffer, offset: 0, index: 5)
+        
+        let threadsPerGroup1 = MTLSize(width: 1, height: 1, depth: 1)
+        let threadsPerGroup2 = MTLSize(width: 1, height: 1, depth: 1)
+        let numThreadgroups1 = MTLSize(width: count1, height: 1, depth: 1)
+        let numThreadgroups2 = MTLSize(width: count2, height: 1, depth: 1)
+        
+        computeCommandEncoder1!.dispatchThreadgroups(numThreadgroups1, threadsPerThreadgroup: threadsPerGroup1)
+        computeCommandEncoder1!.endEncoding()
+        commandBuffer1!.commit()
+
+        computeCommandEncoder2!.dispatchThreadgroups(numThreadgroups2, threadsPerThreadgroup: threadsPerGroup2)
+        computeCommandEncoder2!.endEncoding()
+        commandBuffer2!.commit()
+
+        commandBuffer1!.waitUntilCompleted()
+        commandBuffer2!.waitUntilCompleted()
+
+        return 0
+    } catch {
+        print("\(error)")
+        return 1
+    }
 }
 
 @available(macOS 10.13, *)

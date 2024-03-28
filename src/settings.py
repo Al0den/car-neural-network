@@ -3,9 +3,9 @@ points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 # - Neural network settings
 center_line_input = True
 state_space_size = len(points_offset) + 9
-first_layer_size_coeff = 1.3
-num_hidden_layers = 0
-action_space_size = 4
+first_layer_size_coeff = 1.1
+num_hidden_layers = 1
+action_space_size = 2
 map_tries = 20
 max_corner_distance = 800
 
@@ -45,8 +45,8 @@ tps_window_size = 20  # Adjust the window size as needed
 # - Simulation settings
 car_length = 5.23
 car_width = 1.8
-max_speed = 340 # Need to modify precalculated speed values if changed
-turn_coeff = 4.05
+max_speed = 350 # Need to modify precalculated speed values if changed
+turn_coeff = 3.8
 drag_coeff = 0.881
 reference_area = 1.7
 lift_coeff = -1.247
@@ -70,7 +70,7 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.15
+mutation_strenght = 0.2
 
 max_ticks_before_kill = 25000
 min_speed = 5

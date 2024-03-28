@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, offsets, directions, two_wide_offsets, tan
+from precomputed import sin, cos, offsets, tan
 from settings import *
 
 class Car:
@@ -178,18 +178,18 @@ class Car:
         self.CheckForAction(brake, power, steer)
         
     def ApplyAgentInputs(self, action):
-        acc, bra, l, r = action
+        acc, steer = action
         steer_change, brake_change, power_change = False, False, False
-        if acc > 0:
+        if acc > 0.5:
             self.Accelerate()
             power_change = True
-        elif bra > 0:
+        elif acc <-0.5:
             self.Decelerate()
             brake_change = True
-        if r > 0:
+        if steer > 0.5:
             self.UpdateSteer(1)
             steer_change = True
-        elif l > 0:
+        elif steer < -0.5:
             self.UpdateSteer(-1)
             steer_change = True
         self.CheckForAction(brake_change, power_change, steer_change)
@@ -237,15 +237,14 @@ class Car:
         drag_force = 0.5 * (drag_coeff) * (reference_area) * pow(self.speed, 2)
         drag_acceleration = drag_force * delta_t / car_mass
         self.speed -= drag_acceleration * (1-self.acceleration) * (1-self.brake)
-        self.speed -= drag_acceleration * pow(self.steer * 1/3, 2)
-        
-        self.direction %= 360
-        self.int_direction = int(self.direction)
+        self.speed -= drag_acceleration * self.steer * 1/3
         
         displacement = (self.speed / 3.6) * self.ppm
         self.x += displacement * cos[(self.int_direction) * angle_resolution_factor] * delta_t
         self.y -= displacement * sin[(self.int_direction) * angle_resolution_factor] * delta_t
         
+        self.direction %= 360
+        self.int_direction = int(self.direction)
         self.int_x = int(self.x)
         self.int_y = int(self.y)
         
@@ -394,10 +393,13 @@ class Car:
             current_dir = new_dir
             if (current_x, current_y) in corners:
                 amplitude = corners_amplitude[corners.index((current_x, current_y))]
-                ordered_corners.append((current_x, current_y, new_dir, amplitude))
+                ordered_corners.append((int(current_x), int(current_y), int(new_dir), int(amplitude)))
             prev_directions.append(new_dir)
             prev_directions.pop(0)
-        ordered_corners.append((current_x, current_y, current_dir, 0))
+        ordered_corners.append((current_x, current_y, int(current_dir), 0))
+        ordered_corners.append((0, 0, 0, 0))
+        ordered_corners.append((0, 0, 0, 0))
+    
         self.future_corners = ordered_corners
         return ordered_corners
     

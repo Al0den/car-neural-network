@@ -15,8 +15,7 @@ def calculate_distance(coords1, coords2):
 def is_color_within_margin(color, target_color, margin):
     return all(abs(a - b) <= margin for a, b in zip(color, target_color))
 
-def speed_after_t(t):
-    return -max_speed * np.exp((-t)/4.5) + max_speed
+
 
 def copy_network(network):
     copied_network = []
@@ -24,6 +23,9 @@ def copy_network(network):
         copied_layer_weights = np.copy(layer_weights)
         copied_network.append(copied_layer_weights)
     return copied_network
+
+def speed_after_t(t):
+    return -max_speed * np.exp((-t)/4.5) + max_speed
 
 def next_speed(current_speed, speed_pre_calc=None):
     try:
