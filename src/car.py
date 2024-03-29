@@ -108,7 +108,14 @@ class Car:
             self.end_check = ticks
             self.safe_from_end = calculate_distance((self.x, self.y), self.end_pos) > 75 * self.ppm
             if not self.safe_from_end:
-                if track_val == 3:
+                res = (
+                    track_val == 3 or
+                    self.track[self.int_y + 2, self.int_x + 2] == 3 or
+                    self.track[self.int_y - 2, self.int_x - 2] == 3 or
+                    self.track[self.int_y + 2, self.int_x - 2] == 3 or
+                    self.track[self.int_y - 2, self.int_x + 2] == 3
+                )
+                if res:
                     self.GetNearestCenterline()
                     self.lap_time = ticks
                     if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction

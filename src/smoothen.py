@@ -156,10 +156,10 @@ def smoothen(track):
     with open('./src/config.json', 'w') as json_file:
         json.dump(config_data, json_file)
     assert(track_matrix[new_real_start[0], new_real_start[1]] in [3, 10])
-    print(new_real_start)
+    #print(new_real_start)
     data['track'] = final_mat
     data['scores'] = scores
-    data['real_start'] = [new_real_start, data['real_start'][1]]
+    #data['real_start'] = [new_real_start, data['real_start'][1]]
     pygame.image.save(track_surface, "./data/tracks/" + track + "_surface.png")
     np.save(f"./data/tracks/{track}.npy", data)
 

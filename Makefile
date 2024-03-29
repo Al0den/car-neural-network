@@ -14,3 +14,7 @@ results:
 
 run:
 	osascript -e 'tell application "Terminal" to do script "cd Desktop/projects/Car && echo \"2\n8\n\" | python src/main.py"'
+graph:
+	osascript -e 'tell application "Terminal" to do script "cd Desktop/projects/Car && echo \"g\" | python utils/graph.py"'
+term:
+	osascript -e 'tell application "Terminal" to do script "cd Desktop/projects/Car"'

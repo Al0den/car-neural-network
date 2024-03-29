@@ -90,10 +90,10 @@ class Agent:
     def CalculateNextAction(self, state):  
         current_layer_output = state
         for i, layer_weights in enumerate(self.network):
-            if i == len(self.network) - 1:  # Check if it's the last layer
-                current_layer_output = np.tanh(np.dot(current_layer_output, layer_weights))
+            if i == len(self.network) - 1:
+                current_layer_output = np.tanh(current_layer_output, layer_weights)
             else:
-                current_layer_output = np.maximum(0, np.dot(current_layer_output, layer_weights))
+                current_layer_output = np.max(0, np.dot(current_layer_output, layer_weights))
         return current_layer_output
     
     def AgentDistance(self, agent2):
