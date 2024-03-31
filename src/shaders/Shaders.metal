@@ -106,3 +106,19 @@ kernel void process_corner(const device short *input [[ buffer(0) ]], const devi
     out[id * num_corners + 1] = result_ampl;
     return;
 }
+
+float dot_product(const device float *arr1, const device float *arr2, int n) {
+    float result = 0;
+    for (int i = 0; i < n; i++) {
+        result += arr1[i] * arr2[i];
+    }
+    return result;
+}
+
+float tanh(float x) {
+    return (exp(x) - exp(-x)) / (exp(x) + exp(-x));
+}
+
+float relu(float x) {
+    return max(0.0, x);
+}

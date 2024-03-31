@@ -33,8 +33,9 @@ class Agent:
         on_track = self.car.track[self.car.int_y, self.car.int_x] != 0
         
         self.state[0:5] = [self.car.speed/360, self.car.acceleration, self.car.brake, self.car.steer, on_track]
-        self.state[5:9] = processed_corners
-        self.state[9:] = calculated_points
+        self.state[5:7] = self.action
+        self.state[7:11] = processed_corners
+        self.state[11:] = calculated_points
 
         return self.state
     
@@ -91,9 +92,9 @@ class Agent:
         current_layer_output = state
         for i, layer_weights in enumerate(self.network):
             if i == len(self.network) - 1:
-                current_layer_output = np.tanh(current_layer_output, layer_weights)
+                current_layer_output = np.tanh(np.dot(current_layer_output, layer_weights))
             else:
-                current_layer_output = np.max(0, np.dot(current_layer_output, layer_weights))
+                current_layer_output = np.maximum(0, np.dot(current_layer_output, layer_weights))
         return current_layer_output
     
     def AgentDistance(self, agent2):

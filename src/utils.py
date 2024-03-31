@@ -3,11 +3,13 @@ import random
 import time
 import sys
 import re
+import shutil
 
 from PIL import Image
 
 from precomputed import next_brake_speed_after_t, four_wide_offsets
-from settings import * 
+from settings import *
+from termcolor import colored
 
 def calculate_distance(coords1, coords2):
     return np.sqrt(pow(coords1[0] - coords2[0], 2) +pow(coords1[1] - coords2[1], 2))
@@ -218,14 +220,12 @@ def get_nearest_centerline(track, x, y):
     print("Could find the nearest track, aborting")
     sys.exit()
 
-import shutil
-from termcolor import colored
-
 def get_terminal_width():
     columns, _ = shutil.get_terminal_size()
     return columns
 
 def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working, issues):
+    if debug: return
     terminal_width = get_terminal_width()
     
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])

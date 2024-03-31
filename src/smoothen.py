@@ -152,10 +152,9 @@ def smoothen(track):
     
     config_data['end_pos'][track] = (end_pos_x, end_pos_y)
 
-    
     with open('./src/config.json', 'w') as json_file:
         json.dump(config_data, json_file)
-    assert(track_matrix[new_real_start[0], new_real_start[1]] in [3, 10])
+    #assert(track_matrix[new_real_start[0], new_real_start[1]] in [3, 10])
     #print(new_real_start)
     data['track'] = final_mat
     data['scores'] = scores
@@ -180,7 +179,6 @@ def init_track_scores(track, start_pos, start_dir):
             current_y += offset[1]
             current_dir = np.degrees(np.arctan2(-offset[1], offset[0]))
         new_real_start = [current_y, current_x]
-        seen_dict[int(str(current_x) + str(current_y))] = 0
         current_dir += 180
         while not any([track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets]):
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and track[current_y + offset[1], current_x + offset[0]] == 10]
@@ -195,8 +193,6 @@ def init_track_scores(track, start_pos, start_dir):
             seen_dict[int(str(current_x) + str(current_y))] = seen
         print(f" - Generated: {len(seen_dict)} scores")
         return seen_dict, seen, new_real_start
-
-
 
 if __name__=="__main__":
     track = input("Track to smoothen: ")

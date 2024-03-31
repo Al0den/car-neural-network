@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 from utils import calculate_distance, next_speed, angle_distance, new_brake_speed
-from precomputed import sin, cos, offsets, tan
+from precomputed import sin, cos, offsets, tan, arctan, speed_squared
 from settings import *
 
 class Car:
@@ -42,9 +42,10 @@ class Car:
         self.acceleration, self.brake, self.speed, self.steer = 0, 0, 0, 0
         self.lap_times, self.lap_time = [], 0
         self.center_line_direction = None
-        self.checkpoints_seen, self.checkpoints = [], []
         self.previous_points = np.array([None] * len(points_offset))
         self.future_corners = []
+
+        self.checkpoints_seen, self.checkpoints = [], []
 
         self.seen = 0
         self.max_pot_seen = 0
@@ -65,6 +66,8 @@ class Car:
 
         self.safe_from_end = False
         self.end_check = 0
+        self.safe_from_corner = False
+        self.corner_check = 0
         
     def Tick(self, game):
         self.ApplyPlayerInputs()
@@ -74,7 +77,6 @@ class Car:
     def CheckCollisions(self, ticks):
         # Keep the two offsets closest to 90 degrees from the car from offsets
         track_val = self.track[self.int_y, self.int_x]
-
         if len(self.future_corners) > 0:
             corner_x, corner_y, _, _ = self.future_corners[0]
             next_corner_dist = calculate_distance((corner_x, corner_y), (self.x, self.y))
@@ -110,16 +112,17 @@ class Car:
             if not self.safe_from_end:
                 res = (
                     track_val == 3 or
-                    self.track[self.int_y + 2, self.int_x + 2] == 3 or
-                    self.track[self.int_y - 2, self.int_x - 2] == 3 or
-                    self.track[self.int_y + 2, self.int_x - 2] == 3 or
-                    self.track[self.int_y - 2, self.int_x + 2] == 3
+                    self.track[self.int_y + 3, self.int_x + 3] == 3 or
+                    self.track[self.int_y - 3, self.int_x - 3] == 3 or
+                    self.track[self.int_y + 3, self.int_x - 3] == 3 or
+                    self.track[self.int_y - 3, self.int_x + 3] == 3
                 )
                 if res:
                     self.GetNearestCenterline()
                     self.lap_time = ticks
                     if len(self.checkpoints_seen) < 1 and angle_distance(self.direction, self.start_direction) > 90: # The car isn't facing the correct direction
                         self.lap_time = 0
+                        print("Cheating attempt")
                     self.Kill()
                     return False
         return True
@@ -129,6 +132,9 @@ class Car:
         self.finish_x, self.finish_y = self.GetNearestCenterline()
 
         self.safe_from_end = False
+        self.safe_from_corner = False
+        self.end_check = 0
+        self.corner_check = 0
 
         self.x = self.start_x
         self.y = self.start_y
@@ -219,7 +225,7 @@ class Car:
                 self.steer = min(0, self.steer)
         if self.steer > 1:
             self.steer = 1
-        if self.steer < -1:
+        elif self.steer < -1:
             self.steer = -1
         
     def UpdateCar(self):     
@@ -228,17 +234,20 @@ class Car:
 
         tan_angle = tan[int((wheel_angle % 180) * angle_resolution_factor)]
         turning_radius = self.c_length / tan_angle if tan_angle != 0 else float('inf')
-
-        wheel_angle = np.arctan(self.c_length / (turning_radius - self.c_width / 2))
+        arctan_angle = self.c_length / (turning_radius - self.c_width / 2)
+        if arctan_angle < 0: wheel_angle = -arctan[int(-arctan_angle*arctan_resolution_factor)]
+        else: wheel_angle = arctan[int(arctan_angle*arctan_resolution_factor)]
+       
         self.direction += wheel_angle * delta_t * (self.speed + 20) * turn_coeff
 
         # - Car speed
         self.speed += (next_speed(self.speed, self.speed_pre_calc) - self.speed) * self.acceleration
         if self.brake > 0: self.speed += (new_brake_speed(self.speed) - self.speed) * self.brake
-        drag_force = 0.5 * (drag_coeff) * (reference_area) * pow(self.speed, 2)
+
+        drag_force = 0.5 * (drag_coeff) * (reference_area) * speed_squared[int(self.speed * 10)]
         drag_acceleration = drag_force * delta_t / car_mass
-        self.speed -= drag_acceleration * (1-self.acceleration) * (1-self.brake)
-        self.speed -= drag_acceleration * self.steer * 1/3
+
+        self.speed -= drag_acceleration * ((1-self.acceleration) * (1-self.brake) + abs(self.steer) * 1/4)
         
         displacement = (self.speed / 3.6) * self.ppm
         self.x += displacement * cos[(self.int_direction) * angle_resolution_factor] * delta_t
@@ -253,7 +262,7 @@ class Car:
     def UpdateCorners(self):
         half_small_side = car_width * self.ppm / 2
         half_big_side = car_length * self.ppm / 2
-        angle = np.arctan(half_small_side / half_big_side)
+        angle = arctan[int(half_small_side / half_big_side * arctan_resolution_factor)]
         cos_1 = cos[(int(self.direction + angle - 90)% 360) * angle_resolution_factor]
         sin_1 = sin[(int(self.direction + angle - 90)% 360) * angle_resolution_factor]
 
@@ -331,7 +340,7 @@ class Car:
             calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
             
         while ((final_x, final_y) != (current_x, current_y)) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, calculated_dirs[offset[0] + 1000 * offset[1]]) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if not potential_offsets: break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
@@ -339,8 +348,6 @@ class Car:
             current_dir = calculated_dirs[current_offset[0] + 1000 * current_offset[1]]
             seen += 1
 
-        if (seen == 50000 or (seen > 8000 and len(self.checkpoints_seen) < 1)):
-            return 0
         self.seen = seen
         return min(1, seen / max_potential)
     
@@ -355,7 +362,7 @@ class Car:
             calculated_dirs[offset[0] + 1000 * offset[1]] = np.degrees(np.arctan2(-offset[1], offset[0]))
         assert(self.track[current_y, current_x] == 10)
         while (not any([self.track[current_y + offset[1], current_x + offset[0]] == 3 for offset in offsets])) and seen < 50000:
-            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
+            potential_offsets = [offset for offset in offsets if angle_distance(current_dir, calculated_dirs[offset[0] + 1000 * offset[1]]) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if potential_offsets == []: 
                 raise Exception(f"Car has no potential, seen: {seen}, track: {self.track_name}, x: {current_x}, y: {current_y}, dir: {current_dir}")
             current_offset = potential_offsets[0]
@@ -383,9 +390,6 @@ class Car:
             potential_offsets = [offset for offset in offsets if angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) <= 90 and self.track[current_y + offset[1], current_x + offset[0]] == 10]
             if len(potential_offsets) == 0:
                 print(f"Weird, {ordered_corners}, {current_x}, {current_y}, {current_dir}")
-                print([self.track[current_y + offset[1], current_x + offset[0]] for offset in offsets])
-                print([np.round(np.degrees(np.arctan2(-offset[1], offset[0])),2) for offset in offsets])
-                print([angle_distance(current_dir, np.degrees(np.arctan2(-offset[1], offset[0]))) for offset in offsets])
                 break
             current_offset = potential_offsets[0]
             current_x += current_offset[0]
@@ -424,6 +428,7 @@ class Car:
         except:
             print(f"Error in score, {self.previous_center_line}, {self.start_x}, {self.start_y}")
             self.CalculateScore(1)
+
             return self.seen
 
         

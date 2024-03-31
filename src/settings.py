@@ -2,7 +2,7 @@ points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 
 # - Neural network settings
 center_line_input = True
-state_space_size = len(points_offset) + 9
+state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.1
 num_hidden_layers = 1
 action_space_size = 2
@@ -56,6 +56,7 @@ brake_increment = 1/10
 acceleration_increment = 1/10
 steer_increment = 1/10
 angle_resolution_factor = 10
+arctan_resolution_factor = 1000
 
 # - Evolution settings
 mutation_rates = [0.02, 0.05, 0.1, 0.2]
