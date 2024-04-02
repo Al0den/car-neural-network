@@ -225,7 +225,7 @@ def get_terminal_width():
     return columns
 
 def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working, issues):
-    if debug: return
+    
     terminal_width = get_terminal_width()
     
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])

@@ -45,7 +45,7 @@ tps_window_size = 20  # Adjust the window size as needed
 # - Simulation settings
 car_length = 5.23
 car_width = 1.8
-max_speed = 350 # Need to modify precalculated speed values if changed
+max_speed = 370 # Need to modify precalculated speed values if changed
 turn_coeff = 3.8
 drag_coeff = 0.881
 reference_area = 1.7
