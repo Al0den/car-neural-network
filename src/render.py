@@ -7,6 +7,8 @@ from settings import *
 from agent import Agent
 from precomputed import cos, sin
 
+import matplotlib.pyplot as plt
+
 class Render:
     def __init__(self, screen, game_options, game):
         self.screen = screen
@@ -407,7 +409,74 @@ class Render:
         self.handle_slider(game)
         pygame.display.update()
 
-        
+    def initDataGraph(self):
+        # Create and show an empty graph
+        self.speeds = []
+        self.throttle = []
+        self.brake = []
+        self.steer = []
+        self.timestamps = []
+
+        self.fig, self.axs = plt.subplots(1, 3, figsize=(17, 6))
+        self.axs[0].set_xlabel('Time (s)')
+        self.axs[0].set_ylabel('Speed (km/h)')
+        self.axs[1].set_xlabel('Time (s)')
+        self.axs[1].set_ylabel('Throttle')
+        self.axs[2].set_xlabel('Time (s)')
+        self.axs[2].set_ylabel('Steer')
+
+        # Draw the initial empty lines for each subplot
+        self.speed_line, = self.axs[0].plot([], [], 'b-')
+        self.throttle_line, = self.axs[1].plot([], [], 'g-', label='Throttle')
+        self.brake_line, = self.axs[1].plot([], [], 'r-', label='Brake')
+        self.axs[1].legend()
+        self.steer_line, = self.axs[2].plot([], [], 'y-')
+
+        # Draw the graph
+        plt.ion()
+        plt.show(block=False)
+
+    def ClearData(self):
+        self.speeds = []
+        self.throttle = []
+        self.brake = []
+        self.steer = []
+        self.timestamps = []
+
+    def GraphData(self, speed, brake, throttle, steer, timestamp):
+        self.speeds.append(speed)
+        self.throttle.append(throttle)
+        self.brake.append(-brake)
+        self.steer.append(steer)
+        self.timestamps.append(timestamp/60)
+
+        # if len > 1000 remove first element
+        if len(self.speeds) > 1000:
+            self.speeds.pop(0)
+            self.throttle.pop(0)
+            self.brake.pop(0)
+            self.steer.pop(0)
+            self.timestamps.pop(0)
+
+        if timestamp % 20 == 0:
+            self.speed_line.set_data(self.timestamps, self.speeds)
+            self.throttle_line.set_data(self.timestamps, self.throttle)
+            self.brake_line.set_data(self.timestamps, self.brake)
+            self.steer_line.set_data(self.timestamps, self.steer)
+
+            # Adjust limits if necessary
+            self.axs[0].set_xlim(min(self.timestamps), max(self.timestamps)+1)
+            self.axs[1].set_xlim(min(self.timestamps), max(self.timestamps)+1)
+            self.axs[2].set_xlim(min(self.timestamps), max(self.timestamps)+1)
+
+            self.axs[0].set_ylim(0, 360)
+            self.axs[1].set_ylim(-1.1, 1.1)
+            self.axs[2].set_ylim(-1.1, 1.1)
+
+   
+
+
+                
 
 
         

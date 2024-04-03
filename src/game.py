@@ -15,13 +15,12 @@ Image.MAX_IMAGE_PIXELS = None
 
 from environment import Environment
 from car import Car
-from utils import is_color_within_margin, calculate_distance, get_new_starts, get_nearest_centerline, update_terminal, angle_distance
+from utils import is_color_within_margin, get_new_starts, get_nearest_centerline, update_terminal
 from agent import Agent
 from settings import *
 from smoothen import smoothen
 from metal import Metal
 from corners import get_corners
-from precomputed import offsets
 
 from utils import next_speed
 
@@ -281,17 +280,35 @@ class Game:
         elif self.player == 1 or self.player == 3:
             self.train_agents_gpu()
         elif self.player == 4:
+            speed = self.environment.agents[0].car.speed
+            brake = self.environment.agents[0].car.brake
+            throttle = self.environment.agents[0].car.acceleration
+            steer = self.environment.agents[0].car.steer
+
+            self.render.GraphData(speed, brake, throttle, steer, self.ticks)
+
             self.environment.agents[0].Tick(self.ticks, self)
+            if self.environment.agents[0].car.died == True:
+                self.render.ClearData()
             self.ticks += 1
         elif self.player == 5:
             import pygame
             keys = pygame.key.get_pressed()
+            speed = self.environment.agents[0].car.speed
+            brake = self.environment.agents[0].car.brake
+            throttle = self.environment.agents[0].car.acceleration
+            steer = self.environment.agents[0].car.steer
+
+            self.render.GraphData(speed, brake, throttle, steer, self.ticks)
+
             if keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d] or keys[pygame.K_h]:
                 self.environment.agents[0].car.ApplyPlayerInputs()
                 self.environment.agents[0].car.UpdateCar()
                 self.environment.agents[0].car.CheckCollisions(self.ticks)
             else:
                 self.environment.agents[0].Tick(self.ticks, self)
+                if self.environment.agents[0].car.died == True:
+                    self.render.ClearData()
             self.ticks += 1
         elif self.player == 6:
             if self.started:

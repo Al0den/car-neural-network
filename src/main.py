@@ -33,7 +33,8 @@ def main():
         generated = np.copy(game.track).astype(np.uint16)
         brake, steer, throttle, speeds, timestamps = [], [], [], [], []
     game.restart = False
-
+    if game.player in [4, 5]:
+        game.render.initDataGraph()
     # Main loop
     while game.running.value:
         if game_options['display']:

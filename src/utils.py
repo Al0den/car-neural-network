@@ -12,12 +12,10 @@ from settings import *
 from termcolor import colored
 
 def calculate_distance(coords1, coords2):
-    return np.sqrt(pow(coords1[0] - coords2[0], 2) +pow(coords1[1] - coords2[1], 2))
+    return np.sqrt(pow(coords1[0] - coords2[0], 2) + pow(coords1[1] - coords2[1], 2))
 
 def is_color_within_margin(color, target_color, margin):
     return all(abs(a - b) <= margin for a, b in zip(color, target_color))
-
-
 
 def copy_network(network):
     copied_network = []

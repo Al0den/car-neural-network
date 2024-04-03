@@ -2,7 +2,6 @@ import numpy as np
 import os
 import random
 
-from multiprocessing import Manager
 from datetime import datetime
 from settings import *
 

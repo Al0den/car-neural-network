@@ -6,10 +6,10 @@ state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.1
 num_hidden_layers = 1
 action_space_size = 2
-map_tries = 15
+map_tries = 50
 max_corner_distance = 800
 
-real_starts_num = 5
+real_starts_num = 16
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
