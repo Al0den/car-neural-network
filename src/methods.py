@@ -7,13 +7,32 @@ from settings import *
 
 from agent import Agent
 
+def pause(game, pygame):
+    if game.last_keys_update + key_press_delay < datetime.now().timestamp(): 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_p]:
+            game.pause = not game.pause
+            game.last_keys_update = datetime.now().timestamp()
+
 def HumanMethod(game, game_options, pygame):
     update_visual(game, pygame)
     keys = pygame.key.get_pressed()
 
+    pause(game, pygame)
     if keys[pygame.K_r]:
         game.restart = True
         game.car.Kill()
+    if keys[pygame.K_m]:
+        # Put the car on the real quali start, and pause the game
+        game.car.x, game.car.y = game.real_starts[game.track_name][0][1], game.real_starts[game.track_name][0][0]
+        game.car.direction = game.real_starts[game.track_name][1]
+        start_speed = game.config['quali_start_speed'].get(game.track_name)
+        game.car.speed = start_speed
+        game.car.acceleration = 1
+        game.car.setFutureCorners(game.corners[game.track_name])
+        game.pause = True
+    
+
     if game.restart:
         score = game.car.CalculateScore()
         print(f" - Completed: {score * 100:0.2f}%, max pote: {game.car.max_pot_seen}, seen: {game.car.seen}")

@@ -6,10 +6,10 @@ state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.1
 num_hidden_layers = 1
 action_space_size = 2
-map_tries = 50
+map_tries = 1
 max_corner_distance = 800
 
-real_starts_num = 16
+real_starts_num = 0
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -20,7 +20,7 @@ first_layer_size = int(state_space_size * first_layer_size_coeff)
 # - Parameters
 perft_ticks = 10
 perft_duration = 20
-specialised_training_multiple = 5
+specialised_training_multiple = 1
 compile_shaders = False
 key_press_delay = 0.1
 

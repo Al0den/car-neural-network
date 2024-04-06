@@ -4,6 +4,7 @@ import time
 import sys
 import re
 import shutil
+import json
 
 from PIL import Image
 
@@ -46,11 +47,11 @@ def angle_distance(angle1, angle2):
     if val > 180: return 360 - val
     return val
 
-def get_new_starts(track, n, turn_intensity):
+def get_new_starts(track, n, turn_intensity, track_name):
     start_positions = []
 
     positions = np.argwhere(track == 10).tolist()
-    turn_intensity_threshold = np.mean(turn_intensity) * 25
+  
     print(f" - Found {len(positions)} potential starts")
     positions.sort(key=lambda pos: turn_intensity[pos[0], pos[1]])
 
@@ -62,20 +63,37 @@ def get_new_starts(track, n, turn_intensity):
     print(" - Found", len(positions), "valid start positions")
     if not positions: return []
 
+    with open("./src/config.json", 'r') as f:
+        config = json.load(f)
+
+    end_pos_x, end_pos_y = config.get("end_pos").get(track_name)
+
     for _ in range(n):
         random.shuffle(positions)
         chosen_pos, chosen_dir = None, None
         while chosen_pos == None:
             pos = random.choice(positions)
+            if calculate_distance(pos, (end_pos_x, end_pos_y)) < 200:
+                continue
+            pos_x = pos[1]
+            pos_y = pos[0]
+            angle_to_end = np.degrees(np.arctan2((pos_y - end_pos_y), pos_x - end_pos_x))
+
             potential_directions = []
+            best_dir = None
+            best_angle_dist = None
             for offset in four_wide_offsets:
-                new_pos = (pos[1] + offset[0], pos[0] + offset[1])
+                new_pos = (pos[1] + offset[0], pos[0] + offset[1]) #(x,y)
                 if track[new_pos[1], new_pos[0]] == 10:
+                    start_angle = np.degrees(np.arctan2(offset[1], offset[0]))
                     potential_directions.append(offset)
+                    if best_angle_dist is None or abs(angle_distance(start_angle, angle_to_end)) < best_angle_dist:
+                        best_angle_dist = abs(angle_distance(start_angle, angle_to_end))
+                        best_dir = offset
             if not potential_directions: continue
             if len(potential_directions) != 2: continue
             chosen_pos = pos
-            chosen_dir = random.choice(potential_directions)
+            chosen_dir = best_dir
         start_positions.append((chosen_pos, np.degrees(np.arctan2(-chosen_dir[1], chosen_dir[0]))))
     return start_positions
 
@@ -164,10 +182,19 @@ def SaveOptimalLine(track_matrix, track_name, generation):
             for l in range(-1, 2):
                 if 0 <= i + k < height and 0 <= j + l < width:
                     rgba_array[i + k, j + l] = speed_color
-
+    EditSurfaceImage(track_name, rgba_array)
     image = Image.fromarray(rgba_array)
     image.save(f"./data/per_track/{track_name}/generated_{generation}.png")
-
+def EditSurfaceImage(track, array):
+    path = f"./data/tracks/{track}_surface.png"
+    image = Image.open(path)
+    # Get image as numpy array
+    surface = np.array(image)
+    # Put all non black pixels from array into the surface
+    surface[array != 0] = array[array != 0]
+    # Save the image
+    image = Image.fromarray(surface)
+    image.save(f"./data/tracks/{track}_surface_path.png")
 def SaveAgentsSpeedGraph(speeds, throttle, brake, generation, track_name, steer):
     import matplotlib.pyplot as plt
     speeds.pop()
@@ -223,7 +250,6 @@ def get_terminal_width():
     return columns
 
 def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, working, issues):
-    
     terminal_width = get_terminal_width()
     
     generation_line = colored(f"Generation: {generation}", attrs=['bold'])
@@ -236,6 +262,7 @@ def update_terminal(game, total_agents, alive_agents, tot_ticks, input_percentag
             case 1: return 'yellow'
             case 2: return 'green'
             case 3: return 'blue'
+            case 4: return 'red'
     working_bar = ""
     for worker in working:
         working_bar += colored('█ ', worker_color(worker))

@@ -6,7 +6,7 @@ from colorama import Fore, init
 init()
 
 def complete_track(text, state):
-    tracks = [file[:-4] for file in os.listdir("data/tracks") if file.endswith(".png") and not file.endswith("_surface.png")]
+    tracks = [file[:-4] for file in os.listdir("data/tracks") if file.endswith(".png") and not file.endswith("_surface.png") and not file.endswith("_path.png")]
     options = [track for track in tracks if track.startswith(text)]
     return options[state] if state < len(options) else None
 
@@ -83,7 +83,7 @@ def load_options():
 
         print("Available tracks:")
         for file in os.listdir("data/tracks"):
-            if file.endswith(".png") and not file.endswith("_surface.png"):
+            if file.endswith(".png") and not file.endswith("_surface.png") and not file.endswith("_path.png"):
                 track_name = file[:-4]
                 npy_file_path = os.path.join("data/tracks", f"{track_name}.npy")
                 per_track_file_path = os.path.join("data/per_track", track_name)

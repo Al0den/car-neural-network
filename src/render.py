@@ -21,6 +21,8 @@ class Render:
         car_image = pygame.image.load("./data/f1.png")
         self.car_image = pygame.transform.scale(car_image, (600, 228))
         self.debug_val = debug
+
+        self.game = game
         
         self.tracks = game.tracks
         self.surfaces = {}
@@ -46,7 +48,9 @@ class Render:
 
 
     def load_track_surface(self, track_name):
-        if os.path.isfile("data/tracks/" + track_name + "_surface.png"):
+        if os.path.isfile("data/tracks/" + track_name + "_surface_path.png"):
+            return pygame.image.load("data/tracks/" + track_name + "_surface_path.png")
+        elif os.path.isfile("data/tracks/" + track_name + "_surface.png"):
             return pygame.image.load("data/tracks/" + track_name + "_surface.png")
         else:
             print(f" - Error loading track surface for track {track_name}")
@@ -429,9 +433,10 @@ class Render:
         self.speed_line, = self.axs[0].plot([], [], 'b-')
         self.throttle_line, = self.axs[1].plot([], [], 'g-', label='Throttle')
         self.brake_line, = self.axs[1].plot([], [], 'r-', label='Brake')
-        self.axs[1].legend()
+        
         self.steer_line, = self.axs[2].plot([], [], 'y-')
 
+        
         # Draw the graph
         plt.ion()
         plt.show(block=False)
@@ -465,9 +470,9 @@ class Render:
             self.steer_line.set_data(self.timestamps, self.steer)
 
             # Adjust limits if necessary
-            self.axs[0].set_xlim(min(self.timestamps), max(self.timestamps)+1)
-            self.axs[1].set_xlim(min(self.timestamps), max(self.timestamps)+1)
-            self.axs[2].set_xlim(min(self.timestamps), max(self.timestamps)+1)
+            self.axs[0].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
+            self.axs[1].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
+            self.axs[2].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
 
             self.axs[0].set_ylim(0, 360)
             self.axs[1].set_ylim(-1.1, 1.1)

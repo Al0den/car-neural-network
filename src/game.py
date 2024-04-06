@@ -50,6 +50,8 @@ class Game:
         self.last_keys_update = 0 # - Time since last key click, Display parameter
         self.track_name = game_options['track_name'] # - Track name
 
+        self.pause = False
+
         self.shared_tracks = None
         self.speed_precalc = None
 
@@ -78,7 +80,12 @@ class Game:
         elif self.player == 3:
             self.environment.load_specific_agents(self)
         elif self.player == 4:
-            best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained")
+            if self.options["generation_to_load"] == 0:
+                best_agent, agent = self.load_best_agent(f"./data/per_track/{self.track_name}/trained")
+            else:
+                best_agent = self.options["generation_to_load"]
+                agent = Agent(game_options['environment'], self.track, self.start_pos, self.start_dir, self.track_name)
+                agent.network = np.load(f"./data/per_track/{self.track_name}/trained/best_agent_{best_agent}.npy", allow_pickle=True).item()['network']
             self.extract_csv(f"./data/per_track/{self.track_name}/log.csv")
             agent.car.track = self.track
             agent.car.track_name = self.track_name
@@ -268,6 +275,7 @@ class Game:
         self.CalculateProgressionValues()
     
     def tick(self):
+        if self.pause: return
         if self.player == 0:
             self.ticks += 1
             if self.ticks % 100 == 0 and debug:
@@ -439,6 +447,7 @@ class Game:
 
         while True:
             try:
+                if working[p_id] == 4: continue
                 input_feed = agents_feed.pop(0)
                 working[p_id] = 1
             except:
@@ -490,7 +499,6 @@ class Game:
                 
                 per_agent_corner = MetalInstance.cornerOutBuffer.reshape(len(agents), 4)
                 
-                
                 for i in range(len(agents)):
                     if alives[i] == 1:
                         if agents[i].car.died:
@@ -528,8 +536,7 @@ class Game:
             local_laps.fill(0)
             local_lap_times.fill(0)
 
-            working[p_id] = 0
-            gc.collect()
+            working[p_id] = 4
 
     def train_agents_gpu(self):
         if self.generated_starts == []: self.CreateFutureStartsData()
@@ -542,21 +549,22 @@ class Game:
         tps_values = [0] * tps_window_size
         prev_ticks = 0
 
-        while any([True for worker in self.working[:] if worker == 0]):
+        while any([worker == 0 for worker in self.working[:]]):
             time.sleep(0.1)
             alive_agents, _, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, _, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
             update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
-
+   
         thread = threading.Thread(target=self.CreateFutureStartsData)
         thread.start()
  
-        while any([True for worker in self.working[:] if worker != 0]):
+        while any([worker != 4 for worker in self.working[:]]):
             time.sleep(update_delay)
             alive_agents, _, tot_ticks, min_ticks, max_ticks, max_alive, min_alive, _, human_formatted, metal_percentage, input_percentage, tick_percentage, TPS, RTS, ts, tc = self.LiveUpdateData(tps_values, start, prev_ticks)
             prev_ticks = tot_ticks
             update_terminal(self, self.map_tries * len(self.environment.agents), alive_agents, tot_ticks, input_percentage, metal_percentage, tick_percentage, TPS, RTS, self.environment.generation, min_ticks, max_ticks, max_alive, min_alive, human_formatted, ts, tc, self.working[:], self.issues.value)
 
+        self.working[:] = [0] * len(self.working)
         self.logger_data = {
             "tps": TPS,
             "rts": RTS,
@@ -787,7 +795,7 @@ class Game:
         self.corners = {}
         self.track_scores = {}
         for file in os.listdir("./data/tracks"):
-            if file.endswith(".png") and not file.endswith("_surface.png"):
+            if file.endswith(".png") and not file.endswith("_surface.png") and not file.endswith("_path.png"):
                 print(f" - Loading track: {file[:-4]}         \r", end='', flush=True)
 
                 if self.player == 8 and file[:-4] != self.options['track_name']: continue
@@ -876,7 +884,7 @@ class Game:
             print(" - Generating new starts")
             data = {
                 "track": self.track,
-                "start_positions": get_new_starts(self.track, 5000, track_intensity),
+                "start_positions": get_new_starts(self.track, 5000, track_intensity, track_name),
                 "corners": corners,
                 "real_start": real_start,
                 "scores": {}
