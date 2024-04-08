@@ -174,10 +174,12 @@ def SaveOptimalLine(track_matrix, track_name, generation):
     for key, color in color_map.items():
         rgba_array[track_matrix == key] = color + (255,)
 
+
     speed_indices = np.where((track_matrix <= 370) & (track_matrix > 10))
     for i, j in zip(*speed_indices):
         speed = (track_matrix[i, j] - 10) / 360  # Normalize speed from 1 (green) to 0 (red)
         speed_color = interpolate_color(speed)
+
         for k in range(-1, 2):
             for l in range(-1, 2):
                 if 0 <= i + k < height and 0 <= j + l < width:
@@ -185,12 +187,16 @@ def SaveOptimalLine(track_matrix, track_name, generation):
     EditSurfaceImage(track_name, rgba_array)
     image = Image.fromarray(rgba_array)
     image.save(f"./data/per_track/{track_name}/generated_{generation}.png")
+
 def EditSurfaceImage(track, array):
     path = f"./data/tracks/{track}_surface.png"
     image = Image.open(path)
     # Get image as numpy array
     surface = np.array(image)
+
+
     # Put all non black pixels from array into the surface
+
     surface[array != 0] = array[array != 0]
     # Save the image
     image = Image.fromarray(surface)
