@@ -6,10 +6,10 @@ state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.1
 num_hidden_layers = 1
 action_space_size = 2
-map_tries = 1
+map_tries = 2
 max_corner_distance = 800
 
-real_starts_num = 0
+real_starts_num = 1
 assert(real_starts_num <= map_tries)
 
 max_points_distance = 200 
@@ -71,13 +71,13 @@ previous_ratio = 0.05
 no_lap_value = 1000000
 score_multiplier = 10000
 
-mutation_strenght = 0.15
+mutation_strenght = 0.1
 
 max_ticks_before_kill = 20000
 min_speed = 10
 base_score_per_checkpoint = 0
 
-agent_selection_coeff = 5
+agent_selection_coeff = 8
 
 # - Render Options
 default_width = 1220

@@ -142,6 +142,7 @@ class Game:
             
         elif self.player == 8:
             self.s_or_g_choice = self.options["s_or_g"]
+
             if self.s_or_g_choice == "g":
                 start_generation = np.load("./data/train/agents.npy", allow_pickle=True).item()['generation']
                 gap = self.options["gap"]
@@ -405,6 +406,8 @@ class Game:
         num_agents = len(self.environment.agents)
         processes = []
 
+        gc.collect()
+
         self.agents_feed = Manager().list()
         self.main_lock = Manager().Lock()
         self.lap_times = Array('i', [0] * num_agents, lock=False)
@@ -432,6 +435,8 @@ class Game:
 
         MetalInstance = Metal(self.tracks)
         track_index = MetalInstance.getTrackIndexes()
+
+        num_agents = len(self.environment.agents)
 
         self.tracks = {}
         
@@ -527,7 +532,7 @@ class Game:
                 self.IndividualAgentScore(agents[i], local_lap_times, local_laps, local_scores, max_potentials, map_tries[i], indexes[i])
 
             with main_lock:
-                for i in range(len(self.environment.agents)):
+                for i in range(num_agents):
                     scores[i] += local_scores[i]
                     laps[i] += local_laps[i]
                     lap_times[i] += local_lap_times[i]

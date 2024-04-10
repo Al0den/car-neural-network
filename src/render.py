@@ -1,13 +1,16 @@
 import pygame
 import numpy as np
 import os
+import time
+
+import matplotlib.pyplot as plt
 
 from utils import calculate_distance, copy_car, angle_range_180
 from settings import *
 from agent import Agent
 from precomputed import cos, sin
 
-import matplotlib.pyplot as plt
+from multiprocessing import Manager
 
 class Render:
     def __init__(self, screen, game_options, game):
@@ -433,13 +436,24 @@ class Render:
         self.speed_line, = self.axs[0].plot([], [], 'b-')
         self.throttle_line, = self.axs[1].plot([], [], 'g-', label='Throttle')
         self.brake_line, = self.axs[1].plot([], [], 'r-', label='Brake')
-        
         self.steer_line, = self.axs[2].plot([], [], 'y-')
+
+        self.shared_speed_line = Manager().list()
+        self.shared_throttle_line = Manager().list()
+        self.shared_brake_line = Manager().list()
+        self.shared_steer_line = Manager().list()
+        self.shared_timestamps = Manager().list()
 
         
         # Draw the graph
         plt.ion()
         plt.show(block=False)
+
+    def draw_perm(self):
+
+        while True:
+            time.sleep(1)
+            self.fig.canvas.draw()
 
     def ClearData(self):
         self.speeds = []
@@ -454,6 +468,8 @@ class Render:
         self.brake.append(-brake)
         self.steer.append(steer)
         self.timestamps.append(timestamp/60)
+
+
 
         # if len > 1000 remove first element
         if len(self.speeds) > 1000:
