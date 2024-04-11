@@ -7,11 +7,11 @@ This code was only meant to run on Apple Silicon machines, and might work on Int
 Nothing here was made to be used, it is just a personal attempt at an interesting problem.
 
 ## Some results
-Cup Of The Americas generated racing line
+__Cup Of The Americas generated racing line__
 ![image](https://github.com/Al0den/car-neural-network/assets/111601320/59dd49ef-b57f-48d8-8f03-62820887eb74)
 ![image](https://github.com/Al0den/car-neural-network/assets/111601320/d190e44d-b929-41b1-a346-fd81e38e7ad0)
 
-Mexico Grand Prix generated racing line
+__Mexico Grand Prix generated racing line__
 ![image](https://github.com/Al0den/car-neural-network/assets/111601320/717f3e9b-1d57-4052-bc21-84407aedc549)
 ![image](https://github.com/Al0den/car-neural-network/assets/111601320/8b88b6d7-cb06-4fcb-882f-152dc935cf7b)
 
