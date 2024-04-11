@@ -16,7 +16,7 @@ To run pre-trained agent on a random start position, simpy run `python src/main.
 
 To get a specific trained agent run, use `4`, and to get the best one select agent number `0`
 
-Modes:
+**Modes**:
 `0` - Playing as a Human on track
 
 `1` - Create a set of untrained agents
