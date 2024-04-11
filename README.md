@@ -1,11 +1,34 @@
 # Car Neural Network
-This repo is a storing repo for my TIPE project in French Classe Preparatoire. It has the objective to train a neural network to follow a specific track, and learn the fastest way to complete a full lap on it.
-In no means is it perfect or optimal, but a learning curve and a work in progress
+An attempt at generating the optimal racing line for motorsports, more specifically Formula 1
 
-## Using the code
-Currently, this wasnt made to be run or used. However, nothing should prevent it to work on another machine, given a correct track (5000x5000 image, stored in /data/tracks). The image should contain black representing the track, orange for checkpoints and red for finish line. start\_x and start\_y need to be manually adjusted in `src/car.py` manually. 
+## Requirements
+This code was only meant to run on Apple Silicon machines, and might work on Intel based Macs, although it hasn't been tested. The shaders are pre-compiled in src/shaders, and were compiled locally. If you want to try and compile them on your side, see `make compile_shader`
+Nothing here was made to be used, it is just a personal attempt at an interesting problem.
 
-By default, it is only setup for singapoure, which is provided
+## Some results
 
-Simply run `python src/main.py` and follow the prompts to enter the desired mode
+
+## Trying the code out
+Some already trained agents are by default in the code (Lots are in reality, stored in `data/train/trained`), and should work just fine when cloning the repo.
+To run pre-trained agent on a random start position, simpy run `python src/main.py`, and then press `5`
+To get a specific trained agent run, use `4`, and to get the best one select agent number `0`
+
+Modes:
+`0` - Playing as a Human on track
+`1` - Create a set of untrained agents
+`2` - Continue the training of the agent batch
+`3` - Train only on a specific map
+`4` - View run on a specific map
+`5` - View global run
+`6` - Race against the AI
+`7` - Generate the optimal track, that is output in `data/per_track/{track_name}`
+`8` - Show multiple agents
+`9` - \
+`10` - Performance Test
+
+## Configuration
+
+In `src/settings.py`, most of the configuration options are available. Some may be outdated/un-used, and changing some of them makes the code extremely unstable/unrealistic
+
+
 
