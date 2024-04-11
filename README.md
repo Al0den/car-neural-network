@@ -3,6 +3,7 @@ An attempt at generating the optimal racing line for motorsports, more specifica
 
 ## Requirements
 This code was only meant to run on Apple Silicon machines, and might work on Intel based Macs, although it hasn't been tested. The shaders are pre-compiled in src/shaders, and were compiled locally. If you want to try and compile them on your side, see `make compile_shader`
+
 Nothing here was made to be used, it is just a personal attempt at an interesting problem.
 
 ## Some results
@@ -10,21 +11,34 @@ Nothing here was made to be used, it is just a personal attempt at an interestin
 
 ## Trying the code out
 Some already trained agents are by default in the code (Lots are in reality, stored in `data/train/trained`), and should work just fine when cloning the repo.
+
 To run pre-trained agent on a random start position, simpy run `python src/main.py`, and then press `5`
+
 To get a specific trained agent run, use `4`, and to get the best one select agent number `0`
 
 Modes:
 `0` - Playing as a Human on track
+
 `1` - Create a set of untrained agents
+
 `2` - Continue the training of the agent batch
+
 `3` - Train only on a specific map
+
 `4` - View run on a specific map
+
 `5` - View global run
+
 `6` - Race against the AI
+
 `7` - Generate the optimal track, that is output in `data/per_track/{track_name}`
+
 `8` - Show multiple agents
+
 `9` - \
+
 `10` - Performance Test
+
 
 ## Configuration
 
