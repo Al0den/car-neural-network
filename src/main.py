@@ -54,8 +54,9 @@ def main():
             game.speed = max(0, game.speed)
             clock.tick(game.speed)
             SpecificMapMethod(game, pygame, game_options)
+            if time.time() - last_render < 0.015: continue
+            last_render = time.time()
             game.render.RenderFrame(game)
-            pygame.display.update()
         elif game.player == 5:
             keys = pygame.key.get_pressed()
             if keys[pygame.K_p]: no_tick = True

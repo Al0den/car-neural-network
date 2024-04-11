@@ -10,10 +10,15 @@ from settings import *
 from agent import Agent
 from precomputed import cos, sin
 
-from multiprocessing import Manager
+from multiprocessing import Manager, Process
 
 class Render:
     def __init__(self, screen, game_options, game):
+        if game.player in [4, 5]:
+            self.shared_data = Manager().list()
+            self.graph_process = Process(target=self.draw_perm)
+            self.graph_process.start()
+
         self.screen = screen
         self.game_options = game_options
         self.red = (255, 0, 0)
@@ -417,14 +422,11 @@ class Render:
         pygame.display.update()
 
     def initDataGraph(self):
-        # Create and show an empty graph
-        self.speeds = []
-        self.throttle = []
-        self.brake = []
-        self.steer = []
-        self.timestamps = []
+        return
+        # Run draw_perm in separate process
 
-        self.fig, self.axs = plt.subplots(1, 3, figsize=(17, 6))
+    def draw_perm(self):
+        self.fig, self.axs = plt.subplots(1, 3, figsize=(8, 3))
         self.axs[0].set_xlabel('Time (s)')
         self.axs[0].set_ylabel('Speed (km/h)')
         self.axs[1].set_xlabel('Time (s)')
@@ -437,25 +439,73 @@ class Render:
         self.throttle_line, = self.axs[1].plot([], [], 'g-', label='Throttle')
         self.brake_line, = self.axs[1].plot([], [], 'r-', label='Brake')
         self.steer_line, = self.axs[2].plot([], [], 'y-')
+        print("test")
 
-        self.shared_speed_line = Manager().list()
-        self.shared_throttle_line = Manager().list()
-        self.shared_brake_line = Manager().list()
-        self.shared_steer_line = Manager().list()
-        self.shared_timestamps = Manager().list()
-
-        
-        # Draw the graph
-        plt.ion()
         plt.show(block=False)
 
-    def draw_perm(self):
+        local_speed = []
+        local_throttle = []
+        local_brake = []
+        local_steer = []
+        local_timestamps = []
+
+        tot_data_num = 0
 
         while True:
-            time.sleep(1)
-            self.fig.canvas.draw()
+            data = self.shared_data[:]
+            if data == []: continue
+
+            if len(data) < tot_data_num: 
+                local_speed = []
+                local_throttle = []
+                local_brake = []
+                local_steer = []
+                local_timestamps = []
+                tot_data_num = 0
+                continue
+
+                plt.clf()
+
+            while len(local_brake) > 300:
+                # Pop first element for all local
+                local_speed.pop(0)
+                local_throttle.pop(0)
+                local_brake.pop(0)
+                local_steer.pop(0)
+                local_timestamps.pop(0)
+
+            # Add anything that wasnt added to local data
+            for i in range(tot_data_num, len(data)):                
+                local_speed.append(data[i][0])
+                local_brake.append(data[i][1])
+                local_throttle.append(data[i][2])
+                local_steer.append(data[i][3])
+                local_timestamps.append(data[i][4])
+
+            tot_data_num = len(data)
+
+            self.speed_line.set_data(local_timestamps, local_speed)
+            self.throttle_line.set_data(local_timestamps, local_throttle)
+            self.brake_line.set_data(local_timestamps, local_brake)
+            self.steer_line.set_data(local_timestamps, local_steer)
+
+            # Adjust limits if necessary
+            self.axs[0].set_xlim(min(local_timestamps), max(local_timestamps)+0.1)
+            self.axs[1].set_xlim(min(local_timestamps), max(local_timestamps)+0.1)
+            self.axs[2].set_xlim(min(local_timestamps), max(local_timestamps)+0.1)
+
+            self.axs[0].set_ylim(0, 360)
+            self.axs[1].set_ylim(-1.1, 1.1)
+            self.axs[2].set_ylim(-1.1, 1.1)
+
+            plt.pause(0.001)
+
+            plt.draw()
 
     def ClearData(self):
+        # Clear shared_data
+        self.shared_data[:] = []
+        return
         self.speeds = []
         self.throttle = []
         self.brake = []
@@ -463,13 +513,14 @@ class Render:
         self.timestamps = []
 
     def GraphData(self, speed, brake, throttle, steer, timestamp):
+        self.shared_data.append([speed, brake, throttle, steer, timestamp])
+
+        return
         self.speeds.append(speed)
         self.throttle.append(throttle)
         self.brake.append(-brake)
         self.steer.append(steer)
         self.timestamps.append(timestamp/60)
-
-
 
         # if len > 1000 remove first element
         if len(self.speeds) > 1000:

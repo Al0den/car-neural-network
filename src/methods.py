@@ -197,6 +197,7 @@ def AgentsRaceMethod(game, game_options, pygame):
             while any([game.car_numbers[i] > game.car_numbers[0] for i in range(len(game.car_numbers))]):
                 game.environment.agents.insert(0, game.environment.agents.pop())
                 game.car_numbers.insert(0, game.car_numbers.pop())
+                
     if all([agent.car.died for agent in game.environment.agents]):
         if game.s_or_g_choice == "g":
             start_pos, start_dir = random.choice(game.start_positions[game.track_name])
