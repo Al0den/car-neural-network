@@ -99,6 +99,7 @@ public func compute_offsets_corner(count1: Int, count2: Int) -> Int {
 @available(macOS 10.13, *)
 public func computeOffsetsCorner(count1: Int, count2: Int) -> Int {
     do {
+       
         let commandBuffer1 = commandQueue.makeCommandBuffer()
         let commandBuffer2 = commandQueue.makeCommandBuffer()
 

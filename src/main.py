@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import pygame
 
 import numpy as np
 
@@ -41,9 +42,13 @@ def main():
             for event in pygame.event.get(): 
                 if event.type == pygame.QUIT:
                     game.running.value = False
-        
+                    
+        if pygame.key.get_pressed()[pygame.K_ESCAPE]: continue
+
         if not no_tick: value = game.tick()
         no_tick = False
+
+        
 
         if game.player == 0:
             clock.tick(game.speed)
