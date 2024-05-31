@@ -13,6 +13,10 @@ from utils import SaveOptimalLine, SaveAgentsSpeedGraph, InitialiseDisplay
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'
 
+
+brake, steer, throttle, speeds, timestamps, generated = [], [], [], [], [], []
+clock = None
+
 def main(): 
     os.makedirs("./data/tracks", exist_ok=True)
     os.makedirs("./data/train/trained", exist_ok=True)
@@ -23,16 +27,13 @@ def main():
 
     if god: print("WARNING: God mode is on, car will ignore track boundaries")
     if game.debug: print("WARNING: Debug is on, console can get spammed")
-    
+
     if game_options['display']:
-        import pygame
         clock, last_render = InitialiseDisplay(game, game_options, pygame)
-    
     no_tick = False
 
     if game.player == 7:
         generated = np.copy(game.track).astype(np.uint16)
-        brake, steer, throttle, speeds, timestamps = [], [], [], [], []
     game.restart = False
     if game.player in [4, 5]:
         game.render.initDataGraph()
@@ -41,14 +42,11 @@ def main():
         if game_options['display']:
             for event in pygame.event.get(): 
                 if event.type == pygame.QUIT:
-                    game.running.value = False
-                    
-        if pygame.key.get_pressed()[pygame.K_ESCAPE]: continue
+                    game.running.value = False 
+            if pygame.key.get_pressed()[pygame.K_ESCAPE]: continue
 
         if not no_tick: value = game.tick()
         no_tick = False
-
-        
 
         if game.player == 0:
             clock.tick(game.speed)
@@ -80,7 +78,7 @@ def main():
         elif game.player == 7:
             x, y = game.environment.agents[0].car.x, game.environment.agents[0].car.y
             generated[int(y), int(x)] = 10 + game.environment.agents[0].car.speed
-            
+
             speeds.append(game.environment.agents[0].car.speed)
             throttle.append(game.environment.agents[0].car.acceleration)
             brake.append(game.environment.agents[0].car.brake)
@@ -106,7 +104,7 @@ def main():
             clock.tick(game.speed)
         elif game.player == 9:
             if not value: game.running.value = False
-            data = { 
+            data = {
                 "info": game.generated_data,
                 "agents": game.environment.agents,
             }

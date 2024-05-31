@@ -1,7 +1,6 @@
 import pygame
 import numpy as np
 import os
-import time
 
 import matplotlib.pyplot as plt
 
@@ -12,8 +11,11 @@ from precomputed import cos, sin
 
 from multiprocessing import Manager, Process
 
+
 class Render:
-    def __init__(self, screen, game_options, game):
+    def __init__(self, screen, game_options, game, noRender=False):
+        if noRender:
+            return
         if game.player in [4, 5]:
             self.shared_data = Manager().list()
             self.graph_process = Process(target=self.draw_perm)
@@ -71,7 +73,6 @@ class Render:
 
         zoomed_width = int(screen.get_width() / zoom_factor)
         zoomed_height = int(screen.get_height() / zoom_factor)
-
         x_offset = center_x - zoomed_width // 2
         y_offset = center_y - zoomed_height // 2
 
@@ -234,25 +235,43 @@ class Render:
             new_y = car.y + new_dist * np.sin(angle)
 
             if point[0] == center_line_x and point[1] == center_line_y:
-                return # Ne pas dessiner le point sur la ligne centrale. (Pk il est la deja?)
+                return  # Ne pas dessiner le point sur la ligne centrale. (Pk il est la deja?)
             else:
+                color = (0, 0, 255)
+                line_start = int(car.x - camera_x), int(car.y - camera_y)
+                line_end = int(new_x - camera_x), int(new_y - camera_y)
 
-                pygame.draw.line(self.screen, (0, 0, 255), (int(car.x - camera_x), int(car.y - camera_y)), (int(new_x - camera_x), int(new_y - camera_y)))
-                pygame.draw.circle(self.screen, (0, 0, 255), (int(new_x - camera_x), int(new_y - camera_y)), 3)
+                pygame.draw.line(self.screen, color, line_start, line_end)
+                pygame.draw.circle(self.screen, color, line_end, 3)
 
     def DrawLineToNextCorner(self, camera_x, camera_y, car):
-        if car.future_corners is None or len(car.future_corners) == 0: return
+        if car.future_corners is None or len(car.future_corners) == 0:
+            return
+
         next_corner = car.future_corners[0]
-        distance_to_corner = calculate_distance((car.x, car.y), (next_corner[0], next_corner[1]))
-        angle_to_corner = np.degrees(np.arctan2(next_corner[1] - car.y, next_corner[0] - car.x))
+        next_corner_pos = next_corner[0], next_corner[1]
+
+        car_pos = car.x, car.y
+        relative_pos_x, relative_pos_y = next_corner[0] - car.x, next_corner[1] - car.y
+
+        distance_to_corner = calculate_distance(car_pos, next_corner_pos)
+        angle_to_corner = np.degrees(np.arctan2(relative_pos_y, relative_pos_x))
         distance_to_corner = distance_to_corner * self.zoom_factor
-        new_x = car.x + distance_to_corner * np.cos(np.radians(angle_to_corner))
-        new_y = car.y + distance_to_corner * np.sin(np.radians(angle_to_corner))
+
+        angle_rad = np.radians(angle_to_corner)
+        new_x = car.x + distance_to_corner * np.cos(angle_rad)
+        new_y = car.y + distance_to_corner * np.sin(angle_rad)
+
+        line_start = int(car.x - camera_x), int(car.y - camera_y)
+        line_end = int(new_x - camera_x), int(new_y - camera_y)
         if angle_range_180(next_corner[2] - car.direction) > 0:
-            pygame.draw.line(self.screen, (255, 0, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
+            color = (255, 0, 0)
+            pygame.draw.line(self.screen, color, line_start, line_end, 2)
         else:
-            pygame.draw.line(self.screen, (0, 255, 0), (car.x - camera_x, car.y - camera_y), (new_x - camera_x, new_y - camera_y), 2)
-        if len(car.future_corners) == 1: return
+            color = (0, 255, 0)
+            pygame.draw.line(self.screen, color, line_start, line_end, 2)
+        if len(car.future_corners) == 1:
+            return
         next_corner = car.future_corners[1]
         distance_to_corner = calculate_distance((car.x, car.y), (next_corner[0], next_corner[1]))
         angle_to_corner = np.degrees(np.arctan2(next_corner[1] - car.y, next_corner[0] - car.x))
@@ -318,7 +337,7 @@ class Render:
             corner_x, corner_y, next_corner_dir, next_corner_ampl = agent.car.future_corners[0]
             next_corner_dif = angle_range_180(next_corner_dir - agent.car.direction)
             next_corner_dir = "Left" if next_corner_dif > 0 else "Right" if next_corner_dif < 0 else "F"
-        
+
         lines = [
             f"Action: [{', '.join(actions)}]",
             f"tps: {game.clock.get_fps():.1f}",
@@ -326,7 +345,6 @@ class Render:
             f"Next corner Direction: {next_corner_dir}",
             f"Next corner Distance: {calculate_distance((agent.car.x, agent.car.y), (corner_x, corner_y)):.1f}",
             "State:"
-            
         ]
 
         for line in state_lines:
@@ -341,6 +359,7 @@ class Render:
             text_surface = font.render(line, True, (0, 0, 0))
             self.screen.blit(text_surface, (w * 0.75, y_offset))
             y_offset += text_surface.get_height() + 5
+
     def handle_slider(self, game):
         pygame.draw.rect(self.screen, (200, 200, 200), (self.slider_x, self.slider_y, slider_width, slider_height))
         slider_pos = self.slider_x + self.slider_value * slider_width
@@ -365,6 +384,7 @@ class Render:
                 self.slider_value = max(0, min(1, (mouse_x - self.slider_x) / slider_width))  # Convert to range -1 to 1
                 if game.player in [0, 4, 5]:
                     car.direction = self.slider_value * 360
+
     def update_zoom_offset(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_EQUALS]:
@@ -375,8 +395,10 @@ class Render:
     def RenderFrame(self, game):
         self.update_zoom_offset()
         centered_car = None
-        if game.player == 0: centered_car = game.car 
-        else: centered_car = game.environment.agents[0].car
+        if game.player == 0:
+            centered_car = game.car
+        else:
+            centered_car = game.environment.agents[0].car
         self.zoom_factor = (8 / self.pixel_per_meter.get(centered_car.track_name)) + self.zoom_offset
 
         camera_x = centered_car.x - game.screen.get_width() // 2
@@ -391,12 +413,14 @@ class Render:
         total_power_var = acceleration_var - brake_var
 
         offset_x, offset_y = steer_var * y_sin + total_power_var * x_cos, steer_var * x_cos - total_power_var * y_sin
-        if game.visual: self.draw_track((centered_car.x, centered_car.y), self.screen, game)
-        else: self.screen.fill((255, 255, 255))
+        if game.visual:
+            self.draw_track((centered_car.x, centered_car.y), self.screen, game)
+        else:
+            self.screen.fill((255, 255, 255))
 
         self.draw_acceleration(centered_car.acceleration, centered_car.brake, 10,300, 20, 100)
         self.draw_steering(centered_car.steer, 40, 300, 100, 20)
-        
+
         self.info(centered_car, game)
 
         if game.debug or not game.visual:
@@ -407,17 +431,18 @@ class Render:
         if game.visual:
             if game.player != 0:
                 for i, agent in enumerate(game.environment.agents):
-                    if agent.car == centered_car: continue
+                    if agent.car == centered_car:
+                        continue
                     self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, game.debug, game.car_numbers[i])
             self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,0,0), game.track, game.debug, -game.car_numbers[0])
         else:
             if game.player != 0:
                 for i, agent in enumerate(game.environment.agents):
-                    if agent.car == centered_car: continue
+                    if agent.car == centered_car:
+                        continue
                     self.DrawCar(agent.car, camera_x + offset_x, camera_y + offset_y, (0, 255, 0), game.track, True, game.car_numbers[i])
             self.DrawCar(centered_car, camera_x + offset_x, camera_y + offset_y, (0,255,255), game.track, True, -game.car_numbers[0])
 
-        
         self.handle_slider(game)
         pygame.display.update()
 
@@ -453,9 +478,10 @@ class Render:
 
         while True:
             data = self.shared_data[:]
-            if data == []: continue
+            if data == []:
+                continue
 
-            if len(data) < tot_data_num: 
+            if len(data) < tot_data_num:
                 local_speed = []
                 local_throttle = []
                 local_brake = []
@@ -463,8 +489,6 @@ class Render:
                 local_timestamps = []
                 tot_data_num = 0
                 continue
-
-                plt.clf()
 
             while len(local_brake) > 300:
                 # Pop first element for all local
@@ -475,7 +499,7 @@ class Render:
                 local_timestamps.pop(0)
 
             # Add anything that wasnt added to local data
-            for i in range(tot_data_num, len(data)):                
+            for i in range(tot_data_num, len(data)):
                 local_speed.append(data[i][0])
                 local_brake.append(data[i][1])
                 local_throttle.append(data[i][2])
@@ -503,52 +527,9 @@ class Render:
             plt.draw()
 
     def ClearData(self):
-        # Clear shared_data
         self.shared_data[:] = []
         return
-        self.speeds = []
-        self.throttle = []
-        self.brake = []
-        self.steer = []
-        self.timestamps = []
 
     def GraphData(self, speed, brake, throttle, steer, timestamp):
         self.shared_data.append([speed, brake, throttle, steer, timestamp])
-
         return
-        self.speeds.append(speed)
-        self.throttle.append(throttle)
-        self.brake.append(-brake)
-        self.steer.append(steer)
-        self.timestamps.append(timestamp/60)
-
-        # if len > 1000 remove first element
-        if len(self.speeds) > 1000:
-            self.speeds.pop(0)
-            self.throttle.pop(0)
-            self.brake.pop(0)
-            self.steer.pop(0)
-            self.timestamps.pop(0)
-
-        if timestamp % 20 == 0:
-            self.speed_line.set_data(self.timestamps, self.speeds)
-            self.throttle_line.set_data(self.timestamps, self.throttle)
-            self.brake_line.set_data(self.timestamps, self.brake)
-            self.steer_line.set_data(self.timestamps, self.steer)
-
-            # Adjust limits if necessary
-            self.axs[0].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
-            self.axs[1].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
-            self.axs[2].set_xlim(min(self.timestamps), max(self.timestamps)+0.1)
-
-            self.axs[0].set_ylim(0, 360)
-            self.axs[1].set_ylim(-1.1, 1.1)
-            self.axs[2].set_ylim(-1.1, 1.1)
-
-   
-
-
-                
-
-
-        

@@ -54,11 +54,12 @@ class Car:
 
         self.UpdateCorners()
 
-        self.speed_pre_calc = None
+        self.speed_pre_calc = []
+
         if speed_pre_calc:
             self.pre_calc_speed = []
-            for i in range(0, 3399, 1):
-                self.pre_calc_speed.append(next_speed(i/10))
+            for i in range(0, 33500, 1):
+                self.pre_calc_speed.append(next_speed(i/100, []))
             self.speed_pre_calc = np.array(self.pre_calc_speed)
 
         self.died = False
@@ -70,6 +71,7 @@ class Car:
         self.corner_check = 0
         
     def Tick(self, game):
+       
         self.ApplyPlayerInputs()
         self.UpdateCar()
         return self.CheckCollisions(game.ticks)
@@ -229,7 +231,7 @@ class Car:
             self.steer = -1
         
     def UpdateCar(self):     
-        speed_factor = max(1.0 - pow(int(self.speed) / (max_speed), 0.5), 0.1)
+        speed_factor = max(1.0 - pow((int(self.speed)) / (max_speed+5), 0.5), 0.05)
         wheel_angle = speed_factor * self.steer * 14
 
         tan_angle = tan[int((wheel_angle % 180) * angle_resolution_factor)]
@@ -247,7 +249,7 @@ class Car:
         drag_force = 0.5 * (drag_coeff) * (reference_area) * speed_squared[int(self.speed * 10)]
         drag_acceleration = drag_force * delta_t / car_mass
 
-        self.speed -= drag_acceleration * ((1-self.acceleration) * (1-self.brake) + abs(self.steer) * 1/4)
+        self.speed -= drag_acceleration * ((1-self.acceleration) * (1-self.brake) + abs(self.steer) * 1/16)
         
         displacement = (self.speed / 3.6) * self.ppm
         self.x += displacement * cos[(self.int_direction) * angle_resolution_factor] * delta_t

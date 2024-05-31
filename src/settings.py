@@ -4,7 +4,7 @@ points_offset = [0, 2, -2, 4, -4, 8, -8, 15, -15, 30, -30, 60, -60, 90, -90]
 center_line_input = True
 state_space_size = len(points_offset) + 11
 first_layer_size_coeff = 1.1
-num_hidden_layers = 1
+num_hidden_layers = 2
 action_space_size = 2
 map_tries = 2
 max_corner_distance = 800
@@ -20,7 +20,7 @@ first_layer_size = int(state_space_size * first_layer_size_coeff)
 # - Parameters
 perft_ticks = 10
 perft_duration = 20
-specialised_training_multiple = 1
+specialised_training_multiple = 3
 compile_shaders = False
 key_press_delay = 0.1
 
@@ -45,13 +45,14 @@ tps_window_size = 20  # Adjust the window size as needed
 # - Simulation settings
 car_length = 5.23
 car_width = 1.8
-max_speed = 370 # Need to modify precalculated speed values if changed
+max_speed = 336
 turn_coeff = 3.8
 drag_coeff = 0.881
 reference_area = 1.7
 lift_coeff = -1.247
 car_mass = 733
 gravity = 9.81
+friction_coeff = 1.1
 brake_increment = 1/10
 acceleration_increment = 1/10
 steer_increment = 1/10

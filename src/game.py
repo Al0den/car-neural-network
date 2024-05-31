@@ -235,8 +235,8 @@ class Game:
             self.totalScore = 0
             self.runs = 0
             self.pre_calc_speed = []
-            for i in range(0, 3399, 1):
-                self.pre_calc_speed.append(next_speed(i/10))
+            for i in range(0, 33500, 1):
+                self.pre_calc_speed.append(next_speed(i/100))
             self.pre_calc_speed = np.array(self.pre_calc_speed)
 
             for i in range(len(self.environment.agents)):
@@ -440,9 +440,9 @@ class Game:
 
         self.tracks = {}
         
-        speed_pre_calc = [0] * 3601
-        for i in range(0, 3399, 1):
-            speed_pre_calc[i] = next_speed(i/10)
+        speed_pre_calc = [0] * 33600
+        for i in range(0, 33500, 1):
+            speed_pre_calc[i] = next_speed(i/100)
 
         speed_pre_calc = np.array(speed_pre_calc)
 
@@ -476,6 +476,7 @@ class Game:
             for i, agent in enumerate(agents):
                 index = i * 10
                 MetalInstance.inVectorBuffer[index:index + 5] = [agent.car.int_x, agent.car.int_y, agent.car.int_direction, track_index[agent.car.track_name], int(agent.car.ppm * 1000)]
+                
             alives = [1] * len(agents)
             corner_lengths = [len(agent.car.future_corners) for agent in agents]
             working[p_id] = 2
@@ -686,9 +687,6 @@ class Game:
                     new_agent.car.speed = self.config['quali_start_speed'].get(start_tracks[i])
                
                 new_agent.car.future_corners = np.array(all_corners[i], copy=True).tolist()
-                if self.player in [1, 2]:
-                    new_agent.car.direction += (random.random() - 0.5) * 5
-                    new_agent.car.start_direction = new_agent.car.direction
 
                 new_agent.car.track = []
                 new_agent.mutation_strengh = self.mutation_strength

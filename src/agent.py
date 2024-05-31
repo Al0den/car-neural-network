@@ -49,7 +49,7 @@ class Agent:
         self.car.ApplyAgentInputs([power, steer])
 
         self.car.UpdateCar()
-        self.car.UpdatePreCalc
+        self.car.UpdatePreCalc()
         self.car.CheckCollisions(ticks)
 
         self.action[0:2] = [power, steer]

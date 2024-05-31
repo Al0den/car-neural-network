@@ -25,17 +25,29 @@ def copy_network(network):
         copied_network.append(copied_layer_weights)
     return copied_network
 
-def speed_after_t(t):
-    return -max_speed * np.exp((-t)/4.5) + max_speed
+a = 336.02
+b = 4.81
+c = 2.08362
 
-def next_speed(current_speed, speed_pre_calc=None):
+def speed_after_t(t):
+    return a-a/(1+pow((t/b), c))
+
+def get_current_t(speed): 
+    t = b * pow(-a/(speed - a + 0.01) - 1, 1/c)
+    return t
+
+def next_speed(current_speed, speed_pre_calc=[]):
     try:
-        return speed_pre_calc[int(current_speed * 10)]
+        return speed_pre_calc[int(current_speed * 100)]
     except:
-        current_speed = int(current_speed * 10)/10
-        current_t = -4.5 * np.log(1-(current_speed/max_speed))
+        if current_speed < 5:
+            return current_speed + 1
+        current_speed = int(current_speed * 100) / 100
+        current_t = get_current_t(current_speed)
         next_t = current_t + delta_t
-        return speed_after_t(next_t)
+        new_speed = min(max_speed - 1, np.real(speed_after_t(next_t)))
+
+        return new_speed
 
 def new_brake_speed(current_speed):
     applied_speed = min(current_speed, max_speed)
@@ -201,6 +213,7 @@ def EditSurfaceImage(track, array):
     # Save the image
     image = Image.fromarray(surface)
     image.save(f"./data/tracks/{track}_surface_path.png")
+    
 def SaveAgentsSpeedGraph(speeds, throttle, brake, generation, track_name, steer):
     import matplotlib.pyplot as plt
     speeds.pop()
