@@ -87,8 +87,8 @@ class Agent:
                     if int < rate:
                         layer[i][j] += np.random.uniform(-mutation_strenght, mutation_strenght)
                         layer[i][j] = min(1, max(-1, layer[i][j]))
-    
-    def CalculateNextAction(self, state):  
+
+    def CalculateNextAction(self, state):
         current_layer_output = state
         for i, layer_weights in enumerate(self.network):
             if i == len(self.network) - 1:
@@ -96,7 +96,7 @@ class Agent:
             else:
                 current_layer_output = np.maximum(0, np.dot(current_layer_output, layer_weights))
         return current_layer_output
-    
+
     def AgentDistance(self, agent2):
         # Calculate the euclidian distance, wihout using calculate distance
         difference = 0
