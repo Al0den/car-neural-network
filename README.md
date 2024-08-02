@@ -1,6 +1,11 @@
 # Car Neural Network
 An attempt at generating the optimal racing line for motorsports, more specifically Formula 1
 
+
+This is a [TIPE](https://www.scei-concours.fr/tipe.php) for the French "Concours d'ingenieur". Associated documents can be found in `tipe`.
+
+For reference, the final mark obtained after the presentation was 19.3/20 
+
 ## Requirements
 This code was only meant to run on Apple Silicon machines, and might work on Intel based Macs, although it hasn't been tested. The shaders are pre-compiled in src/shaders, and were compiled locally. If you want to try and compile them on your side, see `make compile_shader`
 
