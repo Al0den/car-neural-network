@@ -2,7 +2,7 @@
 An attempt at generating the optimal racing line for motorsports, more specifically Formula 1
 
 
-This is a [TIPE](https://www.scei-concours.fr/tipe.php) for the French "Concours d'ingenieur". Associated documents can be found in `tipe`.
+This is a [TIPE](https://www.scei-concours.fr/tipe.php) \(Epreuve d'evaluation des travaux d'initiative personelle encadres \) for the French "Concours d'ingenieur". Associated documents can be found in `tipe`.
 For reference, the final mark obtained after the presentation was 19.3/20 
 
 ## Requirements
